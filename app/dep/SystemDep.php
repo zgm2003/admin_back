@@ -3,40 +3,31 @@
 namespace app\dep;
 
 
-use App\Models\UsersModel;
-use App\Enum\CommonEnum;
+use app\model\SystemModel;
+use app\enum\CommonEnum;
 
-class UsersDep
+class SystemDep
 {
     public $model;
 
     public function __construct()
     {
-        $this->model = new UsersModel();
+        $this->model = new SystemModel();
     }
 
-    public function first($id)
+    public function first()
     {
-        $res = $this->model->where('id', $id)->first();
+        $res = $this->model->first();
         return $res;
     }
 
-    public function getByUsername($username)
-    {
-        $res = $this->model->where('username','like', "%{$username}%")->get();
+    public function firstByName($name){
+        $res = $this->model->where('name',$name)->first();
         return $res;
     }
-    public function getUserByToken($token)
-    {
-        $res = $this->model->where('token', $token)->first();
-        return $res;
-    }
-    public function firstByEmail($email){
-        $res = $this->model->where('email',$email)->first();
-        return $res;
-    }
-    public function firstByToken($token){
-        $res = $this->model->where('token',$token)->first();
+
+    public function firstByMobile($mobile){
+        $res = $this->model->where('mobile',$mobile)->first();
         return $res;
     }
 
@@ -85,31 +76,31 @@ class UsersDep
             ->when(!empty($param['username']), function ($query) use ($param) {
                 $query->where('username','like' ,"%{$param['username']}%");
             })
-            ->when(!empty($param['email']), function ($query) use ($param) {
-                $query->where('email','like' ,"%{$param['email']}%");
+            ->when(!empty($param['nickname']), function ($query) use ($param) {
+                $query->where('nickname','like' ,"%{$param['nickname']}%");
             })
-            ->when(!empty($param['detail_address']), function ($query) use ($param) {
-                $query->where('detail_address','like' ,"%{$param['detail_address']}%");
+            ->when(!empty($param['status']), function ($query) use ($param) {
+                $query->where('status', $param['status']);
             })
-            ->when(!empty($param['address']), function ($query) use ($param) {
-                $lastAddress = end($param['address']);
-                $query->where('address', 'like', '%' . $lastAddress . '%');
+            ->when(!empty($param['platform']), function ($query) use ($param) {
+                $query->where('platform', $param['platform']);
             })
-
-            ->when(!empty($param['role_id']), function ($query) use ($param) {
-                $query->where('role_id', $param['role_id']);
+            ->when(!empty($param['platform_id']), function ($query) use ($param) {
+                $query->where('platform_id', $param['platform_id']);
             })
-            ->when(!empty($param['sex']), function ($query) use ($param) {
-                $query->where('sex', $param['sex']);
+            ->when(!empty($param['mobile_id']), function ($query) use ($param) {
+                $query->where('mobile_id', $param['mobile_id']);
             })
-
+            ->when(!empty($param['legal_type']), function ($query) use ($param) {
+                $query->where('legal_type', $param['legal_type']);
+            })
             ->when(!empty($param['date']), function ($query) use ($param) {
                 // 假设 date 参数是一个包含两个日期的数组
                 if (is_array($param['date']) && count($param['date']) === 2) {
                     $query->whereBetween('register_at', [$param['date'][0], $param['date'][1]]);
                 }
             })
-//            ->orderBy('id','desc')
+            ->orderBy('id','desc')
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
 
         return $res;

@@ -1,21 +1,4 @@
 <?php
-/**
- * This file is part of webman.
- *
- * Licensed under The MIT License
- * For full copyright and license information, please see the MIT-LICENSE.txt
- * Redistributions of files must retain the above copyright notice.
- *
- * @author    walkor<walkor@workerman.net>
- * @copyright walkor<walkor@workerman.net>
- * @link      http://www.workerman.net/
- * @license   http://www.opensource.org/licenses/mit-license.php MIT License
- */
 
-use Webman\Route;
-
-
-
-
-
-
+require_once __DIR__ . '/../routes/api.php';  // 根据相对路径引入你的 api.php 文件
+require_once __DIR__ . '/../routes/admin.php';  // 根据相对路径引入你的 admin.php 文件

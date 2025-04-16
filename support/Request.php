@@ -20,5 +20,15 @@ namespace support;
  */
 class Request extends \Webman\Http\Request
 {
+    protected $_user;
 
+    public function setUser($user)
+    {
+        $this->_user = $user;
+    }
+
+    public function user()
+    {
+        return $this->_user;
+    }
 }
