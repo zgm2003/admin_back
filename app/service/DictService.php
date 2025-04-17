@@ -248,6 +248,75 @@ class DictService
         $this->dict['ai_image_video_status_arr'] = $this->enumToDict(AiImageVideoEnum::$statusArr);
         return $this;
     }
+    public function setBlogTagArr()
+    {
+        $dep = new TagDep();
+        $articleDep = new ArticleDep();
+
+        // 获取标签集合和文章集合
+        $res = collect($dep->allOK());
+        $resArticle = collect($articleDep->releaseAll());
+
+        // 遍历标签集合并处理每个元素
+        $this->dict['tag_arr'] = $res->map(function ($item) use ($resArticle) {
+            $articleNum = $resArticle->filter(function ($article) use ($item) {
+                return in_array($item['id'], json_decode($article['tag_id'], true));
+            })->count();
+
+            return [
+                'value' => $item['id'],
+                'label' => $item['name'],
+                'count' => $articleNum,
+            ];
+        });
+
+        // 添加 "全部" 选项，统计所有文章的总数
+        $this->dict['tag_arr']->prepend([
+            'value' => 0,
+            'label' => '全部',
+            'count' => $resArticle->count(), // 使用文章集合统计总数
+        ]);
+
+        return $this;
+    }
+    public function setBlogCategoryArr()
+    {
+        $dep = new \App\Dep\Article\CategoryDep();
+        $articleDep = new ArticleDep();
+        $resArticle = $articleDep->releaseAll();
+        $res = $dep->allOK();
+        // 遍历集合并处理每个元素
+        $this->dict['category_arr'] = $res->map(function ($item) use($resArticle){
+            $count = $resArticle->where('category_id',$item['id'])->count();
+            return [
+                'value' => $item->id,
+                'label' => $item->name,
+                'icon'  => $item->icon,
+                'count' => $count
+            ];
+        });
+        $this->dict['category_arr']->prepend([
+            'value' => 0,
+            'label' => '全部',
+            'icon'  => 'folder-opened',
+            'count' => $resArticle->count(),
+        ]);
+        return $this;
+    }
+    public function setCarouselArticlksArr()
+    {
+        $dep = new ArticleDep();
+        $res = $dep->carousel();
+        // 遍历集合并处理每个元素
+        $this->dict['carousel_arr'] = $res->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'title' => $item->title,
+                'cover'  => $item->cover,
+            ];
+        });
+        return $this;
+    }
     public function enumToDict($enum)
     {
         $res = [];

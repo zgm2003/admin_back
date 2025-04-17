@@ -40,7 +40,8 @@
     "webman/redis": "dev-main",
     "webman/redis-queue": "^1.3",
     "alibabacloud/sdk": "^1.8",
-    "phpoffice/phpspreadsheet": "^4.0"
+    "phpoffice/phpspreadsheet": "^4.0",
+    "webman/gateway-worker": "^1.0"
   },
   "suggest": {
     "ext-event": "For better performance. "

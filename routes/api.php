@@ -34,6 +34,11 @@ Route::group('/api', function () {
 
     Route::add(['POST', 'OPTIONS'],'/getUploadToken', [controller\CosUploadController::class, 'getUploadToken']);
 
+    //聊天室
+    Route::add(['POST', 'OPTIONS'],'/Chat/init', [controller\Chat\ChatController::class, 'init']);
+    Route::add(['POST', 'OPTIONS'],'/Chat/send', [controller\Chat\ChatController::class, 'send']);
+    Route::add(['POST', 'OPTIONS'],'/Chat/list', [controller\Chat\ChatController::class, 'list']);
+
 })->middleware([
     app\middleware\CheckToken::class,
 ]);

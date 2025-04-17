@@ -78,4 +78,11 @@ class UsersController extends Controller
         $this->run([UsersModule::class,'batchEditList'],$request);
         return $this->response();
     }
+
+    public function userInfo(Request $request)
+    {
+        $this->run([UsersModule::class,'userInfo'],$request);
+        return $this->response();
+    }
+
 }
