@@ -95,7 +95,7 @@ class TagModule extends BaseModule
         $usersDep = $this->usersDep;
         $param = $request->all();
 //        $param['user_id'] = $request->user->id;
-        $resArticle = $articleDep->allOK();
+        $resArticle = $articleDep->all();
 
 
         $param['page_size'] = isset($param['page_size']) ? $param['page_size'] : 50;

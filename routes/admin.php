@@ -40,6 +40,7 @@ Route::group('/api/admin', function () {
     Route::add(['POST', 'OPTIONS'], '/Permission/del', [controller\User\PermissionController::class, 'del']);
     Route::add(['POST', 'OPTIONS'], '/Permission/list', [controller\User\PermissionController::class, 'list']);
     Route::add(['POST', 'OPTIONS'], '/Permission/batchEdit', [controller\User\PermissionController::class, 'batchEdit']);
+    Route::add(['POST', 'OPTIONS'], '/Permission/status', [controller\User\PermissionController::class, 'status']);
 
     //角色管理
     Route::add(['POST', 'OPTIONS'], '/Role/init', [controller\User\RoleController::class, 'init']);

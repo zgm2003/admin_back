@@ -143,12 +143,22 @@ class PermissionModule extends BaseModule
                 'parent_id' => $item->parent_id,
                 'icon' => $item->icon,
                 'component' => $item->component,
+                'status' => $item->status,
             ];
         });
 
         $data['menu_tree'] = listToTree($data['list']->toArray(), -1);
 
         return self::response($data['menu_tree']);
+    }
+    public function status($request)
+    {
+        $param = $request->all();
+        $data = [
+            'status' => $param['status'],
+        ];
+        $this->PermissionDep->edit($param['id'],$data);
+        return self::response();
     }
 
 

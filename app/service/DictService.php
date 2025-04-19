@@ -303,7 +303,7 @@ class DictService
         ]);
         return $this;
     }
-    public function setCarouselArticlksArr()
+    public function setCarouselArticlesArr()
     {
         $dep = new ArticleDep();
         $res = $dep->carousel();

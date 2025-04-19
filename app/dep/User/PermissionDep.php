@@ -79,7 +79,7 @@ class PermissionDep
     public function allOK()
     {
 
-        $res = $this->model->where('is_del', CommonEnum::NO)->get();
+        $res = $this->model->where('is_del', CommonEnum::NO)->where('status', CommonEnum::YES)->get();
 
         return $res;
     }
@@ -132,7 +132,10 @@ class PermissionDep
     public function getPermissionsByIds(array $uniquePermissionIds)
     {
         // 如果 buildPermissionTree 需要数组，则转换为数组
-        $permissions = $this->model->whereIn('id', $uniquePermissionIds)->get()->toArray();
+        $permissions = $this->model->whereIn('id', $uniquePermissionIds)
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->get()->toArray();
         return $permissions;
     }
 

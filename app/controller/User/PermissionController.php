@@ -41,6 +41,11 @@ class PermissionController extends Controller{
         $this->run([PermissionModule::class,'batchEdit'],$request);
         return $this->response();
     }
+    public function status(Request $request)
+    {
+        $this->run([PermissionModule::class,'status'],$request);
+        return $this->response();
+    }
 
 
 }

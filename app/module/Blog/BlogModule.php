@@ -9,13 +9,11 @@ use app\dep\Blog\StarDep;
 use app\dep\SystemDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UsersTokenDep;
-use app\dep\Web\VisitorDep;
 use app\enum\BlogEnum;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use Carbon\Carbon;
-use GuzzleHttp\Client;
+use support\Redis;
 
 
 class BlogModule extends BaseModule
@@ -29,8 +27,8 @@ class BlogModule extends BaseModule
 
     public $usersDep;
     public $starDep;
-    public $visitorDep;
     public $tokenDep;
+    public $dictService;
 
     public function __construct()
     {
@@ -42,81 +40,45 @@ class BlogModule extends BaseModule
         $this->article_prompt = $this->systemDep->first()->article_prompt;
         $this->usersDep = new UsersDep();
         $this->starDep = new StarDep();
-        $this->visitorDep = new VisitorDep();
         $this->tokenDep=  new UsersTokenDep();
+        $this->dictService = new DictService();
     }
 
     public function init($request)
     {
 
-        $dictService = new DictService();
-        $data1['dict'] = $dictService
-            ->setArticleTypeArr()
-            ->setBlogTagArr()
-            ->setBlogCategoryArr()
-            ->setCarouselArticlksArr()
-            ->getDict();
+        // —— 1. 字典缓存读取（Pipeline 三键） ——
+        $redis = Redis::connection('cache');
+        $keys  = ['dict:tag_arr', 'dict:category_arr', 'dict:carousel_arr'];
+        // 一次性获取多 key
+        $cached = $redis->mGet($keys);
 
-        $user = null;
-        if (!empty($param['token'])) {
-            $tokenDep = $this->tokenDep->firstByToken($param['token']);
-            $user = $this->usersDep->first($tokenDep['user_id']);
-        }
-        $ip = $request->getRealIp();
-        $client = new Client();
-        $response = $client->get("http://ip-api.com/json/{$ip}?lang=zh-CN");
-        $ipData = json_decode($response->getBody()->getContents(), true);
-        $city = $ipData['city'] ?? '未知';
-
-        if ($user) {
-            // 优先通过用户ID查询访问记录
-            $visitor = $this->visitorDep->firstByUserId($user['id']);
-            if (!$visitor) {
-                // 如果未通过用户ID查询到，再尝试通过IP查询
-                $visitor = $this->visitorDep->firstByIp($ip);
-                if ($visitor && $visitor['user_id'] == -1) {
-                    // 如果查询到的是游客记录，则更新该记录的用户ID和时间
-                    $data = [
-                        'user_id' => $user['id'],
-                        'created_at' => Carbon::now(),
-                    ];
-                    $this->visitorDep->edit($visitor['id'], $data);
-                } else {
-                    // 没有记录，则新增一条记录
-                    $data = [
-                        'user_id' => $user['id'],
-                        'ip' => $ip,
-                        'city' => $city,
-                    ];
-                    $this->visitorDep->add($data);
-                }
+        $dict = [];
+        $miss = false;
+        foreach ($keys as $i => $key) {
+            if (isset($cached[$i]) && $cached[$i] !== null) {
+                $part = str_replace('dict:', '', $key);
+                $dict[$part] = json_decode($cached[$i], true);
             } else {
-                // 如果已经存在记录，则更新访问时间
-                $data = [
-                    'created_at' => Carbon::now(),
-                ];
-                $this->visitorDep->edit($visitor['id'], $data);
-            }
-        } else {
-            // 游客状态，只以IP查询记录
-            $visitor = $this->visitorDep->firstByIp($ip);
-            if ($visitor) {
-                $data = [
-                    'created_at' => Carbon::now(),
-                ];
-                $this->visitorDep->edit($visitor['id'], $data);
-            } else {
-                $data = [
-                    'user_id' => -1,
-                    'ip' => $ip,
-                    'city' => $city,
-                ];
-                $this->visitorDep->add($data);
+                $miss = true;
+                break;
             }
         }
-
-
-        return self::response($data1);
+        // 2. 缓存未命中，重建并写回
+        if ($miss) {
+            $dict = (new DictService())
+                ->setBlogTagArr()
+                ->setBlogCategoryArr()
+                ->setCarouselArticlesArr()
+                ->getDict();
+            // Redis 事务批量写回
+            $redis->multi();
+            $redis->setEx('dict:tag_arr', 300, json_encode($dict['tag_arr'], JSON_UNESCAPED_UNICODE));
+            $redis->setEx('dict:category_arr', 300, json_encode($dict['category_arr'], JSON_UNESCAPED_UNICODE));
+            $redis->setEx('dict:carousel_arr', 300, json_encode($dict['carousel_arr'], JSON_UNESCAPED_UNICODE));
+            $redis->exec();
+        }
+        return self::response($dict);
     }
 
 
