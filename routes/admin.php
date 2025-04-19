@@ -109,18 +109,18 @@ Route::group('/api/admin', function () {
     Route::add(['POST', 'OPTIONS'], '/Music/del', [controller\Web\MusicController::class, 'del']);
 
     //AI管理-分类
-    Route::add(['POST', 'OPTIONS'], '/AiCategory/add', [controller\AI\CategoryController::class, 'add']);
-    Route::add(['POST', 'OPTIONS'], '/AiCategory/list', [controller\AI\CategoryController::class, 'list']);
-    Route::add(['POST', 'OPTIONS'], '/AiCategory/del', [controller\AI\CategoryController::class, 'del']);
-    Route::add(['POST', 'OPTIONS'], '/AiCategory/edit', [controller\AI\CategoryController::class, 'edit']);
+    Route::add(['POST', 'OPTIONS'], '/AiCategory/add', [controller\Ai\CategoryController::class, 'add']);
+    Route::add(['POST', 'OPTIONS'], '/AiCategory/list', [controller\Ai\CategoryController::class, 'list']);
+    Route::add(['POST', 'OPTIONS'], '/AiCategory/del', [controller\Ai\CategoryController::class, 'del']);
+    Route::add(['POST', 'OPTIONS'], '/AiCategory/edit', [controller\Ai\CategoryController::class, 'edit']);
 
     //AI管理
-    Route::add(['POST', 'OPTIONS'], '/Ai/init', [controller\AI\AiController::class, 'init']);
-    Route::add(['POST', 'OPTIONS'], '/Ai/add', [controller\AI\AiController::class, 'add']);
-    Route::add(['POST', 'OPTIONS'], '/Ai/list', [controller\AI\AiController::class, 'list']);
-    Route::add(['POST', 'OPTIONS'], '/Ai/edit', [controller\AI\AiController::class, 'edit']);
-    Route::add(['POST', 'OPTIONS'], '/Ai/del', [controller\AI\AiController::class, 'del']);
-    Route::add(['POST', 'OPTIONS'], '/Ai/batchEdit', [controller\AI\AiController::class, 'batchEdit']);
+    Route::add(['POST', 'OPTIONS'], '/Ai/init', [controller\Ai\AiController::class, 'init']);
+    Route::add(['POST', 'OPTIONS'], '/Ai/add', [controller\Ai\AiController::class, 'add']);
+    Route::add(['POST', 'OPTIONS'], '/Ai/list', [controller\Ai\AiController::class, 'list']);
+    Route::add(['POST', 'OPTIONS'], '/Ai/edit', [controller\Ai\AiController::class, 'edit']);
+    Route::add(['POST', 'OPTIONS'], '/Ai/del', [controller\Ai\AiController::class, 'del']);
+    Route::add(['POST', 'OPTIONS'], '/Ai/batchEdit', [controller\Ai\AiController::class, 'batchEdit']);
 
     //语音合成-音色列表
     Route::add(['POST', 'OPTIONS'], '/Voices/init', [controller\VoicesController::class, 'init']);

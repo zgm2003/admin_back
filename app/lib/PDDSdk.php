@@ -1,8 +1,8 @@
 <?php
 namespace app\lib;
 
-use App\Dep\AiWorkLine\E_commerce\AccountDep;
-use App\Enum\AccountEnum;
+use app\dep\AiWorkLine\E_commerce\AccountDep;
+use app\enum\AccountEnum;
 use GuzzleHttp\Client;
 
 class PDDSdk
