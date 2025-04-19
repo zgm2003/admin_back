@@ -2,7 +2,7 @@
 namespace app\dep\AiWorkLine\AiImageVideo;
 
 use app\model\AiWorkLine\AiImageVideo\AiImageVideoModel;
-use app\Enum\CommonEnum;
+use app\enum\CommonEnum;
 
 class AiImageVideoDep
 {

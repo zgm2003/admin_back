@@ -12,8 +12,8 @@ use app\dep\User\UsersTokenDep;
 use app\dep\Web\VisitorDep;
 use app\enum\BlogEnum;
 use app\enum\CommonEnum;
-use app\Module\BaseModule;
-use app\Service\DictService;
+use app\module\BaseModule;
+use app\service\DictService;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 

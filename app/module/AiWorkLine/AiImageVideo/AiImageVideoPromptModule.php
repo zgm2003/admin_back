@@ -4,7 +4,6 @@ namespace app\module\AiWorkLine\AiImageVideo;
 
 use app\dep\AiWorkLine\AiImageVideo\AiImageVideoPromptDep;
 use app\enum\AiImageVideoEnum;
-use app\enum\CommonEnum;
 use app\lib\AliCloud\AigcSdk;
 use app\module\BaseModule;
 use app\service\DictService;

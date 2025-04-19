@@ -2,12 +2,9 @@
 
 namespace app\module\Chat;
 
-use App\Dep\Chat\ChatDep;
-use App\Dep\User\UsersDep;
-use App\Enum\ChatEnum;
-use App\Enum\CommonEnum;
-use App\Module\BaseModule;
-use App\Service\DictService;
+use app\dep\Chat\ChatDep;
+use app\dep\User\UsersDep;
+use app\module\BaseModule;
 use GatewayWorker\Lib\Gateway;
 
 

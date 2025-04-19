@@ -2,9 +2,7 @@
 namespace app\module\Blog;
 
 use app\dep\Blog\StarDep;
-use app\enum\CommonEnum;
 use app\module\BaseModule;
-use app\service\DictService;
 
 
 class StarModule extends BaseModule

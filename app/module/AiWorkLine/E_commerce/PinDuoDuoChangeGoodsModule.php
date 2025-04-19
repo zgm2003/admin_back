@@ -2,16 +2,12 @@
 
 namespace app\module\AiWorkLine\E_commerce;
 
-use app\dep\SystemDep;
 use app\lib\PDDSdk;
 use app\module\BaseModule;
 use app\service\DictService;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
-//use App\Exports\PinduoduoGoodsExport;
-//use Maatwebsite\Excel\Facades\Excel;
 
 class PinDuoDuoChangeGoodsModule extends BaseModule
 {

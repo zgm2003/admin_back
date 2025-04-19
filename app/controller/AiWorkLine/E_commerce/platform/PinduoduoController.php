@@ -1,8 +1,8 @@
 <?php
 namespace app\controller\AiWorkLine\E_commerce\platform;
 
-use App\controller\Controller;
-use App\Module\AiWorkLine\E_commerce\platform\PinduoduoModule;
+use app\controller\Controller;
+use app\module\AiWorkLine\E_commerce\platform\PinduoduoModule;
 use support\Request;
 
 class PinduoduoController extends Controller{

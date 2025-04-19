@@ -8,10 +8,9 @@ use app\dep\SystemDep;
 use app\dep\User\UsersDep;
 use app\enum\ArticleEnum;
 use app\enum\CommonEnum;
-//use app\Jobs\article\ArticleModelJob;
-use app\Lib\AliCloud\AigcSdk;
-use app\Module\BaseModule;
-use app\Service\DictService;
+use app\lib\AliCloud\AigcSdk;
+use app\module\BaseModule;
+use app\service\DictService;
 use Webman\RedisQueue\Redis;
 
 

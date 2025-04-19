@@ -130,14 +130,17 @@ class TestModule extends BaseModule
     }
     public function test($request)
     {
-        // 队列名
-        $queue = 'test-test';
-        // 数据，可以直接传数组，无需序列化
-        $data = 1;
-        // 投递消息
-        Redis::send($queue, $data);
+//        // 队列名
+//        $queue = 'test-test';
+//        // 数据，可以直接传数组，无需序列化
+//        $data = 1;
+//        // 投递消息
+//        Redis::send($queue, $data);
         // 投递延迟消息，消息会在60秒后处理
 //        Redis::send($queue, $data, 60);
+        $data = [
+            'msg' => 'hello world'
+        ];
 
         return self::response($data);
     }

@@ -3,9 +3,9 @@
 namespace app\dep\Article;
 
 
-use app\Enum\ArticleEnum;
-use app\Model\Article\CategoryModel;
-use app\Enum\CommonEnum;
+use app\enum\ArticleEnum;
+use app\enum\CommonEnum;
+use app\model\Article\CategoryModel;
 
 class CategoryDep
 {

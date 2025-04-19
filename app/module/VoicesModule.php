@@ -2,10 +2,10 @@
 
 namespace app\module;
 
-use App\Dep\VoicesDep;
-use App\Enum\CommonEnum;
-use App\Enum\VoicesEnum;
-use App\Service\DictService;
+use app\dep\VoicesDep;
+use app\enum\CommonEnum;
+use app\enum\VoicesEnum;
+use app\service\DictService;
 
 
 class VoicesModule extends BaseModule

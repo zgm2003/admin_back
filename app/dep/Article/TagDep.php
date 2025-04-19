@@ -2,8 +2,8 @@
 
 namespace app\dep\Article;
 
-use app\Model\Article\TagModel;
-use app\Enum\CommonEnum;
+use app\model\Article\TagModel;
+use app\enum\CommonEnum;
 
 class TagDep
 {

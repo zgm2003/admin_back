@@ -2,7 +2,7 @@
 namespace app\controller\AiWorkLine\E_commerce;
 
 use app\controller\Controller;
-use app\Module\AiWorkLine\E_commerce\PinDuoDuoChangeGoodsModule;
+use app\module\AiWorkLine\E_commerce\PinDuoDuoChangeGoodsModule;
 use support\Request;
 class PinDuoDuoChangeGoodsController extends Controller{
 
