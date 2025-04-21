@@ -178,6 +178,12 @@ Route::group('/api/admin', function () {
     Route::add(['POST', 'OPTIONS'], '/AiImageVideo/toImage', [controller\AiWorkLine\AiImageVideo\AiImageVideoController::class, 'toImage']);
     Route::add(['POST', 'OPTIONS'], '/AiImageVideo/toVideo', [controller\AiWorkLine\AiImageVideo\AiImageVideoController::class, 'toVideo']);
 
+    //聊天管理-房间
+    Route::add(['POST', 'OPTIONS'], '/Room/add', [controller\Chat\RoomController::class, 'add']);
+    Route::add(['POST', 'OPTIONS'], '/Room/list', [controller\Chat\RoomController::class, 'list']);
+    Route::add(['POST', 'OPTIONS'], '/Room/isEnable', [controller\Chat\RoomController::class, 'isEnable']);
+    Route::add(['POST', 'OPTIONS'], '/Room/edit', [controller\Chat\RoomController::class, 'edit']);
+    Route::add(['POST', 'OPTIONS'], '/Room/del', [controller\Chat\RoomController::class, 'del']);
 })->middleware([
     app\middleware\CheckToken::class,
 ]);

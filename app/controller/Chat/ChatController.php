@@ -17,6 +17,11 @@ class ChatController extends Controller{
         $this->run([ChatModule::class,'send'],$request);
         return $this->response();
     }
+    public function online(Request $request){
+
+        $this->run([ChatModule::class,'online'],$request);
+        return $this->response();
+    }
 
     public function list(Request $request){
 

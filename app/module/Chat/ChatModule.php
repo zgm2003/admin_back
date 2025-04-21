@@ -3,6 +3,7 @@
 namespace app\module\Chat;
 
 use app\dep\Chat\ChatDep;
+use app\dep\Chat\UsersRoomDep;
 use app\dep\User\UsersDep;
 use app\module\BaseModule;
 use GatewayWorker\Lib\Gateway;
@@ -12,51 +13,49 @@ class ChatModule extends BaseModule
 {
     public $chatDep;
     public $userDep;
+    public $userRoomDep;
 
     public function __construct()
     {
         $this->chatDep = new ChatDep();
         $this->userDep = new UsersDep();
+        $this->userRoomDep = new UsersRoomDep();
     }
 
     public function init($request)
     {
         $param = $request->all();
         $user = $request->user();
-        if (empty($param['client_id'])
+        $roomIds = $this->userRoomDep->getByUserId($user->id)->pluck('room_id');
+
+        if (
+            empty($param['client_id'])
         ) {
             return self::response([], '缺少参数', 100);
         }
         Gateway::bindUid($param['client_id'], $user->id);
+
+        foreach ($roomIds as $rid) {
+            Gateway::joinGroup($param['client_id'], $rid);
+        }
+
         Gateway::setSession($param['client_id'], [
             'id' => $user->id,
             'username' => $user->username,
             'avatar' => $user->avatar,
             'client_id' => $param['client_id'],
-
         ]);
 
-        // 发送在线人数
-        $this->online($request);
+        // 广播给所有在线用户
+        foreach ($roomIds as $roomId){
+            $data = [
+                'type' => 'online',
+                'data' => Gateway::getClientSessionsByGroup($roomId)
+            ];
+            Gateway::sendToGroup($roomId,json_encode($data));
+        }
 
-        // 发送欢迎消息
-        $this->welcome($request);
-        return self::response();
-    }
 
-    //欢迎用户
-    public function welcome($request)
-    {
-        $data = [
-            'type' => 'welcome',
-            'data' => [
-                'user_id' => $request->user()->id,
-                'username' => $request->user()->username,
-                'avatar' => $request->user()->avatar,
-                'created_at' => date('Y-m-d H:i:s', time()),
-            ]
-        ];
-        Gateway::sendToAll(json_encode($data));
         return self::response();
     }
 
@@ -73,6 +72,7 @@ class ChatModule extends BaseModule
             'type' => 'message',
             'data' => [
                 'user_id' => $user->id,  // 发送者的 ID
+                'room_id' => $param['room_id'],
                 'content' => $param['content'],
                 'username' => $user->username,
                 'avatar' => $user->avatar,
@@ -82,13 +82,14 @@ class ChatModule extends BaseModule
         ];
 
         // 发送给所有 WebSocket 连接的用户
-        Gateway::sendToAll(json_encode($data));
+        Gateway::sendToGroup($param['room_id'],json_encode($data));
 
         // 存入数据库
         $data1 = [
             'user_id' => $user->id,
             'type' => $param['type'],
             'content' => $param['content'],
+            'room_id' => $param['room_id'],
         ];
         $this->chatDep->add($data1);
 
@@ -98,11 +99,22 @@ class ChatModule extends BaseModule
 
     public function online($request)
     {
-        $data = [
-            'type' => 'online',
-            'data' => Gateway::getAllClientSessions()
-        ];
-        Gateway::sendToAll(json_encode($data));
+        $param  = $request->all();
+        $roomId = $param['room_id'] ?? null;
+        if (!$roomId) {
+            return self::response([], '缺少房间号', 100);
+        }
+        // 从 Gateway 拿到这个房间所有会话
+        $sessions = array_values(
+            Gateway::getClientSessionsByGroup($roomId)
+        );
+        // 给整个房间组广播在线
+        $payload = json_encode([
+            'type'    => 'online',
+            'data'    => $sessions,
+        ]);
+        Gateway::sendToGroup($roomId, $payload);
+        return self::response();
     }
 
 
@@ -127,6 +139,7 @@ class ChatModule extends BaseModule
                 'user_id' => $item['user_id'],
                 'username' => $resUser->username,
                 'avatar' => $resUser->avatar,
+                'room_id' => $item['room_id'],
                 'type' => $item['type'],
                 'content' => $item['content'],
                 'created_at' => $item['created_at']->toDateTimeString(),

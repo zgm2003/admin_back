@@ -8,6 +8,8 @@ use app\dep\AiWorkLine\AiImageVideo\AiImageVideoTaskDep;
 use app\dep\Article\ArticleDep;
 use app\dep\Article\CategoryDep;
 use app\dep\Article\TagDep;
+use app\dep\Chat\RoomDep;
+use app\dep\Chat\UsersRoomDep;
 use app\dep\User\RoleDep;
 use app\dep\User\PermissionDep;
 use app\dep\VoicesDep;
@@ -317,6 +319,46 @@ class DictService
         });
         return $this;
     }
+
+    public function setUserRoomArr($id)
+    {
+        $roomDep = new RoomDep();
+        $userRoomDep = new UsersRoomDep();
+        $roomId = $userRoomDep->getByUserId($id)->pluck('room_id');
+        $res = $roomDep->getById($roomId);
+
+        // 遍历集合并处理每个元素
+        $this->dict['room_arr'] = $res->map(function ($item) {
+            return [
+                'name' => $item->name,
+                'icon' => $item->icon,
+                'id' => (string)$item->id,
+            ];
+        });
+        return $this;
+    }
+    public function setUserNotRoomArr($id)
+    {
+        $roomDep = new RoomDep();
+        $userRoomDep = new UsersRoomDep();
+        $roomId = $userRoomDep->getByUserId($id)->pluck('room_id');
+        $roomAllId = $roomDep->allOK()->pluck('id');
+        $roomId = $roomAllId->diff($roomId);
+
+        $res = $roomDep->getById($roomId);
+
+        // 遍历集合并处理每个元素
+        $this->dict['room_not_arr'] = $res->map(function ($item) {
+            return [
+                'label' => $item->name,
+                'value' => $item->id,
+                'icon' => $item->icon,
+                'is_lock' => $item->is_lock,
+            ];
+        });
+        return $this;
+    }
+
     public function enumToDict($enum)
     {
         $res = [];
