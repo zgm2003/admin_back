@@ -48,6 +48,8 @@ Route::group('/api/blog', function () {
     //AI工具
     Route::add(['POST', 'OPTIONS'],'/Ai/init', [controller\Ai\AiController::class, 'init1']);
     Route::add(['POST', 'OPTIONS'],'/Ai/list', [controller\Ai\AiController::class, 'list1']);
+    Route::add(['POST', 'OPTIONS'],'/Ai/homeModule', [controller\Ai\AiController::class, 'homeModule']);
+    Route::add(['POST', 'OPTIONS'],'/Ai/categoryList', [controller\Ai\AiController::class, 'categoryList']);
 });
 
 Route::group('/api/blog', function () {

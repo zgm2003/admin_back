@@ -44,4 +44,12 @@ class AiController extends Controller{
         $this->run([AiModule::class,'list1'],$request);
         return $this->response();
     }
+    public function homeModule(Request $request){
+        $this->run([AiModule::class,'homeModule'],$request);
+        return $this->response();
+    }
+    public function categoryList(Request $request){
+        $this->run([AiModule::class,'categoryList'],$request);
+        return $this->response();
+    }
 }

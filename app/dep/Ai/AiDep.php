@@ -130,4 +130,42 @@ class AiDep
 
         return $res;
     }
+    public function listByCategory(array $param, int $categoryId, int $limit = 5)
+    {
+        $query = $this->model
+            ->select(['id','title','url','link','desc','created_at'])
+            ->where('is_del', CommonEnum::NO)
+            ->where('category_id', $categoryId);
+
+        // 可选：按标题模糊
+        if (!empty($param['title'])) {
+            $query->where('title', 'like', "%{$param['title']}%");
+        }
+        // 可选：前端指定分类时，进一步过滤
+        if (!empty($param['category_id'])) {
+            $query->where('category_id', $param['category_id']);
+        }
+
+        return $query
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+    // app/dep/Ai/AiDep.php
+    public function listByCategoryPaginated(array $param, int $categoryId, int $perPage = 20, int $page = 1)
+    {
+        $query = $this->model
+            ->select(['id','title','url','link','desc','created_at'])
+            ->where('is_del', CommonEnum::NO)
+            ->where('category_id', $categoryId);
+
+        if (!empty($param['title'])) {
+            $query->where('title', 'like', "%{$param['title']}%");
+        }
+
+        return $query
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
+    }
+
 }

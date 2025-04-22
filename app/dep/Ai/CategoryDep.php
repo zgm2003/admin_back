@@ -113,5 +113,11 @@ class CategoryDep
 
         return $res;
     }
-
+    public function getActiveCategories()
+    {
+        return $this->model
+            ->select(['id', 'name', 'icon'])
+            ->where('is_del', CommonEnum::NO)
+            ->get();
+    }
 }

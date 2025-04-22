@@ -200,5 +200,70 @@ class AiModule extends BaseModule
         return self::response($data);
     }
 
+
+    public function homeModule($request)
+    {
+        $param       = $request->all();
+        $categoryDep = $this->categoryDep; // CategoryDep 实例
+        $aiDep       = $this->aiDep;       // AiDep 实例
+
+        // 1. 读所有分类
+        $categories = $categoryDep->getActiveCategories();
+
+        $result = [];
+        foreach ($categories as $category) {
+            // 2. 每个分类各取最多 5 条
+            $items = $aiDep->listByCategory($param, $category->id, 5);
+
+            // 3. 映射成前端要的结构
+            $content = $items->map(function ($item) {
+                return [
+                    'id'         => $item->id,
+                    'title'      => $item->title,
+                    'url'        => $item->url,
+                    'link'       => $item->link,
+                    'desc'       => $item->desc ?? CommonEnum::DEFAULT_NULL,
+                    'created_at' => $item->created_at->toDateTimeString(),
+                ];
+            });
+
+            $result[] = [
+                'category_id'   => $category->id,
+                'category_name' => $category->name,
+                'category_icon' => $category->icon,
+                'content'       => $content,
+            ];
+        }
+
+        // 4. 返回给前端
+        return self::response([
+            'list' => $result
+        ]);
+    }
+    // Controller 中
+    public function categoryList($request)
+    {
+        $param      = $request->all();
+        $categoryId = intval($param['category_id'] ?? 0);
+        $perPage    = intval($param['per_page'] ?? 20);
+        $page       = intval($param['page'] ?? 1);
+
+        // 调 Dep 层分页方法
+        $paginator = $this->aiDep->listByCategoryPaginated($param, $categoryId, $perPage, $page);
+
+        // 构造返回格式
+        $data = [
+            'list'         => $paginator->items(),       // 当前页的数据数组
+            'current_page' => $paginator->currentPage(),
+            'last_page'    => $paginator->lastPage(),
+            'per_page'     => $paginator->perPage(),
+            'total'        => $paginator->total(),
+        ];
+
+        return self::response($data);
+    }
+
+
+
 }
 
