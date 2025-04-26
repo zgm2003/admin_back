@@ -1,8 +1,10 @@
 <?php
 
-namespace app\queue\redis;
+namespace app\queue\redis\fast;
 
 use app\dep\TestDep;
+use app\service\RedisLock;
+use support\Redis;
 use Webman\RedisQueue\Consumer;
 
 class TestTest implements Consumer
@@ -17,13 +19,24 @@ class TestTest implements Consumer
     // 消费
     public function consume($data)
     {
-        $this->contentId = $data;
+        $this->contentId = $data['id'];
+        $lockKey = "lock:test-test:{$this->contentId}";
+        $ttl = 10; // 锁有效期（秒）
+
+        $lockValue = RedisLock::lock($lockKey, $ttl);
+        if (!$lockValue) {
+            $this->log('重复任务跳过', ['id' => $this->contentId]);
+            return false;
+        }
+
         $data1 = [
             'id' => $this->contentId,
             'code' => 200,
             'msg' => 'success',
         ];
-        $this->log('test-test success');
+        $this->log('test', $data1);
+
+        RedisLock::unlock($lockKey, $lockValue);
 
 
 
