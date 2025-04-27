@@ -123,7 +123,7 @@
 
 ### 🌐 项目前端地址
 
-- 后台管理系统：vite + vue3
-- 展示博客前台：vite + vue3 + 响应式 UI
+- 后台管理系统：https://gitee.com/zgm2003/admin_front
+- 展示博客前台：https://gitee.com/zgm2003/admin_blog
 
 ---
