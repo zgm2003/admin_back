@@ -55,10 +55,13 @@ class PermissionDep
 
     public function getByRouter($ids)
     {
-        $res = $this->model->whereIn('id', $ids)
+        $res = $this->model
+            ->whereIn('id', $ids)
             ->whereNotNull('path')
             ->whereNotNull('component')
-            ->where('is_del', CommonEnum::NO)->get();
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->get();
         return $res;
     }
 
