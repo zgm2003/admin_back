@@ -117,7 +117,7 @@
 
 4. 启动服务：
    ```bash
-   php webman start
+   php windows.php
    ```
 
 
