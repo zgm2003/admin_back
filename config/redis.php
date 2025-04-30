@@ -32,5 +32,20 @@ return [
         'port' => 6379,
         'database' => 1,
         'prefix' => 'webman_cache-',
-    ]
+    ],
+    // 专门的 Token 缓存
+    'token' => [
+        'password' => '',
+        'host'     => '127.0.0.1',
+        'port'     => 6379,
+        'database' => 2,
+        'prefix'   => 'auth_token:',
+        'pool'     => [
+            'max_connections'    => 20,
+            'min_connections'    => 2,
+            'wait_timeout'       => 3,
+            'idle_timeout'       => 50,
+            'heartbeat_interval' => 50,
+        ],
+    ],
 ];

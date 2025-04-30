@@ -6,53 +6,73 @@ use app\dep\User\UsersTokenDep;
 use Carbon\Carbon;
 use support\Request;
 use Webman\Http\Response;
+use support\Redis;
 
 class CheckToken
 {
+    // Redis TTL
+    const REDIS_TTL = 300; // 缓存 5 分钟
+
     public function process(Request $request, callable $next): Response
     {
-        $token = $request->header('authorization');
-        if (!$token) {
+        $bearer = $request->header('authorization');
+        if (!$bearer) {
             return response(json_encode(['message' => '缺少Token']),401);
         }
-        $token = str_replace('Bearer ', '', $token);
+        $token = str_replace('Bearer ', '', $bearer);
 
-        $userDep = new UsersDep();
-        $tokenDep = new UsersTokenDep();
-        $resDep = $tokenDep->firstByToken($token);
+        // 1. 从 token 专用 Redis 连接读取（Redis 配置中的 prefix 会自动添加）
+        $cached = Redis::connection('token')->get($token);
+        if ($cached) {
+            list($userId, $expiresAt, $lastIp) = explode('|', $cached);
+            $expiresAt = Carbon::parse($expiresAt);
+        } else {
+            // 2. 缓存未命中，回落到数据库
+            $tokenDep = new UsersTokenDep();
+            $row      = $tokenDep->firstByToken($token);
+            if (!$row) {
+                return response(json_encode(['message' => 'Token无效或用户不存在']),401);
+            }
+            $userId    = $row->user_id;
+            $expiresAt = Carbon::parse($row->expires_in);
+            $lastIp    = $row->ip;
 
-        if (!$resDep) {
-            return response(json_encode(['message' => 'Token无效或用户不存在']),401);
+            // 写入 Redis（只用 token 作为 key，prefix 由配置自动加）
+            $value = implode('|', [
+                $userId,
+                $expiresAt->toDateTimeString(),
+                $lastIp ?? ''
+            ]);
+            Redis::connection('token')->set($token, $value, self::REDIS_TTL);
         }
 
-        $accessToken = $resDep->token;
-        $expiresAt = Carbon::parse($resDep->expires_in);
-        $lastIp = $resDep->ip;
+        // 3. 检查过期
+        if ($expiresAt->isPast()) {
+            Redis::connection('token')->del($token);
+            return response(json_encode(['message' => 'Token已过期']),401);
+        }
+
+        // 4. IP 绑定校验
         $currentIp = $request->getRealIp();
-
-        if (!$accessToken || $expiresAt->isPast()) {
-            return response(json_encode(['message' => 'Token已过期或Token不存在']),401);
-        }
-
         if (!empty($lastIp) && $lastIp !== $currentIp) {
-            // IP 不一致，清空数据库 IP
-            $tokenDep->clearIpByToken($token);
-
+            (new UsersTokenDep())->clearIpByToken($token);
+            Redis::connection('token')->del($token);
             $this->log("IP 地址不一致：期望 {$lastIp}，实际 {$currentIp}，Token={$token}");
-
             return response(json_encode(['message' => 'IP地址不匹配，请重新登录']),401);
         }
 
-        // 绑定用户信息到 request
-        $user = $userDep->first($resDep['user_id']);
+        // 5. 认证通过，绑定用户并续期缓存
+        $user = (new UsersDep())->first($userId);
         $request->setUser($user);
+        Redis::connection('token')->expire($token, self::REDIS_TTL);
 
         return $next($request);
     }
 
     private function log($msg, $context = [])
     {
-        $logger = log_daily("checkToken"); // 获取 Logger 实例
+        $logger = log_daily('checkToken');
         $logger->info($msg, $context);
     }
 }
+
