@@ -156,6 +156,53 @@ class ChatModule extends BaseModule
         return self::response($data);
     }
 
+    /**
+     * 退出房间（不再需要前端传 client_id）
+     */
+    public function exit($request)
+    {
+        $user   = $request->user();
+        $roomId = $request->input('room_id');
+
+        if (!$roomId) {
+            return self::response([], '缺少 room_id', 100);
+        }
+
+        // 1. 拿到当前用户所有的 client_id 列表
+        $clientIds = Gateway::getClientIdByUid($user->id);
+        if (empty($clientIds)) {
+            // 已经全部断开或没连接过
+            return self::response([], '没有找到活动连接或已退出', 0);
+        }
+
+        // 2. 对每个连接都执行 leaveGroup
+        foreach ($clientIds as $cid) {
+            Gateway::leaveGroup($cid, $roomId);
+        }
+
+        // 3. （可选）清理 Session 中的房间列表
+        foreach ($clientIds as $cid) {
+            $sess = Gateway::getSession($cid);
+            if (isset($sess['current_rooms'])) {
+                $rooms = array_filter($sess['current_rooms'], fn($r)=> $r != $roomId);
+                Gateway::setSession($cid, ['current_rooms' => $rooms]);
+            }
+        }
+
+        // 4. 广播给房间内剩余连接：更新在线列表
+        $sessions = array_values(Gateway::getClientSessionsByGroup($roomId));
+        $payload  = json_encode([
+            'type' => 'online',
+            'data' => $sessions,
+        ]);
+        Gateway::sendToGroup($roomId, $payload);
+
+        $this->userRoomDep->deleteByUserIdAndRoomId($user->id,  $roomId);
+
+        return self::response([], '退出房间成功');
+    }
+
+
 
 }
 

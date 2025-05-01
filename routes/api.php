@@ -43,6 +43,7 @@ Route::group('/api', function () {
     Route::add(['POST', 'OPTIONS'],'/Chat/send', [controller\Chat\ChatController::class, 'send']);
     Route::add(['POST', 'OPTIONS'],'/Chat/online', [controller\Chat\ChatController::class, 'online']);
     Route::add(['POST', 'OPTIONS'],'/Chat/list', [controller\Chat\ChatController::class, 'list']);
+    Route::add(['POST', 'OPTIONS'],'/Chat/exit', [controller\Chat\ChatController::class, 'exit']);
 
 })->middleware([
     app\middleware\CheckToken::class,

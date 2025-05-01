@@ -28,4 +28,9 @@ class ChatController extends Controller{
         $this->run([ChatModule::class,'list'],$request);
         return $this->response();
     }
+    public function exit(Request $request){
+
+        $this->run([ChatModule::class,'exit'],$request);
+        return $this->response();
+    }
 }
