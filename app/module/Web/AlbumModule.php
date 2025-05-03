@@ -30,9 +30,10 @@ class AlbumModule extends BaseModule
     public function add($request)
     {
         $param = $request->all();
-        if (empty($param['title'] || empty($param['cover']) || empty($param['images_list']))
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['title','cover','images_list'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $resDep = $this->albumDep->firstByTitle($param['title']);
         if ($resDep){
@@ -68,9 +69,10 @@ class AlbumModule extends BaseModule
         $param = $request->all();
 
         $dep = $this->albumDep;
-        if (empty($param['title'] || empty($param['cover']) || empty($param['images_list']))
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['title','cover','images_list'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $resDep = $this->albumDep->firstByTitle($param['title']);
         if ($resDep && $resDep['id'] != $param['id']){

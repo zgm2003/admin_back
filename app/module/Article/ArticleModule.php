@@ -54,13 +54,18 @@ class ArticleModule extends BaseModule
     {
         $param = $request->all();
         $user = $request->user();
-        if (
-            empty($param['title']) || empty($param['desc']) || empty($param['cover']) || empty($param['tag_id'])
-                || empty($param['category_id']) || empty($param['isTop']) || empty($param['status'])
-                || empty($param['type']) || empty($param['isCarousel']) || empty($param['prompt'])
-
-        ) {
-            return self::response([], '必填项不能为空', 100);
+//        if (
+//            empty($param['title']) || empty($param['desc']) || empty($param['cover']) || empty($param['tag_id'])
+//                || empty($param['category_id']) || empty($param['isTop']) || empty($param['status'])
+//                || empty($param['type']) || empty($param['isCarousel']) || empty($param['prompt'])
+//
+//        ) {
+//            return self::response([], '必填项不能为空', 100);
+//        }
+        foreach (['title','desc','cover','tag_id','category_id','isTop','status','type','isCarousel','prompt'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $resDep = $this->articleDep->firstByTitle($param['title']);
         if ($resDep){
@@ -102,13 +107,10 @@ class ArticleModule extends BaseModule
         $param = $request->all();
 
         $dep = $this->articleDep;
-        if (
-            empty($param['title']) || empty($param['desc']) || empty($param['cover']) || empty($param['tag_id'])
-                || empty($param['category_id']) || empty($param['isTop']) || empty($param['status'])
-                || empty($param['type']) || empty($param['isCarousel']) || empty($param['prompt'])
-
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['title','desc','cover','tag_id','category_id','isTop','status','type','isCarousel','prompt'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $resDep = $this->articleDep->firstByTitle($param['title']);
         if ($resDep && $resDep['id'] != $param['id']){

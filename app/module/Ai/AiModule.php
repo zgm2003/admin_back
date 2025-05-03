@@ -45,9 +45,10 @@ class AiModule extends BaseModule
     {
         $param = $request->all();
         $user = $request->user();
-
-        if (empty($param['title']) || empty($param['url']) || empty($param['link']) || empty($param['category_id'])) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['title','url','link','category_id'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $resDep = $this->aiDep->firstByTitleAndCategoryId($param['title'], $param['category_id']);
         if ($resDep) {
@@ -82,10 +83,11 @@ class AiModule extends BaseModule
 
         $param = $request->all();
         $user = $request->user();
-        if (empty($param['title']) || empty($param['url']) || empty($param['link']) || empty($param['category_id'])) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['title','url','link','category_id'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
-
         $resDep = $this->aiDep->firstByTitleAndCategoryId($param['title'], $param['category_id']);
         if ($resDep && $resDep->id != $param['id']) {
             return self::response([], '当前分类AI已存在', 100);

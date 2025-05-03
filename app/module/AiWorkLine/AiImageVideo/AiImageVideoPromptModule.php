@@ -33,9 +33,10 @@ class AiImageVideoPromptModule extends BaseModule
     {
         $param = $request->all();
 
-        if (empty($param['title']) || empty($param['prompt'])
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['title','prompt'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $data = [
             'title' => $param['title'],
@@ -65,10 +66,12 @@ class AiImageVideoPromptModule extends BaseModule
         $param = $request->all();
         $dep = $this->promptDep;
 
-        if (empty($param['title']) || empty($param['prompt'])
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['title','prompt'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
+
         $resDep = $dep->firstByTitle($param['title']);
         if ($resDep && $resDep['id'] != $param['id']) {
             return self::response([], '标题已存在', 100);

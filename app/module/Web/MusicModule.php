@@ -29,10 +29,10 @@ class MusicModule extends BaseModule
     public function add($request)
     {
         $param = $request->all();
-        if (
-            empty($param['name']) || empty($param['artist']) || empty($param['cover']) || empty($param['url'])
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['name','artist','cover','url'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $resDep = $this->musicDep->firstByNameAndArtist($param['name'], $param['artist']);
         if ($resDep){
@@ -51,10 +51,10 @@ class MusicModule extends BaseModule
     public function edit($request)
     {
         $param = $request->all();
-        if (
-            empty($param['name']) || empty($param['artist']) || empty($param['cover']) || empty($param['url'])
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['name','artist','cover','url'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $resDep = $this->musicDep->firstByNameAndArtist($param['name'], $param['artist']);
         if ($resDep && $resDep['id'] != $param['id']){

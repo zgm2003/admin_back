@@ -43,10 +43,10 @@ class AiImageVideoTaskModule extends BaseModule
     {
         $param = $request->all();
         $dep = $this->aiImageVideoTaskDep;
-        if (
-            empty($param['name']) || empty($param['platform']) || empty($param['prompt'])
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['name','platform','prompt'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $data = [
             'name' => $param['name'],
@@ -79,6 +79,11 @@ class AiImageVideoTaskModule extends BaseModule
         $param = $request->all();
 
         $dep = $this->aiImageVideoTaskDep;
+        foreach (['name','platform','prompt'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
+        }
         $data = [
             'name' => $param['name'],
             'platform' => $param['platform'],

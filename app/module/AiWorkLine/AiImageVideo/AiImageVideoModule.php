@@ -56,11 +56,10 @@ class AiImageVideoModule extends BaseModule
     {
         $param = $request->all();
         $dep = $this->aiImageVideoDep;
-        if (
-            empty($param['title']) || empty($param['text']) || empty($param['image_prompt']) || empty($param['video_prompt']) ||
-            empty($param['imageSize']) || empty($param['batchSize']) || empty($param['numInferenceSteps'])|| empty($param['guidanceScale'])
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['title','text','image_prompt','video_prompt','imageSize','batchSize','numInferenceSteps','guidanceScale'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         $data = [
             'title' => $param['title'],
