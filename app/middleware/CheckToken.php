@@ -62,8 +62,9 @@ class CheckToken
         }
 
         // 5. 认证通过，绑定用户并续期缓存
-        $user = (new UsersDep())->first($userId);
-        $request->setUser($user);
+//        $user = (new UsersDep())->first($userId);
+//        $request->setUser($user);
+        $request->userId = $userId;
         Redis::connection('token')->expire($token, self::REDIS_TTL);
 
         return $next($request);
