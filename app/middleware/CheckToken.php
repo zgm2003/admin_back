@@ -1,4 +1,5 @@
 <?php
+
 namespace app\middleware;
 
 use app\dep\User\UsersDep;
@@ -17,7 +18,7 @@ class CheckToken
     {
         $bearer = $request->header('authorization');
         if (!$bearer) {
-            return response(json_encode(['message' => '缺少Token']),401);
+            return response(json_encode(['message' => '缺少Token']), 401);
         }
         $token = str_replace('Bearer ', '', $bearer);
 
@@ -29,13 +30,13 @@ class CheckToken
         } else {
             // 2. 缓存未命中，回落到数据库
             $tokenDep = new UsersTokenDep();
-            $row      = $tokenDep->firstByToken($token);
+            $row = $tokenDep->firstByToken($token);
             if (!$row) {
-                return response(json_encode(['message' => 'Token无效或用户不存在']),401);
+                return response(json_encode(['message' => 'Token无效或用户不存在']), 401);
             }
-            $userId    = $row->user_id;
+            $userId = $row->user_id;
             $expiresAt = Carbon::parse($row->expires_in);
-            $lastIp    = $row->ip;
+            $lastIp = $row->ip;
 
             // 写入 Redis（只用 token 作为 key，prefix 由配置自动加）
             $value = implode('|', [
@@ -49,7 +50,7 @@ class CheckToken
         // 3. 检查过期
         if ($expiresAt->isPast()) {
             Redis::connection('token')->del($token);
-            return response(json_encode(['message' => 'Token已过期']),401);
+            return response(json_encode(['message' => 'Token已过期']), 401);
         }
 
         // 4. IP 绑定校验
@@ -58,7 +59,7 @@ class CheckToken
             (new UsersTokenDep())->clearIpByToken($token);
             Redis::connection('token')->del($token);
             $this->log("IP 地址不一致：期望 {$lastIp}，实际 {$currentIp}，Token={$token}");
-            return response(json_encode(['message' => 'IP地址不匹配，请重新登录']),401);
+            return response(json_encode(['message' => 'IP地址不匹配，请重新登录']), 401);
         }
 
         // 5. 认证通过，绑定用户并续期缓存

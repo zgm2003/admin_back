@@ -132,15 +132,17 @@ class PermissionDep
         return $res;
     }
 
-    public function getPermissionsByIds(array $uniquePermissionIds)
+    public function getAllPermissions()
     {
-        // 如果 buildPermissionTree 需要数组，则转换为数组
-        $permissions = $this->model->whereIn('id', $uniquePermissionIds)
+        $permissions = $this->model
+            ->select(['id', 'name', 'parent_id', 'path', 'component', 'icon', 'code', 'type'])
             ->where('is_del', CommonEnum::NO)
             ->where('status', CommonEnum::YES)
             ->get()->toArray();
         return $permissions;
     }
+
+
 
 
 }

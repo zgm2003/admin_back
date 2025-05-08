@@ -46,6 +46,7 @@ Route::group('/api/admin', function () {
     Route::add(['POST', 'OPTIONS'], '/Users/listList', [controller\User\UsersController::class, 'listList']);
     Route::add(['POST', 'OPTIONS'], '/Users/batchEditList', [controller\User\UsersController::class, 'batchEditList']);
 
+
 })->middleware([
     app\middleware\CheckToken::class,
 ]);

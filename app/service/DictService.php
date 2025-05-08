@@ -6,7 +6,7 @@ use app\dep\AddressDep;
 use app\dep\User\RoleDep;
 use app\dep\User\PermissionDep;
 use app\enum\CommonEnum;
-
+use app\enum\PermissionEnum;
 
 
 class DictService
@@ -63,6 +63,11 @@ class DictService
         });
         return $this;
     }
+    public function setPermissionTypeArr(){
+        $this->dict['permission_type_arr'] = $this->enumToDict(PermissionEnum::$typeArr);
+        return $this;
+    }
+
 
 
     public function enumToDict($enum)

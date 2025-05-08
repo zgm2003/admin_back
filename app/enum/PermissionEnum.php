@@ -13,5 +13,13 @@ class PermissionEnum
 
     ];
 
+    const TYPE_MENU = 1;
+    const TYPE_BUTTON = 2;
+
+    public static $typeArr = [
+        self::TYPE_MENU => "菜单",
+        self::TYPE_BUTTON => "按钮",
+    ];
+
 
 }

@@ -39,11 +39,10 @@ class TestModule extends BaseModule
 
         $dep = $this->TestDep;
 
-        if(empty($param['mobile_id']) || empty($param['username']) || empty($param['password'])
-            || empty($param['area']) || empty($param['nickname']) || empty($param['platform_id']) || empty($param['status'])
-
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        foreach (['password','newpassword','respassword'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
         
         $data = [
@@ -71,10 +70,11 @@ class TestModule extends BaseModule
     {
         $param = $request->all()();
         $dep = $this->TestDep;
-        if(
-            empty($param['username']) || empty($param['password'])
-        ) {
-            return self::response([], '必填项不能为空', 100);
+
+        foreach (['password','newpassword','respassword'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
         }
 
 
