@@ -58,5 +58,14 @@ return [
                 'enable_memory_monitor' => DIRECTORY_SEPARATOR === '/',
             ]
         ]
-    ]
+    ],
+    'test_queue_consumer' => [
+        'handler' => app\process\TestQueueConsumer::class,
+    ],
+    'fast_queue_consumer' => [
+        'handler' => app\process\FastQueueConsumer::class,
+    ],
+    'slow_queue_consumer' => [
+        'handler' => app\process\SlowQueueConsumer::class,
+    ],
 ];

@@ -3,6 +3,7 @@
 namespace app\module;
 
 //导入部分
+use app\common\RabbitMQ;
 use app\dep\TestDep;
 use app\enum\CommonEnum;
 use app\service\DictService;
@@ -148,6 +149,35 @@ class TestModule extends BaseModule
 
         return self::response($data);
     }
+    public function sendFast($request)
+    {
+        $param = $request->all();
+        $mq = new RabbitMQ(config('rabbitmq'));
+        $mq->send('fast_queue', '你好，左光明');
+        $mq->close();
+        return self::response();
+    }
+    public function sendSlow($request)
+    {
+        $param = $request->all();
+        $mq = new RabbitMQ(config('rabbitmq'));
+        $mq->send('slow_queue', 'slow job: ' . uniqid());
+        $mq->close();
+        return self::response();
+    }
+
+    public function sendTest($request)
+    {
+        $param = $request->all();
+        $data = [
+            'id' => $param['id']
+        ];
+        $mq = new RabbitMQ(config('rabbitmq'));
+        $mq->send('test_queue', json_encode($data));
+        $mq->close();
+        return self::response();
+    }
+
 
 
 }

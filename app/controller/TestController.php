@@ -41,6 +41,18 @@ class TestController extends Controller{
         $this->run([TestModule::class,'test'],$request);
         return $this->response();
     }
+    public function sendFast(Request $request){
+        $this->run([TestModule::class,'sendFast'],$request);
+        return $this->response();
+    }
+    public function sendSlow(Request $request){
+        $this->run([TestModule::class,'sendSlow'],$request);
+        return $this->response();
+    }
+    public function sendTest(Request $request){
+        $this->run([TestModule::class,'sendTest'],$request);
+        return $this->response();
+    }
 
 
 }
