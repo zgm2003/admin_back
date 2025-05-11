@@ -7,13 +7,11 @@ use PhpAmqpLib\Wire\AMQPTable;
 use Workerman\Worker;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use Workerman\Timer;
+use app\common\TestQueue;
 
 class TestQueueConsumer
 {
     private const MAX_RETRIES = 3; // 最大重试次数
-    private const DEAD_LETTER_EXCHANGE = 'dlx.test_queue'; // 死信交换机
-    private const DEAD_LETTER_QUEUE = 'dlq.test_queue'; // 死信队列
-    private const MAIN_QUEUE = 'test_queue'; // 主队列名称
 
     public function onWorkerStart(Worker $worker)
     {
@@ -24,22 +22,21 @@ class TestQueueConsumer
         );
         $channel = $connection->channel();
 
-
         // 声明死信交换机
-        $channel->exchange_declare(self::DEAD_LETTER_EXCHANGE, 'direct', false, true, false);
+        $channel->exchange_declare(TestQueue::DEAD_LETTER_EXCHANGE, 'direct', false, true, false);
         
         // 声明死信队列
-        $channel->queue_declare(self::DEAD_LETTER_QUEUE, false, true, false, false);
-        $channel->queue_bind(self::DEAD_LETTER_QUEUE, self::DEAD_LETTER_EXCHANGE, self::MAIN_QUEUE);
+        $channel->queue_declare(TestQueue::DEAD_LETTER_QUEUE, false, true, false, false);
+        $channel->queue_bind(TestQueue::DEAD_LETTER_QUEUE, TestQueue::DEAD_LETTER_EXCHANGE, TestQueue::MAIN_QUEUE);
 
         // 声明主队列，并设置死信交换机
         $args = new AMQPTable([
-            'x-dead-letter-exchange' => self::DEAD_LETTER_EXCHANGE,
-            'x-dead-letter-routing-key' => self::MAIN_QUEUE,
+            'x-dead-letter-exchange' => TestQueue::DEAD_LETTER_EXCHANGE,
+            'x-dead-letter-routing-key' => TestQueue::MAIN_QUEUE,
             'x-message-ttl' => 60000, // 消息TTL 60秒
         ]);
         
-        $channel->queue_declare(self::MAIN_QUEUE, false, true, false, false, false, $args);
+        $channel->queue_declare(TestQueue::MAIN_QUEUE, false, true, false, false, false, $args);
 
         $callback = function (AMQPMessage $msg) {
             try {
@@ -83,14 +80,14 @@ class TestQueueConsumer
                 $newMsg = new AMQPMessage($msg->body, $properties);
                 
                 // 发布新消息
-                $msg->getChannel()->basic_publish($newMsg, '', self::MAIN_QUEUE);
+                $msg->getChannel()->basic_publish($newMsg, '', TestQueue::MAIN_QUEUE);
                 
                 // 确认原消息
                 $msg->ack();
             }
         };
 
-        $channel->basic_consume(self::MAIN_QUEUE, '', false, false, false, false, $callback);
+        $channel->basic_consume(TestQueue::MAIN_QUEUE, '', false, false, false, false, $callback);
         $channel->basic_qos(null, 1, null);
 
         Timer::add(0.1, fn() => $channel->wait(null, true));
@@ -101,13 +98,34 @@ class TestQueueConsumer
     {
         $data = json_decode($msg->body, true);
 
-        if ($data) {
-            $id = $data['id'];
-            $abc = $data['abc'];
-            $this->log('TEST QUEUE START', ['id' => $id]);
-            $this->log('TEST QUEUE START', ['abc' => $abc]);
-            $this->log('TEST QUEUE END', ['id' => $id]);
+        if (!$data) {
+            throw new \Exception('Invalid message format: JSON decode failed');
         }
+
+        // 验证必要字段
+        if (!isset($data['id'])) {
+            throw new \Exception('Missing required field: id');
+        }
+
+        if (!isset($data['abc'])) {
+            throw new \Exception('Missing required field: abc');
+        }
+
+
+        // 记录处理开始
+        $this->log('TEST QUEUE START', [
+            'id' => $data['id'],
+            'abc' => $data['abc']
+        ]);
+
+        // 这里添加你的业务处理逻辑
+        // ...
+
+        // 记录处理结束
+        $this->log('TEST QUEUE END', [
+            'id' => $data['id'],
+            'abc' => $data['abc']
+        ]);
     }
 
     private function log($msg, $context = [])

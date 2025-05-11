@@ -9,8 +9,6 @@ class RabbitMQ
 {
     protected $channel;
     protected $connection;
-    private const DEAD_LETTER_EXCHANGE = 'dlx.test_queue';
-    private const MAIN_QUEUE = 'test_queue';
 
     public function __construct(array $config)
     {
@@ -21,28 +19,42 @@ class RabbitMQ
         $this->channel = $this->connection->channel();
     }
 
-    public function send(string $queue, string $message)
+    /**
+     * 声明交换机
+     */
+    protected function declareExchange(string $exchange, string $type = 'direct', bool $passive = false, bool $durable = true, bool $autoDelete = false)
     {
-        // 声明死信交换机
-        $this->channel->exchange_declare(self::DEAD_LETTER_EXCHANGE, 'direct', false, true, false);
-        
-        // 声明主队列，使用与消费者相同的参数
-        $args = new AMQPTable([
-            'x-dead-letter-exchange' => self::DEAD_LETTER_EXCHANGE,
-            'x-dead-letter-routing-key' => self::MAIN_QUEUE,
-            'x-message-ttl' => 60000, // 消息TTL 60秒
-        ]);
-        
-        $this->channel->queue_declare($queue, false, true, false, false, false, $args);
-        
-        // 发送消息
-        $msg = new AMQPMessage($message, [
-            'delivery_mode' => 2, // 持久化消息
-            'application_headers' => new AMQPTable(['x-retry-count' => 0]) // 初始化重试次数
-        ]);
-        $this->channel->basic_publish($msg, '', $queue);
+        $this->channel->exchange_declare($exchange, $type, $passive, $durable, $autoDelete);
     }
 
+    /**
+     * 声明队列
+     */
+    protected function declareQueue(string $queue, bool $passive = false, bool $durable = true, bool $exclusive = false, bool $autoDelete = false, bool $nowait = false, $arguments = null)
+    {
+        return $this->channel->queue_declare($queue, $passive, $durable, $exclusive, $autoDelete, $nowait, $arguments);
+    }
+
+    /**
+     * 绑定队列到交换机
+     */
+    protected function bindQueue(string $queue, string $exchange, string $routingKey = '')
+    {
+        $this->channel->queue_bind($queue, $exchange, $routingKey);
+    }
+
+    /**
+     * 发送消息
+     */
+    public function send(string $exchange, string $routingKey, string $message, array $properties = [])
+    {
+        $msg = new AMQPMessage($message, $properties);
+        $this->channel->basic_publish($msg, $exchange, $routingKey);
+    }
+
+    /**
+     * 关闭连接
+     */
     public function close()
     {
         $this->channel->close();

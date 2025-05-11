@@ -6,12 +6,10 @@ use PhpAmqpLib\Message\AMQPMessage;
 use Workerman\Worker;
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use Workerman\Timer;
+use app\common\TestQueue;
 
 class DeadLetterQueueConsumer
 {
-    private const DEAD_LETTER_EXCHANGE = 'dlx.test_queue';
-    private const DEAD_LETTER_QUEUE = 'dlq.test_queue';
-
     public function onWorkerStart(Worker $worker)
     {
         $config = config('rabbitmq');
@@ -22,11 +20,11 @@ class DeadLetterQueueConsumer
         $channel = $connection->channel();
 
         // 声明死信交换机
-        $channel->exchange_declare(self::DEAD_LETTER_EXCHANGE, 'direct', false, true, false);
+        $channel->exchange_declare(TestQueue::DEAD_LETTER_EXCHANGE, 'direct', false, true, false);
         
         // 声明死信队列
-        $channel->queue_declare(self::DEAD_LETTER_QUEUE, false, true, false, false);
-        $channel->queue_bind(self::DEAD_LETTER_QUEUE, self::DEAD_LETTER_EXCHANGE, 'test_queue');
+        $channel->queue_declare(TestQueue::DEAD_LETTER_QUEUE, false, true, false, false);
+        $channel->queue_bind(TestQueue::DEAD_LETTER_QUEUE, TestQueue::DEAD_LETTER_EXCHANGE, TestQueue::MAIN_QUEUE);
 
         $callback = function (AMQPMessage $msg) {
             try {
@@ -44,7 +42,7 @@ class DeadLetterQueueConsumer
                     'body' => $msg->body,
                     'retry_count' => $retryCount,
                     'error' => 'Message exceeded max retries or TTL',
-                    'original_queue' => 'test_queue',
+                    'original_queue' => TestQueue::MAIN_QUEUE,
                     'headers' => $properties
                 ]);
 
@@ -67,7 +65,7 @@ class DeadLetterQueueConsumer
             }
         };
 
-        $channel->basic_consume(self::DEAD_LETTER_QUEUE, '', false, false, false, false, $callback);
+        $channel->basic_consume(TestQueue::DEAD_LETTER_QUEUE, '', false, false, false, false, $callback);
         $channel->basic_qos(null, 1, null);
 
         Timer::add(0.1, fn() => $channel->wait(null, true));

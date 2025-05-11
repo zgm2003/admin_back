@@ -4,6 +4,7 @@ namespace app\module;
 
 //导入部分
 use app\common\RabbitMQ;
+use app\common\TestQueue;
 use app\dep\TestDep;
 use app\enum\CommonEnum;
 use app\service\DictService;
@@ -154,11 +155,14 @@ class TestModule extends BaseModule
     {
         $param = $request->all();
         $data = [
-            'id' => $param['id']
+            'id' => $param['id'] ?? null,
+            'abc' => $param['abc'] ?? null
         ];
-        $mq = new RabbitMQ(config('rabbitmq'));
-        $mq->send('test_queue', json_encode($data));
+        
+        $mq = new TestQueue(config('rabbitmq'));
+        $mq->send('', TestQueue::MAIN_QUEUE, json_encode($data));
         $mq->close();
+        
         return self::response();
     }
 
