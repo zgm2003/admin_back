@@ -59,8 +59,12 @@ return [
             ]
         ]
     ],
+    //测试队列
     'test_queue_consumer' => [
         'handler' => app\process\TestQueueConsumer::class,
     ],
-
+    //测试死信队列
+    'dead_letter_queue_consumer' => [
+        'handler' => app\process\DeadLetterQueueConsumer::class,
+    ],
 ];
