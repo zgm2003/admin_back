@@ -24,15 +24,6 @@ class TestQueueConsumer
         );
         $channel = $connection->channel();
 
-        try {
-            // 删除已存在的队列和交换机
-            $channel->queue_delete(self::MAIN_QUEUE);
-            $channel->queue_delete(self::DEAD_LETTER_QUEUE);
-            $channel->exchange_delete(self::DEAD_LETTER_EXCHANGE);
-        } catch (\Exception $e) {
-            // 忽略删除时的错误，因为可能队列或交换机不存在
-            $this->log('Cleanup error (can be ignored)', ['error' => $e->getMessage()]);
-        }
 
         // 声明死信交换机
         $channel->exchange_declare(self::DEAD_LETTER_EXCHANGE, 'direct', false, true, false);
