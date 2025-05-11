@@ -22,8 +22,6 @@ Route::group('/api', function () {
     Route::add(['POST', 'OPTIONS'],'/Users/forgetPassword', [controller\User\UsersController::class, 'forgetPassword']);
 
     Route::add(['POST', 'OPTIONS'],'/test', [controller\TestController::class, 'test']);
-    Route::add(['POST', 'OPTIONS'],'/test/sendFast', [controller\TestController::class, 'sendFast']);
-    Route::add(['POST', 'OPTIONS'],'/test/sendSlow', [controller\TestController::class, 'sendSlow']);
     Route::add(['POST', 'OPTIONS'],'/test/sendTest', [controller\TestController::class, 'sendTest']);
 });
 

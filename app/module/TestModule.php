@@ -149,22 +149,6 @@ class TestModule extends BaseModule
 
         return self::response($data);
     }
-    public function sendFast($request)
-    {
-        $param = $request->all();
-        $mq = new RabbitMQ(config('rabbitmq'));
-        $mq->send('fast_queue', '你好，左光明');
-        $mq->close();
-        return self::response();
-    }
-    public function sendSlow($request)
-    {
-        $param = $request->all();
-        $mq = new RabbitMQ(config('rabbitmq'));
-        $mq->send('slow_queue', 'slow job: ' . uniqid());
-        $mq->close();
-        return self::response();
-    }
 
     public function sendTest($request)
     {
