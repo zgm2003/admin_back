@@ -49,4 +49,5 @@ Route::group('/api/admin', function () {
 
 })->middleware([
     app\middleware\CheckToken::class,
+    app\middleware\OperationLog::class
 ]);

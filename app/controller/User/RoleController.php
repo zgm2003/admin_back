@@ -13,18 +13,26 @@ class RoleController extends Controller{
         $this->run([RoleModule::class,'init'],$request);
         return $this->response();
     }
-
+    /**
+     * @OperationLog("角色新增")
+     */
     public function add(Request $request){
 
         $this->run([RoleModule::class,'add'],$request);
         return $this->response();
     }
+    /**
+     * @OperationLog("角色删除")
+     */
 
     public function del(Request $request){
         $this->run([RoleModule::class,'del'],$request);
         return $this->response();
     }
 
+    /**
+     * @OperationLog("角色修改")
+     */
     public function edit(Request $request){
         $this->run([RoleModule::class,'edit'],$request);
         return $this->response();

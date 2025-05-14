@@ -15,17 +15,25 @@ class PermissionController extends Controller{
         return $this->response();
 
     }
-
+    /**
+     * @OperationLog("菜单新增")
+     */
     public function add(Request $request)
     {
         $this->run([PermissionModule::class,'add'],$request);
         return $this->response();
     }
 
+    /**
+     * @OperationLog("菜单编辑")
+     */
     public function edit(Request $request){
         $this->run([PermissionModule::class,'edit'],$request);
         return $this->response();
     }
+    /**
+     * @OperationLog("菜单删除")
+     */
     public function del(Request $request)
     {
         $this->run([PermissionModule::class,'del'],$request);
@@ -36,11 +44,18 @@ class PermissionController extends Controller{
         $this->run([PermissionModule::class,'list'],$request);
         return $this->response();
     }
+    /**
+     * @OperationLog("菜单批量修改")
+     */
     public function batchEdit(Request $request)
     {
         $this->run([PermissionModule::class,'batchEdit'],$request);
         return $this->response();
     }
+
+    /**
+     * @OperationLog("菜单状态修改")
+     */
     public function status(Request $request)
     {
         $this->run([PermissionModule::class,'status'],$request);
