@@ -1,7 +1,6 @@
 <?php
 namespace app\controller;
 
-namespace app\controller;
 use support\Request;             // Webman 原生 Request 类
 use app\module\TestModule;      // 正确引用业务模块
 

@@ -2,8 +2,6 @@
 
 namespace app\queue\redis\fast;
 
-use app\dep\OperationLogDep;
-use support\Redis;
 use Webman\RedisQueue\Consumer;
 
 class TestTest implements Consumer

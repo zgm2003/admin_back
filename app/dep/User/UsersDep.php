@@ -91,5 +91,12 @@ class UsersDep
         return $res;
     }
 
+    public function all()
+    {
+        $res = $this->model->select(['id','username','email'])->get();
+        return $res;
+
+    }
+
 
 }

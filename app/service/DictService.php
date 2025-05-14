@@ -5,6 +5,7 @@ namespace app\service;
 use app\dep\AddressDep;
 use app\dep\User\RoleDep;
 use app\dep\User\PermissionDep;
+use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 
@@ -67,7 +68,25 @@ class DictService
         $this->dict['permission_type_arr'] = $this->enumToDict(PermissionEnum::$typeArr);
         return $this;
     }
-
+    public function setUserArr()
+    {
+        $dep = new UsersDep();
+        $res = $dep->all();
+        // 遍历集合并处理每个元素
+        $this->dict['usernameArr'] = $res->map(function ($item) {
+            return [
+                'value' => $item->id,
+                'label' => $item->username,
+            ];
+        });
+        $this->dict['emailArr'] = $res->map(function ($item) {
+            return [
+                'value' => $item->id,
+                'label' => $item->email,
+            ];
+        });
+        return $this;
+    }
 
 
     public function enumToDict($enum)
