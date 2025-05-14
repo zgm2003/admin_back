@@ -62,12 +62,12 @@ class OperationLogDep
         return $res;
     }
 
-    public function del($id, $data)
+    public function del($id)
     {
         if (!is_array($id)) {
             $id = [$id];
         }
-        $res = $this->model->whereIn('id', $id)->update($data);
+        $res = $this->model->whereIn('id', $id)->delete();
         return $res;
     }
 

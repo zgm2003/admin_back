@@ -43,7 +43,7 @@ class OperationLogModule extends BaseModule
 
         $dep = $this->operationLogDep;
 
-        $dep->del($param['id'],['is_del'=>CommonEnum::YES]);
+        $dep->del($param['id']);
 
         return self::response();
     }
