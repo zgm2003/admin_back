@@ -33,51 +33,69 @@ class PermissionModule extends BaseModule
     {
         $param = $request->all();
 
-       if ($param['type'] ==  PermissionEnum::TYPE_MENU){
-           if (empty($param['name'])
-           ) {
-               return self::response([], '缺少必填参数', 100);
-           }
-           if (($param['path'] && empty($param['component'])) || (empty($param['path']) && $param['component'])) {
-               return self::response([], 'path和component必须同时填写', 100);
-           }
-
-           // 判断是否是顶级菜单
-           if (empty($param['parent_id'])) {
-               $data = [
-                   'name' => $param['name'],
-                   'parent_id' => '-1',
-                   'path' => $param['path'],
-                   'icon' => $param['icon'],
-                   'type' => $param['type'],
-               ];
-               $this->PermissionDep->add($data);
-           } else {
-               $data = [
-                   'name' => $param['name'],
-                   'parent_id' => $param['parent_id'],
-                   'path' => $param['path'],
-                   'icon' => $param['icon'],
-                   'component' => $param['component'],
-                   'type' => $param['type'],
-               ];
-               $this->PermissionDep->add($data);
-           }
-       }
-       if ($param['type'] ==  PermissionEnum::TYPE_BUTTON){
-           foreach (['name','code'] as $f) {
-               if (empty($param[$f])) {
-                   return self::response([], "{$f} 不能为空", 100);
-               }
-           }
-           $data = [
-               'name' => $param['name'],
-               'parent_id' => $param['parent_id'],
-               'code' => $param['code'],
-               'type' => $param['type'],
-           ];
-           $this->PermissionDep->add($data);
-       }
+        foreach (['name', 'type'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
+        }
+        if ($param['type'] == PermissionEnum::TYPE_DIR) {
+            if (empty($param['parent_id'])) {
+                $data = [
+                    'name' => $param['name'],
+                    'parent_id' => -1,
+                    'icon' => $param['icon'],
+                    'type' => $param['type'],
+                ];
+                $this->PermissionDep->add($data);
+            } else {
+                $data = [
+                    'name' => $param['name'],
+                    'parent_id' => $param['parent_id'],
+                    'icon' => $param['icon'],
+                    'type' => $param['type'],
+                ];
+                $this->PermissionDep->add($data);
+            }
+        } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
+            foreach (['path','component'] as $f) {
+                if (empty($param[$f])) {
+                    return self::response([], "{$f} 不能为空", 100);
+                }
+            }
+            // 判断是否是顶级菜单
+            if (empty($param['parent_id'])) {
+                $data = [
+                    'name' => $param['name'],
+                    'parent_id' => -1,
+                    'path' => $param['path'],
+                    'component' => $param['component'],
+                    'type' => $param['type'],
+                ];
+                $this->PermissionDep->add($data);
+            } else {
+                $data = [
+                    'name' => $param['name'],
+                    'parent_id' => $param['parent_id'],
+                    'path' => $param['path'],
+                    'component' => $param['component'],
+                    'type' => $param['type'],
+                ];
+                $this->PermissionDep->add($data);
+            }
+        } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
+            foreach (['parent_id','code'] as $f) {
+                if (empty($param[$f])) {
+                    return self::response([], "{$f} 不能为空", 100);
+                }
+            }
+            $data = [
+                'name' => $param['name'],
+                'parent_id' => $param['parent_id'],
+                'code' => $param['code'],
+                'type' => $param['type'],
+            ];
+            $this->PermissionDep->add($data);
+        }
 
         return self::response();
     }
@@ -85,21 +103,17 @@ class PermissionModule extends BaseModule
     public function edit($request)
     {
         $param = $request->all();
-        if ($param['type'] ==  PermissionEnum::TYPE_MENU){
-            if (empty($param['name'])
-            ) {
-                return self::response([], '缺少必填参数', 100);
-            }
-            if (($param['path'] && empty($param['component'])) || (empty($param['path']) && $param['component'])) {
-                return self::response([], 'path和component必须同时填写', 100);
-            }
 
-            // 判断是否是顶级菜单
+        foreach (['name', 'type','id'] as $f) {
+            if (empty($param[$f])) {
+                return self::response([], "{$f} 不能为空", 100);
+            }
+        }
+        if ($param['type'] == PermissionEnum::TYPE_DIR) {
             if (empty($param['parent_id'])) {
                 $data = [
                     'name' => $param['name'],
-                    'parent_id' => '-1',
-                    'path' => $param['path'],
+                    'parent_id' => -1,
                     'icon' => $param['icon'],
                     'type' => $param['type'],
                 ];
@@ -108,16 +122,39 @@ class PermissionModule extends BaseModule
                 $data = [
                     'name' => $param['name'],
                     'parent_id' => $param['parent_id'],
-                    'path' => $param['path'],
                     'icon' => $param['icon'],
+                    'type' => $param['type'],
+                ];
+                $this->PermissionDep->edit($param['id'],$data);
+            }
+        } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
+            foreach (['path','component'] as $f) {
+                if (empty($param[$f])) {
+                    return self::response([], "{$f} 不能为空", 100);
+                }
+            }
+            // 判断是否是顶级菜单
+            if (empty($param['parent_id'])) {
+                $data = [
+                    'name' => $param['name'],
+                    'parent_id' => -1,
+                    'path' => $param['path'],
+                    'component' => $param['component'],
+                    'type' => $param['type'],
+                ];
+                $this->PermissionDep->edit($param['id'],$data);
+            } else {
+                $data = [
+                    'name' => $param['name'],
+                    'parent_id' => $param['parent_id'],
+                    'path' => $param['path'],
                     'component' => $param['component'],
                     'type' => $param['type'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             }
-        }
-        if ($param['type'] ==  PermissionEnum::TYPE_BUTTON){
-            foreach (['name','code',] as $f) {
+        } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
+            foreach (['parent_id','code'] as $f) {
                 if (empty($param[$f])) {
                     return self::response([], "{$f} 不能为空", 100);
                 }
@@ -192,13 +229,14 @@ class PermissionModule extends BaseModule
 
         return self::response($data['menu_tree']);
     }
+
     public function status($request)
     {
         $param = $request->all();
         $data = [
             'status' => $param['status'],
         ];
-        $this->PermissionDep->edit($param['id'],$data);
+        $this->PermissionDep->edit($param['id'], $data);
         return self::response();
     }
 
