@@ -8,14 +8,15 @@ use app\dep\User\PermissionDep;
 use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
+use app\enum\SexEnum;
 
 
 class DictService
 {
     public $dict = [];
 
-    public function setIsArr(){
-        $this->dict['isArr'] = $this->enumToDict(CommonEnum::$isArr);
+    public function setSexArr(){
+        $this->dict['sexArr'] = $this->enumToDict(SexEnum::$SexArr);
         return $this;
     }
     public function setPermissionTree()
