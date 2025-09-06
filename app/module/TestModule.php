@@ -7,6 +7,7 @@ use app\common\RabbitMQ;
 use app\common\TestQueue;
 use app\dep\TestDep;
 use app\enum\CommonEnum;
+use app\process\CleanExportTask;
 use app\service\DictService;
 use Carbon\Carbon;
 use Webman\RedisQueue\Redis;
@@ -130,25 +131,33 @@ class TestModule extends BaseModule
 
         return self::response($data);
     }
+//    public function test($request)
+//    {
+//        $param = $request->all();
+//        // 队列名
+//        $queue = 'test-test';
+//        // 数据，可以直接传数组，无需序列化
+//        $data = [
+//            'id' => 1
+//        ];
+//       // 投递消息
+//        Redis::send($queue, $data);
+//        // 投递延迟消息，消息会在60秒后处理
+////        Redis::send($queue, $data, 60);
+//        $data = [
+//            'msg' => 'hello world',
+//            'a' => $param,
+//        ];
+//
+//        return self::response($data);
+//    }
+
     public function test($request)
     {
         $param = $request->all();
-//        // 队列名
-        $queue = 'test-test';
-//        // 数据，可以直接传数组，无需序列化
-        $data = [
-            'id' => 1
-        ];
-//        // 投递消息
-        Redis::send($queue, $data);
-        // 投递延迟消息，消息会在60秒后处理
-//        Redis::send($queue, $data, 60);
-        $data = [
-            'msg' => 'hello world',
-            'a' => $param,
-        ];
-
-        return self::response($data);
+        $sdk = new CleanExportTask();
+        $sdk->cleanOldFiles();
+        return self::response();
     }
 
     public function sendTest($request)

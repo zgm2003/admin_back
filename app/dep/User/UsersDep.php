@@ -98,5 +98,11 @@ class UsersDep
 
     }
 
+    public function getUsersByIds(array $ids)
+    {
+        $res = $this->model->whereIn('id', $ids)->get();
+        return $res;
+    }
+
 
 }

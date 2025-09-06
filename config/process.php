@@ -59,6 +59,11 @@ return [
             ]
         ]
     ],
+    //定时清理导出文件
+    'clean_export' => [
+        'handler' => app\process\CleanExportTask::class,
+    ],
+
     //测试队列
 //    'test_queue_consumer' => [
 //        'handler' => app\process\TestQueueConsumer::class,

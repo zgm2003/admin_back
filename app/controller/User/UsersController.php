@@ -85,4 +85,9 @@ class UsersController extends Controller
         return $this->response();
     }
 
+    public function exportList(Request $request)
+    {
+        $this->run([UsersModule::class,'exportList'],$request);
+        return $this->response();
+    }
 }

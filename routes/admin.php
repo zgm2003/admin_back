@@ -45,6 +45,7 @@ Route::group('/api/admin', function () {
     Route::add(['POST', 'OPTIONS'], '/Users/delList', [controller\User\UsersController::class, 'delList']);
     Route::add(['POST', 'OPTIONS'], '/Users/listList', [controller\User\UsersController::class, 'listList']);
     Route::add(['POST', 'OPTIONS'], '/Users/batchEditList', [controller\User\UsersController::class, 'batchEditList']);
+    Route::add(['POST', 'OPTIONS'], '/Users/exportList', [controller\User\UsersController::class, 'exportList']);
 
     //操作日志管理
     Route::add(['POST', 'OPTIONS'], '/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
