@@ -24,7 +24,7 @@ class RoleModule extends BaseModule
             ->setPermissionTree()
             ->getDict();
 
-        return self::response($data);
+        return self::success($data);
     }
 
     public function add($request)
@@ -32,18 +32,18 @@ class RoleModule extends BaseModule
         $param = $request->all();
         if (empty($param['name'])
         ) {
-            return self::response([], '必填项不能为空', 100);
+            return self::error('必填项不能为空');
         }
         $resDep = $this->roleDep->firstByName($param['name']);
         if ($resDep){
-            return self::response([], '角色名已存在', 100);
+            return self::error('角色名已存在');
         }
         $data = [
             'name' => $param['name'],
             'permission_id' => json_encode($param['permission_id']),
         ];
         $this->roleDep->add($data);
-        return self::response();
+        return self::success();
     }
 
     public function del($request)
@@ -55,7 +55,7 @@ class RoleModule extends BaseModule
 
         $dep->del($param['id'], ['is_del' => CommonEnum::YES]);
 
-        return self::response();
+        return self::success();
     }
 
     public function edit($request)
@@ -67,11 +67,11 @@ class RoleModule extends BaseModule
         if (empty($param['name'])
 
         ) {
-            return self::response([], '必填项不能为空', 100);
+            return self::error('必填项不能为空');
         }
         $resDep = $dep->firstByName($param['name']);
         if ($resDep && $resDep['id'] != $param['id']){
-            return self::response([], '角色名已存在', 100);
+            return self::error('角色名已存在');
         }
         $data = [
             'name' => $param['name'],
@@ -79,7 +79,7 @@ class RoleModule extends BaseModule
         ];
         $dep->edit($param['id'], $data);
 
-        return self::response();
+        return self::success();
     }
 
     public function list($request)
@@ -108,7 +108,7 @@ class RoleModule extends BaseModule
             'total' => $resList->total(),
         ];
 
-        return self::response($data);
+        return self::paginate($data['list'], $data['page']);
     }
 
 }

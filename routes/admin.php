@@ -15,6 +15,13 @@
 use app\controller;
 use Webman\Route;
 
+// 兜底预检：拦截 /api/admin 下所有 OPTIONS，避免 404/无头导致预检失败
+Route::group('/api/admin', function () {
+    Route::add(['OPTIONS'], '/{path:.+}', function () {
+        return response('');
+    });
+});
+
 Route::group('/api/admin', function () {
     //不需要认证的接口
 
@@ -24,33 +31,33 @@ Route::group('/api/admin', function () {
     // 需要认证的接口
 
     //菜单管理
-    Route::add(['POST', 'OPTIONS'], '/Permission/init', [controller\User\PermissionController::class, 'init']);
-    Route::add(['POST', 'OPTIONS'], '/Permission/add', [controller\User\PermissionController::class, 'add']);
-    Route::add(['POST', 'OPTIONS'], '/Permission/edit', [controller\User\PermissionController::class, 'edit']);
-    Route::add(['POST', 'OPTIONS'], '/Permission/del', [controller\User\PermissionController::class, 'del']);
-    Route::add(['POST', 'OPTIONS'], '/Permission/list', [controller\User\PermissionController::class, 'list']);
-    Route::add(['POST', 'OPTIONS'], '/Permission/batchEdit', [controller\User\PermissionController::class, 'batchEdit']);
-    Route::add(['POST', 'OPTIONS'], '/Permission/status', [controller\User\PermissionController::class, 'status']);
+    Route::post('/Permission/init', [controller\User\PermissionController::class, 'init']);
+    Route::post('/Permission/add', [controller\User\PermissionController::class, 'add']);
+    Route::post('/Permission/edit', [controller\User\PermissionController::class, 'edit']);
+    Route::post('/Permission/del', [controller\User\PermissionController::class, 'del']);
+    Route::post('/Permission/list', [controller\User\PermissionController::class, 'list']);
+    Route::post('/Permission/batchEdit', [controller\User\PermissionController::class, 'batchEdit']);
+    Route::post('/Permission/status', [controller\User\PermissionController::class, 'status']);
 
     //角色管理
-    Route::add(['POST', 'OPTIONS'], '/Role/init', [controller\User\RoleController::class, 'init']);
-    Route::add(['POST', 'OPTIONS'], '/Role/list', [controller\User\RoleController::class, 'list']);
-    Route::add(['POST', 'OPTIONS'], '/Role/add', [controller\User\RoleController::class, 'add']);
-    Route::add(['POST', 'OPTIONS'], '/Role/edit', [controller\User\RoleController::class, 'edit']);
-    Route::add(['POST', 'OPTIONS'], '/Role/del', [controller\User\RoleController::class, 'del']);
+    Route::post('/Role/init', [controller\User\RoleController::class, 'init']);
+    Route::post('/Role/list', [controller\User\RoleController::class, 'list']);
+    Route::post('/Role/add', [controller\User\RoleController::class, 'add']);
+    Route::post('/Role/edit', [controller\User\RoleController::class, 'edit']);
+    Route::post('/Role/del', [controller\User\RoleController::class, 'del']);
 
     //用户管理
-    Route::add(['POST', 'OPTIONS'], '/Users/initList', [controller\User\UsersController::class, 'initList']);
-    Route::add(['POST', 'OPTIONS'], '/Users/editList', [controller\User\UsersController::class, 'editList']);
-    Route::add(['POST', 'OPTIONS'], '/Users/delList', [controller\User\UsersController::class, 'delList']);
-    Route::add(['POST', 'OPTIONS'], '/Users/listList', [controller\User\UsersController::class, 'listList']);
-    Route::add(['POST', 'OPTIONS'], '/Users/batchEditList', [controller\User\UsersController::class, 'batchEditList']);
-    Route::add(['POST', 'OPTIONS'], '/Users/exportList', [controller\User\UsersController::class, 'exportList']);
+    Route::post('/Users/initList', [controller\User\UsersController::class, 'initList']);
+    Route::post('/Users/editList', [controller\User\UsersController::class, 'editList']);
+    Route::post('/Users/delList', [controller\User\UsersController::class, 'delList']);
+    Route::post('/Users/listList', [controller\User\UsersController::class, 'listList']);
+    Route::post('/Users/batchEditList', [controller\User\UsersController::class, 'batchEditList']);
+    Route::post('/Users/exportList', [controller\User\UsersController::class, 'exportList']);
 
     //操作日志管理
-    Route::add(['POST', 'OPTIONS'], '/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
-    Route::add(['POST', 'OPTIONS'], '/OperationLog/list', [controller\System\OperationLogController::class, 'list']);
-    Route::add(['POST', 'OPTIONS'], '/OperationLog/del', [controller\System\OperationLogController::class, 'del']);
+    Route::post('/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
+    Route::post('/OperationLog/list', [controller\System\OperationLogController::class, 'list']);
+    Route::post('/OperationLog/del', [controller\System\OperationLogController::class, 'del']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\OperationLog::class

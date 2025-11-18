@@ -15,25 +15,32 @@
 use app\controller;
 use Webman\Route;
 
+// 兜底预检：拦截 /api 下所有 OPTIONS，避免 404/无头导致预检失败
 Route::group('/api', function () {
-    Route::add(['POST', 'OPTIONS'],'/Users/register', [controller\User\UsersController::class, 'register']);
-    Route::add(['POST', 'OPTIONS'],'/Users/login', [controller\User\UsersController::class, 'login']);
-    Route::add(['POST', 'OPTIONS'],'/Users/sendCode', [controller\User\UsersController::class, 'sendCode']);
-    Route::add(['POST', 'OPTIONS'],'/Users/forgetPassword', [controller\User\UsersController::class, 'forgetPassword']);
+    Route::add(['OPTIONS'], '/{path:.+}', function () {
+        return response('');
+    });
+});
 
-    Route::add(['POST', 'OPTIONS'],'/test', [controller\TestController::class, 'test']);
-    Route::add(['POST', 'OPTIONS'],'/test/sendTest', [controller\TestController::class, 'sendTest']);
+Route::group('/api', function () {
+    Route::post('/Users/register', [controller\User\UsersController::class, 'register']);
+    Route::post('/Users/login', [controller\User\UsersController::class, 'login']);
+    Route::post('/Users/sendCode', [controller\User\UsersController::class, 'sendCode']);
+    Route::post('/Users/forgetPassword', [controller\User\UsersController::class, 'forgetPassword']);
+
+    Route::post('/test', [controller\TestController::class, 'test']);
+    Route::post('/test/sendTest', [controller\TestController::class, 'sendTest']);
 });
 
 Route::group('/api', function () {
     // 需要认证的接口
-    Route::add(['POST', 'OPTIONS'],'/Users/init', [controller\User\UsersController::class, 'init']);
-    Route::add(['POST', 'OPTIONS'],'/Users/initPersonal', [controller\User\UsersController::class, 'initPersonal']);
-    Route::add(['POST', 'OPTIONS'],'/Users/editPersonal', [controller\User\UsersController::class, 'editPersonal']);
-    Route::add(['POST', 'OPTIONS'],'/Users/EditPassword', [controller\User\UsersController::class, 'EditPassword']);
+    Route::post('/Users/init', [controller\User\UsersController::class, 'init']);
+    Route::post('/Users/initPersonal', [controller\User\UsersController::class, 'initPersonal']);
+    Route::post('/Users/editPersonal', [controller\User\UsersController::class, 'editPersonal']);
+    Route::post('/Users/EditPassword', [controller\User\UsersController::class, 'EditPassword']);
 
 
-    Route::add(['POST', 'OPTIONS'],'/getUploadToken', [controller\CosUploadController::class, 'getUploadToken']);
+    Route::post('/getUploadToken', [controller\CosUploadController::class, 'getUploadToken']);
 
 
 })->middleware([

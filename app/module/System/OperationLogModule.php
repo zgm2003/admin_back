@@ -31,7 +31,7 @@ class OperationLogModule extends BaseModule
 
         $data['dict'] = $dict;
 
-        return self::response($data);
+        return self::success($data);
 
     }
 
@@ -45,7 +45,7 @@ class OperationLogModule extends BaseModule
 
         $dep->del($param['id']);
 
-        return self::response();
+        return self::success();
     }
     public function list($request)
     {
@@ -79,7 +79,7 @@ class OperationLogModule extends BaseModule
             'total' => $resList->total(),
         ];
 
-        return self::response($data);
+        return self::paginate($data['list'], $data['page']);
     }
 
 

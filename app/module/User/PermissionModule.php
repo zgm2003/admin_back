@@ -26,7 +26,7 @@ class PermissionModule extends BaseModule
             ->getDict();
 
 
-        return self::response($data);
+        return self::success($data);
     }
 
     public function add($request)
@@ -35,7 +35,7 @@ class PermissionModule extends BaseModule
 
         foreach (['name', 'type'] as $f) {
             if (empty($param[$f])) {
-                return self::response([], "{$f} 不能为空", 100);
+                return self::error("{$f} 不能为空");
             }
         }
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
@@ -59,7 +59,7 @@ class PermissionModule extends BaseModule
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
             foreach (['path','component'] as $f) {
                 if (empty($param[$f])) {
-                    return self::response([], "{$f} 不能为空", 100);
+                    return self::error("{$f} 不能为空");
                 }
             }
             // 判断是否是顶级菜单
@@ -85,7 +85,7 @@ class PermissionModule extends BaseModule
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             foreach (['parent_id','code'] as $f) {
                 if (empty($param[$f])) {
-                    return self::response([], "{$f} 不能为空", 100);
+                    return self::error("{$f} 不能为空");
                 }
             }
             $data = [
@@ -97,7 +97,7 @@ class PermissionModule extends BaseModule
             $this->PermissionDep->add($data);
         }
 
-        return self::response();
+        return self::success();
     }
 
     public function edit($request)
@@ -106,7 +106,7 @@ class PermissionModule extends BaseModule
 
         foreach (['name', 'type','id'] as $f) {
             if (empty($param[$f])) {
-                return self::response([], "{$f} 不能为空", 100);
+                return self::error("{$f} 不能为空");
             }
         }
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
@@ -130,7 +130,7 @@ class PermissionModule extends BaseModule
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
             foreach (['path','component'] as $f) {
                 if (empty($param[$f])) {
-                    return self::response([], "{$f} 不能为空", 100);
+                    return self::error("{$f} 不能为空");
                 }
             }
             // 判断是否是顶级菜单
@@ -156,7 +156,7 @@ class PermissionModule extends BaseModule
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             foreach (['parent_id','code'] as $f) {
                 if (empty($param[$f])) {
-                    return self::response([], "{$f} 不能为空", 100);
+                    return self::error("{$f} 不能为空");
                 }
             }
             $data = [
@@ -168,7 +168,7 @@ class PermissionModule extends BaseModule
             $this->PermissionDep->edit($param['id'],$data);
         }
 
-        return self::response();
+        return self::success();
     }
 
     public function del($request)
@@ -178,7 +178,7 @@ class PermissionModule extends BaseModule
         $dep = $this->PermissionDep;
 
         $dep->del($ids, ['is_del' => CommonEnum::YES]);
-        return self::response();
+        return self::success();
     }
 
     public function batchEdit($request)
@@ -196,7 +196,7 @@ class PermissionModule extends BaseModule
         }
 
 
-        return self::response();
+        return self::success();
 
     }
 
@@ -227,7 +227,7 @@ class PermissionModule extends BaseModule
 
         $data['menu_tree'] = listToTree($data['list']->toArray(), -1);
 
-        return self::response($data['menu_tree']);
+        return self::success($data['menu_tree']);
     }
 
     public function status($request)
@@ -237,7 +237,7 @@ class PermissionModule extends BaseModule
             'status' => $param['status'],
         ];
         $this->PermissionDep->edit($param['id'], $data);
-        return self::response();
+        return self::success();
     }
 
 

@@ -31,7 +31,7 @@ class TestModule extends BaseModule
 
         $data['dict'] = $dict;
 
-        return self::response($data);
+        return self::success($data);
 
     }
 
@@ -44,7 +44,7 @@ class TestModule extends BaseModule
 
         foreach (['password','newpassword','respassword'] as $f) {
             if (empty($param[$f])) {
-                return self::response([], "{$f} 不能为空", 100);
+                return self::error("{$f} 不能为空");
             }
         }
         
@@ -54,7 +54,7 @@ class TestModule extends BaseModule
         ];
 
         $dep->add($data);
-        return self::response();
+        return self::success();
     }
 
     public function del($request)
@@ -66,7 +66,7 @@ class TestModule extends BaseModule
 
         $dep->del($param['id'],['is_del'=>CommonEnum::YES]);
 
-        return self::response();
+        return self::success();
     }
 
     public function edit($request)
@@ -76,7 +76,7 @@ class TestModule extends BaseModule
 
         foreach (['password','newpassword','respassword'] as $f) {
             if (empty($param[$f])) {
-                return self::response([], "{$f} 不能为空", 100);
+                return self::error("{$f} 不能为空");
             }
         }
 
@@ -88,7 +88,7 @@ class TestModule extends BaseModule
 
         $dep->edit($param['id'], $data);
 
-        return self::response();
+        return self::success();
     }
     public function batchEdit($request)
     {
@@ -103,7 +103,7 @@ class TestModule extends BaseModule
             $dep->edit($id, $data);
         }
 
-        return self::response();
+        return self::success();
     }
     public function list($request)
     {
@@ -129,7 +129,7 @@ class TestModule extends BaseModule
             'total' => $resList->total(),
         ];
 
-        return self::response($data);
+        return self::paginate($data['list'], $data['page']);
     }
 //    public function test($request)
 //    {
@@ -157,7 +157,7 @@ class TestModule extends BaseModule
         $param = $request->all();
         $sdk = new CleanExportTask();
         $sdk->cleanOldFiles();
-        return self::response();
+        return self::success();
     }
 
     public function sendTest($request)
@@ -172,7 +172,7 @@ class TestModule extends BaseModule
         $mq->send('', TestQueue::MAIN_QUEUE, json_encode($data));
         $mq->close();
         
-        return self::response();
+        return self::success();
     }
 
 
