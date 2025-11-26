@@ -47,9 +47,27 @@ class UsersTokenDep
         return $res;
     }
 
+    public function editByToken($token, $data)
+    {
+        $res = $this->model->where('token', $token)->update($data);
+        return $res;
+    }
+
     public function firstByUserId($id)
     {
         $res = $this->model->where('user_id', $id)->first();
+        return $res;
+    }
+
+    public function firstByUserIdAndPlatform($userId, $platform)
+    {
+        $res = $this->model->where('user_id', $userId)->where('platform', $platform)->first();
+        return $res;
+    }
+
+    public function editByUserIdAndPlatform($userId, $platform, $data)
+    {
+        $res = $this->model->where('user_id', $userId)->where('platform', $platform)->update($data);
         return $res;
     }
 

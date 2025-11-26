@@ -29,8 +29,11 @@ class CheckToken
         // 1. 从 token 专用 Redis 连接读取（Redis 配置中的 prefix 会自动添加）
         $cached = Redis::connection('token')->get($token);
         if ($cached) {
-            list($userId, $expiresAt, $lastIp) = explode('|', $cached);
-            $expiresAt = Carbon::parse($expiresAt);
+            $parts = explode('|', $cached);
+            $userId = $parts[0] ?? null;
+            $expiresAt = Carbon::parse($parts[1] ?? null);
+            $lastIp = $parts[2] ?? null;
+            $cachedPlatform = $parts[3] ?? null;
         } else {
             // 2. 缓存未命中，回落到数据库
             $tokenDep = new UsersTokenDep();
@@ -45,12 +48,19 @@ class CheckToken
             $userId = $row->user_id;
             $expiresAt = Carbon::parse($row->expires_in);
             $lastIp = $row->ip;
+            $cachedPlatform = $row->platform ?? null;
+            $headerPlatform = $request->header('platform');
+            if ($headerPlatform && (empty($cachedPlatform))) {
+                (new UsersTokenDep())->editByToken($token, ['platform' => $headerPlatform]);
+                $cachedPlatform = $headerPlatform;
+            }
 
             // 写入 Redis（只用 token 作为 key，prefix 由配置自动加）
             $value = implode('|', [
                 $userId,
                 $expiresAt->toDateTimeString(),
-                $lastIp ?? ''
+                $lastIp ?? '',
+                $cachedPlatform ?? ''
             ]);
             Redis::connection('token')->set($token, $value, self::REDIS_TTL);
         }
@@ -75,6 +85,17 @@ class CheckToken
                 'code' => \app\module\BaseModule::CODE_UNAUTHORIZED,
                 'data' => [],
                 'msg'  => 'IP地址不匹配，请重新登录',
+            ]);
+        }
+
+        $platformHeader = $request->header('platform');
+        if ($platformHeader && isset($cachedPlatform) && $cachedPlatform && strtolower($platformHeader) !== strtolower($cachedPlatform)) {
+            (new UsersTokenDep())->clearIpByToken($token);
+            Redis::connection('token')->del($token);
+            return json([
+                'code' => \app\module\BaseModule::CODE_UNAUTHORIZED,
+                'data' => [],
+                'msg'  => '平台不匹配，请重新登录',
             ]);
         }
 
