@@ -71,7 +71,7 @@ class TestModule extends BaseModule
 
     public function edit($request)
     {
-        $param = $request->all()();
+        $param = $request->all();
         $dep = $this->TestDep;
 
         foreach (['password','newpassword','respassword'] as $f) {
