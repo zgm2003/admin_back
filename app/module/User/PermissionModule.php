@@ -39,12 +39,16 @@ class PermissionModule extends BaseModule
             }
         }
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
+            if (empty($param['i18n_key'])) {
+                return self::error('i18n_key 不能为空');
+            }
             if (empty($param['parent_id'])) {
                 $data = [
                     'name' => $param['name'],
                     'parent_id' => -1,
                     'icon' => $param['icon'],
                     'type' => $param['type'],
+                    'i18n_key' => $param['i18n_key'],
                 ];
                 $this->PermissionDep->add($data);
             } else {
@@ -53,6 +57,7 @@ class PermissionModule extends BaseModule
                     'parent_id' => $param['parent_id'],
                     'icon' => $param['icon'],
                     'type' => $param['type'],
+                    'i18n_key' => $param['i18n_key'],
                 ];
                 $this->PermissionDep->add($data);
             }
@@ -62,6 +67,9 @@ class PermissionModule extends BaseModule
                     return self::error("{$f} 不能为空");
                 }
             }
+            if (empty($param['i18n_key'])) {
+                return self::error('i18n_key 不能为空');
+            }
             // 判断是否是顶级菜单
             if (empty($param['parent_id'])) {
                 $data = [
@@ -70,6 +78,7 @@ class PermissionModule extends BaseModule
                     'path' => $param['path'],
                     'component' => $param['component'],
                     'type' => $param['type'],
+                    'i18n_key' => $param['i18n_key'],
                 ];
                 $this->PermissionDep->add($data);
             } else {
@@ -79,6 +88,7 @@ class PermissionModule extends BaseModule
                     'path' => $param['path'],
                     'component' => $param['component'],
                     'type' => $param['type'],
+                    'i18n_key' => $param['i18n_key'],
                 ];
                 $this->PermissionDep->add($data);
             }
@@ -110,12 +120,16 @@ class PermissionModule extends BaseModule
             }
         }
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
+            if (empty($param['i18n_key'])) {
+                return self::error('i18n_key 不能为空');
+            }
             if (empty($param['parent_id'])) {
                 $data = [
                     'name' => $param['name'],
                     'parent_id' => -1,
                     'icon' => $param['icon'],
                     'type' => $param['type'],
+                    'i18n_key' => $param['i18n_key'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             } else {
@@ -124,6 +138,7 @@ class PermissionModule extends BaseModule
                     'parent_id' => $param['parent_id'],
                     'icon' => $param['icon'],
                     'type' => $param['type'],
+                    'i18n_key' => $param['i18n_key'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             }
@@ -133,6 +148,9 @@ class PermissionModule extends BaseModule
                     return self::error("{$f} 不能为空");
                 }
             }
+            if (empty($param['i18n_key'])) {
+                return self::error('i18n_key 不能为空');
+            }
             // 判断是否是顶级菜单
             if (empty($param['parent_id'])) {
                 $data = [
@@ -141,6 +159,7 @@ class PermissionModule extends BaseModule
                     'path' => $param['path'],
                     'component' => $param['component'],
                     'type' => $param['type'],
+                    'i18n_key' => $param['i18n_key'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             } else {
@@ -150,6 +169,7 @@ class PermissionModule extends BaseModule
                     'path' => $param['path'],
                     'component' => $param['component'],
                     'type' => $param['type'],
+                    'i18n_key' => $param['i18n_key'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             }
@@ -222,6 +242,7 @@ class PermissionModule extends BaseModule
                 'type' => $item->type,
                 'type_name' => PermissionEnum::$typeArr[$item->type],
                 'code' => $item->code,
+                'i18n_key' => $item->i18n_key,
             ];
         });
 

@@ -135,7 +135,7 @@ class PermissionDep
     public function getAllPermissions()
     {
         $permissions = $this->model
-            ->select(['id', 'name', 'parent_id', 'path', 'component', 'icon', 'code', 'type'])
+            ->select(['id', 'name', 'parent_id', 'path', 'component', 'icon', 'code', 'type','i18n_key'])
             ->where('is_del', CommonEnum::NO)
             ->where('status', CommonEnum::YES)
             ->get()->toArray();
