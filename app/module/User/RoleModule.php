@@ -6,6 +6,8 @@ use app\dep\User\RoleDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
+use Respect\Validation\Validator as v;
+use Respect\Validation\Exceptions\ValidationException;
 
 
 class RoleModule extends BaseModule
@@ -29,10 +31,13 @@ class RoleModule extends BaseModule
 
     public function add($request)
     {
-        $param = $request->all();
-        if (empty($param['name'])
-        ) {
-            return self::error('必填项不能为空');
+        try {
+            $param = v::input($request->all(), [
+                'name'          => v::length(1, 64)->setName('角色名'),
+                'permission_id' => v::arrayType()->setName('权限')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
         }
         $resDep = $this->roleDep->firstByName($param['name']);
         if ($resDep){
@@ -60,15 +65,16 @@ class RoleModule extends BaseModule
 
     public function edit($request)
     {
-
-        $param = $request->all();
-
-        $dep = $this->roleDep;
-        if (empty($param['name'])
-
-        ) {
-            return self::error('必填项不能为空');
+        try {
+            $param = v::input($request->all(), [
+                'id'            => v::intVal()->setName('ID'),
+                'name'          => v::length(1, 64)->setName('角色名'),
+                'permission_id' => v::arrayType()->setName('权限')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
         }
+        $dep = $this->roleDep;
         $resDep = $dep->firstByName($param['name']);
         if ($resDep && $resDep['id'] != $param['id']){
             return self::error('角色名已存在');

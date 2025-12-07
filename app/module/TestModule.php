@@ -11,6 +11,8 @@ use app\process\CleanExportTask;
 use app\service\DictService;
 use Carbon\Carbon;
 use Webman\RedisQueue\Redis;
+use Respect\Validation\Validator as v;
+use Respect\Validation\Exceptions\ValidationException;
 
 class TestModule extends BaseModule
 {
@@ -38,7 +40,16 @@ class TestModule extends BaseModule
 
     public function add($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'password'    => v::length(6, 64)->setName('密码'),
+                'newpassword' => v::length(6, 64)->setName('新密码'),
+                'respassword' => v::length(6, 64)->setName('确认密码'),
+                'mobile_id'   => v::optional(v::stringType())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
 
         $dep = $this->TestDep;
 
@@ -59,8 +70,13 @@ class TestModule extends BaseModule
 
     public function del($request)
     {
-
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'id' => v::intVal()->setName('ID')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
 
         $dep = $this->TestDep;
 
@@ -71,16 +87,21 @@ class TestModule extends BaseModule
 
     public function edit($request)
     {
-        $param = $request->all();
-        $dep = $this->TestDep;
-
-        foreach (['password','newpassword','respassword'] as $f) {
-            if (empty($param[$f])) {
-                return self::error("{$f} 不能为空");
-            }
+        try {
+            $param = v::input($request->all(), [
+                'id'          => v::intVal()->setName('ID'),
+                'password'    => v::length(6, 64)->setName('密码'),
+                'newpassword' => v::length(6, 64)->setName('新密码'),
+                'respassword' => v::length(6, 64)->setName('确认密码'),
+                'mobile_id'   => v::optional(v::stringType())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
         }
-
-
+        $dep = $this->TestDep;
+        if ($param['newpassword'] !== $param['respassword']) {
+            return self::error('两次输入不一致');
+        }
 
         $data = [
             'mobile_id' => $param['mobile_id'],
@@ -92,8 +113,15 @@ class TestModule extends BaseModule
     }
     public function batchEdit($request)
     {
-
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'ids'    => v::arrayType()->setName('ids'),
+                'field'  => v::stringType()->setName('字段'),
+                'status' => v::optional(v::intVal())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $dep = $this->TestDep;
         $id = $param['ids'];
         if ($param['field'] == 'status') {
@@ -107,9 +135,15 @@ class TestModule extends BaseModule
     }
     public function list($request)
     {
-
         $dep = new TestDep();
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'page_size'    => v::optional(v::intVal()),
+                'current_page' => v::optional(v::intVal())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $param['page_size'] = isset($param['page_size']) ? $param['page_size'] : 50;
         $param['current_page'] = isset($param['current_page']) ? $param['current_page'] : 1;
 
@@ -162,7 +196,14 @@ class TestModule extends BaseModule
 
     public function sendTest($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'id'  => v::optional(v::intVal()),
+                'abc' => v::optional(v::stringType())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $data = [
             'id' => $param['id'] ?? null,
             'abc' => $param['abc'] ?? null

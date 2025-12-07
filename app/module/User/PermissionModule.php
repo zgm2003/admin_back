@@ -7,6 +7,8 @@ use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
+use Respect\Validation\Validator as v;
+use Respect\Validation\Exceptions\ValidationException;
 
 class PermissionModule extends BaseModule
 {
@@ -31,12 +33,19 @@ class PermissionModule extends BaseModule
 
     public function add($request)
     {
-        $param = $request->all();
-
-        foreach (['type', 'name'] as $f) {
-            if (empty($param[$f])) {
-                return self::error("{$f} 不能为空");
-            }
+        try {
+            $param = v::input($request->all(), [
+                'type' => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('类型'),
+                'name' => v::length(1, 64)->setName('名称'),
+                'parent_id' => v::optional(v::intVal()),
+                'icon' => v::optional(v::stringType()),
+                'path' => v::optional(v::stringType()),
+                'component' => v::optional(v::stringType()),
+                'i18n_key' => v::optional(v::length(1, 128)),
+                'code' => v::optional(v::length(1, 128))
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
         }
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
             if (empty($param['i18n_key'])) {
@@ -111,12 +120,20 @@ class PermissionModule extends BaseModule
 
     public function edit($request)
     {
-        $param = $request->all();
-
-        foreach (['type', 'name','id'] as $f) {
-            if (empty($param[$f])) {
-                return self::error("{$f} 不能为空");
-            }
+        try {
+            $param = v::input($request->all(), [
+                'id'   => v::intVal()->setName('ID'),
+                'type' => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('类型'),
+                'name' => v::length(1, 64)->setName('名称'),
+                'parent_id' => v::optional(v::intVal()),
+                'icon' => v::optional(v::stringType()),
+                'path' => v::optional(v::stringType()),
+                'component' => v::optional(v::stringType()),
+                'i18n_key' => v::optional(v::length(1, 128)),
+                'code' => v::optional(v::length(1, 128))
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
         }
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
             if (empty($param['i18n_key'])) {
@@ -191,7 +208,13 @@ class PermissionModule extends BaseModule
 
     public function del($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'id' => v::oneOf(v::intVal(), v::arrayType())->setName('ID')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
         $dep = $this->PermissionDep;
 
@@ -201,8 +224,15 @@ class PermissionModule extends BaseModule
 
     public function batchEdit($request)
     {
-
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'ids' => v::arrayType()->setName('ids'),
+                'field' => v::stringType()->setName('字段'),
+                'description' => v::optional(v::stringType())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $ids = is_array($param['ids']) ? $param['ids'] : [$param['ids']];
         $dep = $this->PermissionDep;
 
@@ -220,7 +250,14 @@ class PermissionModule extends BaseModule
 
     public function list($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'page_size' => v::optional(v::intVal()),
+                'current_page' => v::optional(v::intVal())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
 
         $param['page_size'] = 200;
         $param['current_page'] = 1;
@@ -251,7 +288,14 @@ class PermissionModule extends BaseModule
 
     public function status($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'id' => v::intVal()->setName('ID'),
+                'status' => v::intVal()->in([1,2])->setName('状态')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $data = [
             'status' => $param['status'],
         ];

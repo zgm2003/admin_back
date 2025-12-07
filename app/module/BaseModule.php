@@ -1,6 +1,9 @@
 <?php
 
 namespace app\module;
+use Respect\Validation\Validator as v;
+use Respect\Validation\Exceptions\ValidationException;
+use support\Request;
 
 class BaseModule
 {
@@ -77,5 +80,15 @@ class BaseModule
             $data['trace'] = $e->getTraceAsString();
         }
         return [$data, $code, $e->getMessage() ?: 'server error'];
+    }
+
+    public static function validate(Request $request, array $rules, array $input = null): array
+    {
+        try {
+            $data = v::input($input ?? $request->all(), $rules);
+            return [$data, self::CODE_SUCCESS, 'success'];
+        } catch (ValidationException $e) {
+            return [[], self::CODE_PARAM_ERROR, $e->getMessage()];
+        }
     }
 }

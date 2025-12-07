@@ -20,6 +20,8 @@ use support\Cache;
 use Webman\RedisQueue\Redis;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Respect\Validation\Validator as v;
+use Respect\Validation\Exceptions\ValidationException;
 
 class UsersModule extends BaseModule
 {
@@ -42,30 +44,38 @@ class UsersModule extends BaseModule
 
     public function register($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'username'    => v::length(2, 64)->setName('用户名'),
+                'email'       => v::email()->setName('邮箱'),
+                'password'    => v::length(6, 64)->setName('密码'),
+                'respassword' => v::length(6, 64)->setName('确认密码'),
+                'code'        => v::digit()->length(6, 6)->setName('验证码')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
 
         $dep = $this->UserDep;
         $tokenDep = $this->UserTokenDep;
-        foreach (['username', 'email', 'password', 'respassword', 'code'] as $f) {
-            if (empty($param[$f])) {
-                return self::response([], "{$f} 不能为空", 100);
-            }
+        if ($param['password'] != $param['respassword']) {
+            return self::error('两次密码不一致');
         }
 
         // 用 MD5 生成安全的缓存 key
         $cacheKey = 'email_code_' . md5($param['email']);
         $code = Cache::get($cacheKey);
         if ($code != $param['code']) {
-            return self::response([], '验证码错误', 100);
+            return self::error('验证码错误');
         }
 
         $resdep = $dep->firstByEmail($param['email']);
         if ($resdep) {
-            return self::response([], '邮箱已存在', 100);
+            return self::error('邮箱已存在');
         }
 
         if ($param['password'] != $param['respassword']) {
-            return self::response([], '密码不一致', 100);
+            return self::error('密码不一致');
         }
 
         // 创建随机 token
@@ -95,24 +105,25 @@ class UsersModule extends BaseModule
 
     public function login($request)
     {
-
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'email'    => v::email()->setName('邮箱'),
+                'password' => v::length(6, 64)->setName('密码')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
 
         $dep = $this->UserDep;
         $tokenDep = $this->UserTokenDep;
-        foreach (['email', 'password'] as $f) {
-            if (empty($param[$f])) {
-                return self::response([], "{$f} 不能为空", 100);
-            }
-        }
 
         $resDep = $dep->firstByEmail($param['email']);
         if (!$resDep) {
-            return self::response([], '邮箱不存在', 100);
+            return self::error('邮箱不存在');
         }
 
         if (!password_verify($param['password'], $resDep['password'])) {
-            return self::response([], '密码不正确', 100);
+            return self::error('密码不正确');
         }
 
         //创建一个随机token,命名为$token
@@ -134,13 +145,13 @@ class UsersModule extends BaseModule
 
     public function sendCode($request)
     {
-        $param = $request->all();
-
-        if (empty($param['email'])) {
-            return self::response([], '邮箱不能为空', 100);
-        }
-        if (!isValidEmail($param['email'])) {
-            return self::response([], '邮箱不合法', 100);
+        try {
+            $param = v::input($request->all(), [
+                'email'  => v::email()->setName('邮箱'),
+                'status' => v::optional(v::intVal())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
         }
 
         // 生成验证码
@@ -164,20 +175,23 @@ class UsersModule extends BaseModule
 
     public function forgetPassword($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'email'      => v::email()->setName('邮箱'),
+                'newpassword'=> v::length(6, 64)->setName('新密码'),
+                'code'       => v::digit()->length(6, 6)->setName('验证码')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
 
         $dep = $this->UserDep;
-        foreach (['email', 'newpassword', 'code'] as $f) {
-            if (empty($param[$f])) {
-                return self::response([], "{$f} 不能为空", 100);
-            }
-        }
 
         // 用 MD5 生成缓存 key，保持与 sendCode 中一致
         $cacheKey = 'email_code_' . md5($param['email']);
         $code = Cache::get($cacheKey);
         if ($code != $param['code']) {
-            return self::response([], '验证码错误', 100);
+            return self::error('验证码错误');
         }
 
         $resdep = $dep->firstByEmail($param['email']);
@@ -330,17 +344,25 @@ class UsersModule extends BaseModule
 
     public function editPersonal($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'username'       => v::length(1, 64)->setName('用户名'),
+                'avatar'         => v::optional(v::stringType()),
+                'phone'          => v::optional(v::stringType()),
+                'sex'            => v::intVal()->setName('性别'),
+                'address'        => v::arrayType()->setName('地址'),
+                'detail_address' => v::optional(v::stringType()),
+                'desc'           => v::optional(v::stringType())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $dep = $this->UserDep;
         $user = $this->UserDep->first($request->userId);;
-        if (empty($param['username'])
-        ) {
-            return self::response([], '必填项不能为空', 100);
+        if (isset($param['phone']) && trim((string)$param['phone']) !== '' && !is_valid_phone_number($param['phone'])) {
+            return self::error('无效的手机号码');
         }
         // 验证手机号
-        if (isset($param['phone']) && !is_valid_phone_number($param['phone'])) {
-            return self::response([], '无效的手机号码', 100);
-        }
 
         $data = [
             'username' => $param['username'],
@@ -359,30 +381,33 @@ class UsersModule extends BaseModule
 
     public function EditPassword($request)
     {
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'password'    => v::length(6, 64)->setName('原始密码'),
+                'newpassword' => v::length(6, 64)->setName('新密码'),
+                'respassword' => v::length(6, 64)->setName('确认新密码')
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $dep = $this->UserDep;
         $user = $this->UserDep->first($request->userId);;
 
         // 检查必填项是否为空
-        foreach (['password', 'newpassword', 'respassword'] as $f) {
-            if (empty($param[$f])) {
-                return self::response([], "{$f} 不能为空", 100);
-            }
-        }
 
         // 验证原密码是否正确
         if (!password_verify($param['password'], $user->password)) {
-            return self::response([], '原密码不正确', 100);
+            return self::error('原密码不正确');
         }
 
         // 确保新密码与确认密码一致
         if ($param['newpassword'] !== $param['respassword']) {
-            return self::response([], '新密码不一致', 100);
+            return self::error('新密码不一致');
         }
 
         // 防止新密码与原密码相同
         if (password_verify($param['newpassword'], $user->password)) {
-            return self::response([], '新密码不能与原密码一致', 100);
+            return self::error('新密码不能与原密码一致');
         }
 
         // 加密新密码
@@ -411,11 +436,21 @@ class UsersModule extends BaseModule
 
     public function editList($request)
     {
-        $param = $request->all();
-        $dep = $this->UserDep;
-        if (empty($param['username'])) {
-            return self::response([], '用户名不能为空', 100);
+        try {
+            $param = v::input($request->all(), [
+                'id'            => v::intVal()->setName('用户ID'),
+                'username'      => v::length(1, 64)->setName('用户名'),
+                'avatar'        => v::optional(v::stringType()),
+                'role_id'       => v::intVal()->setName('角色'),
+                'sex'           => v::intVal()->setName('性别'),
+                'address'       => v::arrayType()->setName('地址'),
+                'detail_address'=> v::optional(v::stringType()),
+                'desc'          => v::optional(v::stringType())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
         }
+        $dep = $this->UserDep;
 
         $data = [
             'username' => $param['username'],
@@ -499,13 +534,22 @@ class UsersModule extends BaseModule
 
     public function batchEditList($request)
     {
-
-        $param = $request->all();
+        try {
+            $param = v::input($request->all(), [
+                'ids'           => v::arrayType()->setName('ids'),
+                'field'         => v::stringType()->setName('字段'),
+                'sex'           => v::optional(v::intVal()),
+                'address'       => v::optional(v::arrayType()),
+                'detail_address'=> v::optional(v::stringType())
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
         $dep = $this->UserDep;
         $id = $param['ids'];
         if ($param['field'] == 'sex') {
             if (empty($param['sex'])) {
-                return self::response([], '性别不能为空', 100);
+                return self::error('性别不能为空');
             }
             $data = [
                 'sex' => $param['sex'],
@@ -515,7 +559,7 @@ class UsersModule extends BaseModule
 
         if ($param['field'] == 'address') {
             if (empty($param['address'])) {
-                return self::response([], '地址不能为空', 100);
+                return self::error('地址不能为空');
             }
             $data = [
                 'address' => json_encode($param['address']),
@@ -525,7 +569,7 @@ class UsersModule extends BaseModule
 
         if ($param['field'] == 'detail_address') {
             if (empty($param['detail_address'])) {
-                return self::response([], '详细地址不能为空', 100);
+                return self::error('详细地址不能为空');
             }
             $data = [
                 'detail_address' => $param['detail_address'],
