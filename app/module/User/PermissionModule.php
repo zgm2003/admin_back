@@ -42,7 +42,8 @@ class PermissionModule extends BaseModule
                 'path' => v::optional(v::stringType()),
                 'component' => v::optional(v::stringType()),
                 'i18n_key' => v::optional(v::length(1, 128)),
-                'code' => v::optional(v::length(1, 128))
+                'code' => v::optional(v::length(1, 128)),
+                'sort' => v::intVal()->between(1, 1000)->setName('排序')
             ]);
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
@@ -58,6 +59,7 @@ class PermissionModule extends BaseModule
                     'icon' => $param['icon'],
                     'type' => $param['type'],
                     'i18n_key' => $param['i18n_key'],
+                    'sort' => $param['sort'],
                 ];
                 $this->PermissionDep->add($data);
             } else {
@@ -67,6 +69,7 @@ class PermissionModule extends BaseModule
                     'icon' => $param['icon'],
                     'type' => $param['type'],
                     'i18n_key' => $param['i18n_key'],
+                    'sort' => $param['sort'],
                 ];
                 $this->PermissionDep->add($data);
             }
@@ -86,6 +89,7 @@ class PermissionModule extends BaseModule
                     'type' => $param['type'],
                     'icon' => $param['icon'],
                     'i18n_key' => $param['i18n_key'],
+                    'sort' => $param['sort'],
                 ];
                 $this->PermissionDep->add($data);
             } else {
@@ -97,6 +101,7 @@ class PermissionModule extends BaseModule
                     'type' => $param['type'],
                     'icon' => $param['icon'],
                     'i18n_key' => $param['i18n_key'],
+                    'sort' => $param['sort'],
                 ];
                 $this->PermissionDep->add($data);
             }
@@ -111,6 +116,7 @@ class PermissionModule extends BaseModule
                 'parent_id' => $param['parent_id'],
                 'code' => $param['code'],
                 'type' => $param['type'],
+                'sort' => $param['sort'],
             ];
             $this->PermissionDep->add($data);
         }
@@ -130,7 +136,8 @@ class PermissionModule extends BaseModule
                 'path' => v::optional(v::stringType()),
                 'component' => v::optional(v::stringType()),
                 'i18n_key' => v::optional(v::length(1, 128)),
-                'code' => v::optional(v::length(1, 128))
+                'code' => v::optional(v::length(1, 128)),
+                'sort' => v::intVal()->between(1, 1000)->setName('排序')
             ]);
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
@@ -146,6 +153,7 @@ class PermissionModule extends BaseModule
                     'icon' => $param['icon'],
                     'type' => $param['type'],
                     'i18n_key' => $param['i18n_key'],
+                    'sort' => $param['sort'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             } else {
@@ -155,6 +163,7 @@ class PermissionModule extends BaseModule
                     'icon' => $param['icon'],
                     'type' => $param['type'],
                     'i18n_key' => $param['i18n_key'],
+                    'sort' => $param['sort'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             }
@@ -174,6 +183,7 @@ class PermissionModule extends BaseModule
                     'type' => $param['type'],
                     'icon' => $param['icon'],
                     'i18n_key' => $param['i18n_key'],
+                    'sort' => $param['sort'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             } else {
@@ -185,6 +195,7 @@ class PermissionModule extends BaseModule
                     'type' => $param['type'],
                     'icon' => $param['icon'],
                     'i18n_key' => $param['i18n_key'],
+                    'sort' => $param['sort'],
                 ];
                 $this->PermissionDep->edit($param['id'],$data);
             }
@@ -278,6 +289,7 @@ class PermissionModule extends BaseModule
                 'type_name' => PermissionEnum::$typeArr[$item->type],
                 'code' => $item->code,
                 'i18n_key' => $item->i18n_key,
+                'sort' => $item->sort,
             ];
         });
 

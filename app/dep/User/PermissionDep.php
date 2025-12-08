@@ -127,6 +127,9 @@ class PermissionDep
                 $query->where('path', 'like', "%{$param['path']}%");
             })
             ->where('is_del', CommonEnum::NO)
+            ->orderBy('parent_id')
+            ->orderBy('sort')
+            ->orderBy('id')
             ->get();
 
         return $res;
@@ -135,9 +138,12 @@ class PermissionDep
     public function getAllPermissions()
     {
         $permissions = $this->model
-            ->select(['id', 'name', 'parent_id', 'path', 'component', 'icon', 'code', 'type','i18n_key'])
+            ->select(['id', 'name', 'parent_id', 'path', 'component', 'icon', 'code', 'type','i18n_key','sort'])
             ->where('is_del', CommonEnum::NO)
             ->where('status', CommonEnum::YES)
+            ->orderBy('parent_id')
+            ->orderBy('sort')
+            ->orderBy('id')
             ->get()->toArray();
         return $permissions;
     }
