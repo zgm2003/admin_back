@@ -326,7 +326,7 @@ class UsersModule extends BaseModule
             'phone' => $user->phone,
             'role_id' => $user->role_id,
             'role_name' => $resRole['name'],
-            'address' => json_decode($user->address),
+            'address' => (int)$user->address,
             'detail_address' => $user->detail_address,
             'sex' => $user->sex,
             'desc' => $user->desc,
@@ -350,7 +350,7 @@ class UsersModule extends BaseModule
                 'avatar'         => v::optional(v::stringType()),
                 'phone'          => v::optional(v::stringType()),
                 'sex'            => v::intVal()->setName('性别'),
-                'address'        => v::arrayType()->setName('地址'),
+                'address'        => v::intVal()->setName('地址'),
                 'detail_address' => v::optional(v::stringType()),
                 'desc'           => v::optional(v::stringType())
             ]);
@@ -369,7 +369,7 @@ class UsersModule extends BaseModule
             'avatar' => $param['avatar'],
             'phone' => $param['phone'] ?? '',
             'sex' => $param['sex'],
-            'address' => json_encode($param['address']),
+            'address' => (int)$param['address'],
             'detail_address' => $param['detail_address'] ?? '',
             'desc' => $param['desc'],
         ];
@@ -443,7 +443,7 @@ class UsersModule extends BaseModule
                 'avatar'        => v::optional(v::stringType()),
                 'role_id'       => v::intVal()->setName('角色'),
                 'sex'           => v::intVal()->setName('性别'),
-                'address'       => v::arrayType()->setName('地址'),
+                'address'       => v::intVal()->setName('地址'),
                 'detail_address'=> v::optional(v::stringType()),
                 'desc'          => v::optional(v::stringType())
             ]);
@@ -457,7 +457,7 @@ class UsersModule extends BaseModule
             'avatar' => $param['avatar'],
             'role_id' => $param['role_id'],
             'sex' => $param['sex'],
-            'address' => json_encode($param['address']) ?? '[]',
+            'address' => (int)$param['address'],
             'detail_address' => $param['detail_address'] ?? '',
             'desc' => $param['desc'],
         ];
@@ -494,14 +494,20 @@ class UsersModule extends BaseModule
         $data['list'] = $resList->map(function ($item) use ($RoleDep, $AddressDep, $UserTokenDep) {
             $resRole = $RoleDep->first($item->role_id);
             $resUserToken = $UserTokenDep->firstByUserId($item->id);
-
-            $addressIDs = json_decode($item->address);
-            $address = '';
-            foreach ($addressIDs as $addressID) {
-                $resAddress = $AddressDep->first($addressID);
-                $address .= $resAddress->name . '-';
+            $districtId = (int)$item->address;
+            $addressParts = [];
+            if ($districtId) {
+                $node = $AddressDep->first($districtId);
+                while ($node) {
+                    array_unshift($addressParts, $node->name);
+                    if (!isset($node->parent_id) || $node->parent_id === -1) {
+                        break;
+                    }
+                    $node = $AddressDep->first($node->parent_id);
+                }
             }
-            $address .= $item->detail_address;
+            $address = implode('-', $addressParts);
+            $address = $address ? ($address . '-' . $item->detail_address) : $item->detail_address;
             return [
                 'id' => $item->id,
                 'uid' => $item->uid,
@@ -515,7 +521,7 @@ class UsersModule extends BaseModule
                 'desc' => $item->desc,
                 'role_name' => $resRole->name,
                 'address_show' => $address,
-                'address' => json_decode($item->address),
+                'address' => (int)$item->address,
                 'detail_address' => $item->detail_address,
                 'expires_in' => $resUserToken->expires_in,
                 'is_expired' => $resUserToken['expires_in'] < Carbon::now()->toDateTimeString() ? '已过期' : '未过期',
@@ -539,7 +545,7 @@ class UsersModule extends BaseModule
                 'ids'           => v::arrayType()->setName('ids'),
                 'field'         => v::stringType()->setName('字段'),
                 'sex'           => v::optional(v::intVal()),
-                'address'       => v::optional(v::arrayType()),
+                'address'       => v::optional(v::intVal()),
                 'detail_address'=> v::optional(v::stringType())
             ]);
         } catch (ValidationException $e) {
@@ -562,7 +568,7 @@ class UsersModule extends BaseModule
                 return self::error('地址不能为空');
             }
             $data = [
-                'address' => json_encode($param['address']),
+                'address' => (int)$param['address'],
             ];
             $dep->edit($id, $data);
         }

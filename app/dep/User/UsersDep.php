@@ -62,10 +62,8 @@ class UsersDep
                 $query->where('detail_address','like' ,"%{$param['detail_address']}%");
             })
             ->when(!empty($param['address']), function ($query) use ($param) {
-                $lastAddress = end($param['address']);
-                $query->where('address', 'like', '%' . $lastAddress . '%');
+                $query->whereIn('address', $param['address']);
             })
-
             ->when(!empty($param['role_id']), function ($query) use ($param) {
                 $query->where('role_id', $param['role_id']);
             })
