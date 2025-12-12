@@ -17,6 +17,10 @@ class CommonEnum
         self::YES => "是",
         self::NO => "否",
     ];
+    public static $statusArr = [
+        self::YES => "启用",
+        self::NO => "警用",
+    ];
 
 
 }

@@ -70,6 +70,10 @@ class DictService
         $this->dict['permission_type_arr'] = $this->enumToDict(PermissionEnum::$typeArr);
         return $this;
     }
+    public function setCommonStatusArr(){
+        $this->dict['common_status_arr'] = $this->enumToDict(CommonEnum::$statusArr);
+        return $this;
+    }
     public function setUploadImageExtArr(){
         $this->dict['upload_image_ext_arr'] = $this->enumToDict(UploadConfigEnum::$imageExtArr);
         return $this;

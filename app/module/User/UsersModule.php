@@ -228,21 +228,38 @@ class UsersModule extends BaseModule
         $allPerms = $this->PermissionDep->getAllPermissions();
         $permMap  = array_column($allPerms, null, 'id');
 
-        // 收集需保留的目录/页面/按钮 ID
-        $includeIds = [];
+        $includeSet = [];
         foreach ($leafIds as $leafId) {
-            $cur = $leafId;
-            while (isset($permMap[$cur]) && !in_array($cur, $includeIds, true)) {
-                $includeIds[] = $cur;
-                $parent = $permMap[$cur]['parent_id'];
+            $cur = (int)$leafId;
+            while (isset($permMap[$cur]) && !isset($includeSet[$cur])) {
+                $includeSet[$cur] = true;
+                $parent = (int)$permMap[$cur]['parent_id'];
                 if ($parent === -1 || !isset($permMap[$parent])) break;
                 $cur = $parent;
             }
         }
+        $includeIds = array_map('intval', array_keys($includeSet));
+
+        // 仅保留“自身启用且祖先链完整且启用”的权限
+        $isChainEnabled = function (int $id) use ($permMap): bool {
+            if (!isset($permMap[$id])) return false;
+            $cur = $id;
+            while (true) {
+                // 当前节点必须存在（已过滤 is_del=NO, status=YES）
+                if (!isset($permMap[$cur])) return false;
+                $parent = $permMap[$cur]['parent_id'];
+                if ($parent === -1) break;
+                // 如果父节点不在 $permMap（通常为禁用或删除），视为链断裂
+                if (!isset($permMap[$parent])) return false;
+                $cur = $parent;
+            }
+            return true;
+        };
+        $enabledIds = array_values(array_filter($includeIds, fn($id) => $isChainEnabled((int)$id)));
 
         // ✅ 构造权限树（type=1 或 type=2）
         $menusData = array_filter($allPerms, fn($p) =>
-            in_array($p['id'], $includeIds, true) &&
+            in_array($p['id'], $enabledIds, true) &&
             in_array($p['type'], [PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE])
         );
         $menus = $this->buildPermissionTree($menusData, -1);
@@ -253,10 +270,12 @@ class UsersModule extends BaseModule
             if (
                 $m['type'] == PermissionEnum::TYPE_PAGE &&
                 !empty($m['path']) &&
-                !empty($m['component'])
+                !empty($m['component']) &&
+                // 父链必须完整且启用，避免菜单禁用但仍下发路由
+                $isChainEnabled((int)$m['id'])
             ) {
                 $router[] = [
-                    'name'      => $m['path'],
+                    'name' => 'menu_' . $m['id'],
                     'path'      => $m['path'],
                     'component' => $m['component'],
                     'meta'      => [
