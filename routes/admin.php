@@ -58,6 +58,20 @@ Route::group('/api/admin', function () {
     Route::post('/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
     Route::post('/OperationLog/list', [controller\System\OperationLogController::class, 'list']);
     Route::post('/OperationLog/del', [controller\System\OperationLogController::class, 'del']);
+
+    //上传规则
+    Route::post('/UploadRule/init', [controller\System\UploadRuleController::class, 'init']);
+    Route::post('/UploadRule/add', [controller\System\UploadRuleController::class, 'add']);
+    Route::post('/UploadRule/edit', [controller\System\UploadRuleController::class, 'edit']);
+    Route::post('/UploadRule/del', [controller\System\UploadRuleController::class, 'del']);
+    Route::post('/UploadRule/list', [controller\System\UploadRuleController::class, 'list']);
+
+    //上传驱动
+    Route::post('/UploadDriver/init', [controller\System\UploadDriverController::class, 'init']);
+    Route::post('/UploadDriver/add', [controller\System\UploadDriverController::class, 'add']);
+    Route::post('/UploadDriver/edit', [controller\System\UploadDriverController::class, 'edit']);
+    Route::post('/UploadDriver/del', [controller\System\UploadDriverController::class, 'del']);
+    Route::post('/UploadDriver/list', [controller\System\UploadDriverController::class, 'list']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\OperationLog::class

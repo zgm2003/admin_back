@@ -9,6 +9,7 @@ use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\enum\SexEnum;
+use app\enum\UploadConfigEnum;
 
 
 class DictService
@@ -67,6 +68,18 @@ class DictService
     }
     public function setPermissionTypeArr(){
         $this->dict['permission_type_arr'] = $this->enumToDict(PermissionEnum::$typeArr);
+        return $this;
+    }
+    public function setUploadImageExtArr(){
+        $this->dict['upload_image_ext_arr'] = $this->enumToDict(UploadConfigEnum::$imageExtArr);
+        return $this;
+    }
+    public function setUploadFileExtArr(){
+        $this->dict['upload_file_ext_arr'] = $this->enumToDict(UploadConfigEnum::$fileExtArr);
+        return $this;
+    }
+    public function setUploadDriverArr(){
+        $this->dict['upload_driver_arr'] = $this->enumToDict(UploadConfigEnum::$driverArr);
         return $this;
     }
     public function setUserArr()

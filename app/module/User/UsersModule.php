@@ -74,10 +74,6 @@ class UsersModule extends BaseModule
             return self::error('邮箱已存在');
         }
 
-        if ($param['password'] != $param['respassword']) {
-            return self::error('密码不一致');
-        }
-
         // 创建随机 token
         $token = md5(uniqid(rand(), true));
         // 设置 token 过期时间，一周后
