@@ -45,6 +45,7 @@ Route::group('/api/admin', function () {
     Route::post('/Role/add', [controller\User\RoleController::class, 'add']);
     Route::post('/Role/edit', [controller\User\RoleController::class, 'edit']);
     Route::post('/Role/del', [controller\User\RoleController::class, 'del']);
+    Route::post('/Role/default', [controller\User\RoleController::class, 'default']);
 
     //用户管理
     Route::post('/Users/initList', [controller\User\UsersController::class, 'initList']);

@@ -8,6 +8,7 @@ use app\module\BaseModule;
 use app\service\DictService;
 use Respect\Validation\Validator as v;
 use Respect\Validation\Exceptions\ValidationException;
+use support\Db;
 
 
 class RoleModule extends BaseModule
@@ -33,14 +34,14 @@ class RoleModule extends BaseModule
     {
         try {
             $param = v::input($request->all(), [
-                'name'          => v::length(1, 64)->setName('角色名'),
-                'permission_id' => v::arrayType()->setName('权限')
+                'name' => v::length(1, 64)->setName('角色名'),
+                'permission_id' => v::arrayType()->setName('权限'),
             ]);
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
         }
         $resDep = $this->roleDep->firstByName($param['name']);
-        if ($resDep){
+        if ($resDep) {
             return self::error('角色名已存在');
         }
         $data = [
@@ -53,22 +54,33 @@ class RoleModule extends BaseModule
 
     public function del($request)
     {
-
         $param = $request->all();
-
+        if (empty($param['id'])) {
+            return self::error('ID不能为空');
+        }
+        $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [ (int)$param['id'] ];
         $dep = $this->roleDep;
-
-        $dep->del($param['id'], ['is_del' => CommonEnum::YES]);
-
+        $roles = $dep->getByIds($ids, true);
+        if ($roles->isEmpty()) {
+            return self::error('角色不存在');
+        }
+        if ($roles->count() !== count($ids)) {
+            return self::error('包含不存在的角色');
+        }
+        if ($dep->hasDefaultIn($ids)) {
+            return self::error('默认角色不能删除');
+        }
+        $dep->del($ids, ['is_del' => CommonEnum::YES]);
         return self::success();
     }
+
 
     public function edit($request)
     {
         try {
             $param = v::input($request->all(), [
-                'id'            => v::intVal()->setName('ID'),
-                'name'          => v::length(1, 64)->setName('角色名'),
+                'id' => v::intVal()->setName('ID'),
+                'name' => v::length(1, 64)->setName('角色名'),
                 'permission_id' => v::arrayType()->setName('权限')
             ]);
         } catch (ValidationException $e) {
@@ -76,7 +88,7 @@ class RoleModule extends BaseModule
         }
         $dep = $this->roleDep;
         $resDep = $dep->firstByName($param['name']);
-        if ($resDep && $resDep['id'] != $param['id']){
+        if ($resDep && $resDep['id'] != $param['id']) {
             return self::error('角色名已存在');
         }
         $data = [
@@ -103,6 +115,7 @@ class RoleModule extends BaseModule
                 'id' => $item['id'],
                 'name' => $item['name'],
                 'permission_id' => json_decode($item['permission_id']),
+                'is_default' => $item['is_default'] ?? CommonEnum::NO,
                 'created_at' => $item['created_at']->toDateTimeString(),
                 'updated_at' => $item['updated_at']->toDateTimeString()
             ];
@@ -116,6 +129,40 @@ class RoleModule extends BaseModule
 
         return self::paginate($data['list'], $data['page']);
     }
+
+    /**
+     * 设置默认角色（唯一）
+     */
+    public function setDefault($request)
+    {
+        try {
+            $param = v::input($request->all(), [
+                'id' => v::intVal()->setName('ID'),
+            ]);
+        } catch (ValidationException $e) {
+            return self::error($e->getMessage());
+        }
+
+        $dep = $this->roleDep;
+        $id = (int)$param['id'];
+        $role = $dep->first($id);
+        if (!$role || (isset($role['is_del']) && (int)$role['is_del'] !== CommonEnum::NO)) {
+            return self::error('角色不存在');
+        }
+        Db::beginTransaction();
+        try {
+            // 取消当前默认角色（命中 idx_role_default）
+            $dep->clearDefault();
+            // 设置新的默认角色（命中主键）
+            $dep->edit($id, ['is_default' => CommonEnum::YES]);
+            Db::commit();
+        } catch (\Throwable $e) {
+            Db::rollBack();
+            return self::error('设置默认角色失败');
+        }
+        return self::success();
+    }
+
 
 }
 

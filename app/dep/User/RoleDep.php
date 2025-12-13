@@ -64,6 +64,21 @@ class RoleDep
 
         return $res;
     }
+    public function firstByDefault()
+    {
+        $res = $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('is_default', CommonEnum::YES)
+            ->first();
+        return $res;
+    }
+    public function clearDefault()
+    {
+        return $this->model
+            ->where('is_default', CommonEnum::YES)
+            ->where('is_del', CommonEnum::NO)
+            ->update(['is_default' => CommonEnum::NO]);
+    }
 
     public function add($data)
     {
@@ -95,6 +110,23 @@ class RoleDep
         return $res;
     }
 
+    public function getByIds(array $ids, bool $onlyActive = false)
+    {
+        $query = $this->model->whereIn('id', $ids);
+        if ($onlyActive) {
+            $query->where('is_del', CommonEnum::NO);
+        }
+        return $query->get();
+    }
+
+    public function hasDefaultIn(array $ids): bool
+    {
+        return $this->model
+            ->whereIn('id', $ids)
+            ->where('is_del', CommonEnum::NO)
+            ->where('is_default', CommonEnum::YES)
+            ->exists();
+    }
 
     public function list($param){
         $res = $this->model

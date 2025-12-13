@@ -43,4 +43,12 @@ class RoleController extends Controller{
         return $this->response();
     }
 
+    /**
+     * @OperationLog("设置默认角色")
+     */
+    public function default(Request $request){
+        $this->run([RoleModule::class,'setDefault'],$request);
+        return $this->response();
+    }
+
 }
