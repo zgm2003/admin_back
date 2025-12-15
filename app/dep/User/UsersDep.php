@@ -49,39 +49,47 @@ class UsersDep
         return $res;
     }
 
-    public function list($param){
-        $res = $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->when(!empty($param['username']), function ($query) use ($param) {
-                $query->where('username','like' ,"%{$param['username']}%");
-            })
-            ->when(!empty($param['email']), function ($query) use ($param) {
-                $query->where('email','like' ,"%{$param['email']}%");
-            })
-            ->when(!empty($param['detail_address']), function ($query) use ($param) {
-                $query->where('detail_address','like' ,"%{$param['detail_address']}%");
-            })
-            ->when(!empty($param['address']), function ($query) use ($param) {
-                $query->whereIn('address', $param['address']);
-            })
-            ->when(!empty($param['role_id']), function ($query) use ($param) {
-                $query->where('role_id', $param['role_id']);
-            })
-            ->when(!empty($param['sex']), function ($query) use ($param) {
-                $query->where('sex', $param['sex']);
-            })
+    public function list($param)
+    {
+        return $this->model
+            ->from('users as u')
+            ->leftJoin('user_profiles as up', 'u.id', '=', 'up.user_id')
+            ->where('u.is_del', CommonEnum::NO)
 
-            ->when(!empty($param['date']), function ($query) use ($param) {
-                // 假设 date 参数是一个包含两个日期的数组
-                if (is_array($param['date']) && count($param['date']) === 2) {
-                    $query->whereBetween('register_at', [$param['date'][0], $param['date'][1]]);
+            ->when(isset($param['username']) && $param['username'] !== '', function ($q) use ($param) {
+                $q->where('u.username', 'like', '%' . $param['username'] . '%');
+            })
+            ->when(isset($param['email']) && $param['email'] !== '', function ($q) use ($param) {
+                $q->where('u.email', 'like', '%' . $param['email'] . '%');
+            })
+            ->when(isset($param['detail_address']) && $param['detail_address'] !== '', function ($q) use ($param) {
+                $q->where('up.detail_address', 'like', '%' . $param['detail_address'] . '%');
+            })
+            ->when(!empty($param['address_id'] ?? $param['address'] ?? null), function ($q) use ($param) {
+                $ids = $param['address_id'] ?? $param['address'];
+                if (is_array($ids)) {
+                    $q->whereIn('up.address_id', array_map('intval', $ids));
+                } else {
+                    $q->where('up.address_id', (int)$ids);
                 }
             })
-//            ->orderBy('id','desc')
-            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
+            ->when(isset($param['role_id']) && $param['role_id'] !== '', function ($q) use ($param) {
+                $q->where('u.role_id', (int)$param['role_id']);
+            })
+            ->when(isset($param['sex']) && $param['sex'] !== '', function ($q) use ($param) {
+                $q->where('up.sex', (int)$param['sex']);
+            })
+            ->when(!empty($param['date']) && is_array($param['date']) && count($param['date']) === 2, function ($q) use ($param) {
+                $q->whereBetween('u.created_at', [$param['date'][0], $param['date'][1]]);
+            })
 
-        return $res;
+            ->select([
+                'u.id','u.username','u.email','u.phone','u.role_id','u.status','u.created_at','u.updated_at',
+                'up.avatar','up.sex','up.address_id','up.detail_address',
+            ])
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
+
 
     public function getByUsername($username)
     {

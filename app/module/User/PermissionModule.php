@@ -7,6 +7,8 @@ use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
+use Respect\Validation\Validator as v;
+use Respect\Validation\Exceptions\ValidationException;
 use app\validate\User\PermissionValidate;
 
 class PermissionModule extends BaseModule

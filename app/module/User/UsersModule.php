@@ -8,6 +8,7 @@ use app\dep\User\PermissionDep;
 use app\dep\User\RoleDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UsersTokenDep;
+use app\dep\User\UserProfileDep;
 use app\enum\CommonEnum;
 use app\enum\EmailEnum;
 use app\enum\PermissionEnum;
@@ -32,6 +33,7 @@ class UsersModule extends BaseModule
     public $RoleDep;
     public $PermissionDep;
     public $AddressDep;
+    public $UserProfileDep;
 
     public function __construct()
     {
@@ -40,6 +42,7 @@ class UsersModule extends BaseModule
         $this->RoleDep = new RoleDep();
         $this->PermissionDep = new PermissionDep();
         $this->AddressDep = new AddressDep();
+        $this->UserProfileDep = new UserProfileDep();
 
     }
 
@@ -195,11 +198,12 @@ class UsersModule extends BaseModule
         if (!$user) {
             return self::error('用户不存在');
         }
+        $profile = $this->UserProfileDep->firstByUserId($user->id);
 
         $base = [
             'user_id'  => $user->id,
             'username' => $user->username,
-            'avatar'   => $user->avatar,
+            'avatar'   => $profile->avatar ?? 'https://zgm-1314542588.cos.ap-nanjing.myqcloud.com/defaultAvatar%2Favatar.jpg',
         ];
 
         // 把 user 直接传下去
@@ -345,18 +349,19 @@ class UsersModule extends BaseModule
         $param = $request->all();
         $dictService = new DictService();
         $user = $this->UserDep->first($param['user_id']);;
+        $profile = $this->UserProfileDep->firstByUserId($user->id);
         $resRole = $this->RoleDep->first($user->role_id);
         $data['list'] = [
             'username' => $user->username,
             'email' => $user->email,
-            'avatar' => $user->avatar,
+            'avatar' => $profile->avatar ?? 'https://zgm-1314542588.cos.ap-nanjing.myqcloud.com/defaultAvatar%2Favatar.jpg',
             'phone' => $user->phone,
             'role_id' => $user->role_id,
             'role_name' => $resRole['name'],
-            'address' => (int)$user->address,
-            'detail_address' => $user->detail_address,
-            'sex' => $user->sex,
-            'desc' => $user->desc,
+            'address' => (int)($profile->address_id ?? 0),
+            'detail_address' => $profile->detail_address ?? '',
+            'sex' => (int)($profile->sex ?? 1),
+            'bio' => $profile->bio ?? '',
             'is_self' => $param['user_id'] == $request->userId ? CommonEnum::YES : CommonEnum::NO,
         ];
 
@@ -379,29 +384,34 @@ class UsersModule extends BaseModule
                 'sex'            => v::intVal()->setName('性别'),
                 'address'        => v::intVal()->setName('地址'),
                 'detail_address' => v::optional(v::stringType()),
-                'desc'           => v::optional(v::stringType())
+                'bio'            => v::optional(v::stringType())
             ]);
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
         }
-        $dep = $this->UserDep;
+        $userDep = $this->UserDep;
+        $profileDep = $this->UserProfileDep;
         $user = $this->UserDep->first($request->userId);;
         if (isset($param['phone']) && trim((string)$param['phone']) !== '' && !is_valid_phone_number($param['phone'])) {
             return self::error('无效的手机号码');
         }
         // 验证手机号
 
-        $data = [
+        $userData = [
             'username' => $param['username'],
-            'avatar' => $param['avatar'],
             'phone' => $param['phone'] ?? '',
-            'sex' => $param['sex'],
-            'address' => (int)$param['address'],
-            'detail_address' => $param['detail_address'] ?? '',
-            'desc' => $param['desc'],
         ];
 
-        $dep->edit($user->id, $data);
+        $profileData = [
+            'avatar' => $param['avatar'] ?? null,
+            'sex' => (int)$param['sex'],
+            'address_id' => (int)$param['address'],
+            'detail_address' => $param['detail_address'] ?? '',
+            'bio' => $param['bio'] ?? '',
+        ];
+
+        $userDep->edit($user->id, $userData);
+        $profileDep->editByUserId($user->id, $profileData);
 
         return self::response();
     }
@@ -472,24 +482,29 @@ class UsersModule extends BaseModule
                 'sex'           => v::intVal()->setName('性别'),
                 'address'       => v::intVal()->setName('地址'),
                 'detail_address'=> v::optional(v::stringType()),
-                'desc'          => v::optional(v::stringType())
+                'bio'           => v::optional(v::stringType())
             ]);
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
         }
-        $dep = $this->UserDep;
+        $userDep = $this->UserDep;
+        $profileDep = $this->UserProfileDep;
 
-        $data = [
+        $userData = [
             'username' => $param['username'],
-            'avatar' => $param['avatar'],
             'role_id' => $param['role_id'],
-            'sex' => $param['sex'],
-            'address' => (int)$param['address'],
-            'detail_address' => $param['detail_address'] ?? '',
-            'desc' => $param['desc'],
         ];
 
-        $dep->edit($param['id'], $data);
+        $profileData = [
+            'avatar' => $param['avatar'] ?? null,
+            'sex' => (int)$param['sex'],
+            'address_id' => (int)$param['address'],
+            'detail_address' => $param['detail_address'] ?? '',
+            'bio' => $param['bio'] ?? '',
+        ];
+
+        $userDep->edit($param['id'], $userData);
+        $profileDep->editByUserId($param['id'], $profileData);
 
         return self::response();
     }
@@ -513,15 +528,17 @@ class UsersModule extends BaseModule
         $RoleDep = $this->RoleDep;
         $AddressDep = $this->AddressDep;
         $UserTokenDep = $this->UserTokenDep;
+        $UserProfileDep = $this->UserProfileDep;
         $param = $request->all();
         $param['page_size'] = isset($param['page_size']) ? $param['page_size'] : 50;
         $param['current_page'] = isset($param['current_page']) ? $param['current_page'] : 1;
 
         $resList = $dep->list($param);
-        $data['list'] = $resList->map(function ($item) use ($RoleDep, $AddressDep, $UserTokenDep) {
+        $data['list'] = $resList->map(function ($item) use ($RoleDep, $AddressDep, $UserTokenDep, $UserProfileDep) {
             $resRole = $RoleDep->first($item->role_id);
             $resUserToken = $UserTokenDep->firstByUserId($item->id);
-            $districtId = (int)$item->address;
+            $profile = $UserProfileDep->firstByUserId($item->id);
+            $districtId = (int)($profile->address_id ?? 0);
             $addressParts = [];
             if ($districtId) {
                 $node = $AddressDep->first($districtId);
@@ -534,22 +551,23 @@ class UsersModule extends BaseModule
                 }
             }
             $address = implode('-', $addressParts);
-            $address = $address ? ($address . '-' . $item->detail_address) : $item->detail_address;
+            $detail = $profile->detail_address ?? '';
+            $address = $address ? ($address . '-' . $detail) : $detail;
             return [
                 'id' => $item->id,
                 'uid' => $item->uid,
                 'username' => $item->username,
                 'email' => $item->email,
-                'avatar' => $item->avatar,
+                'avatar' => $profile->avatar ?? null,
                 'phone' => $item->phone,
-                'sex' => $item->sex,
-                'sex_show' => SexEnum::$SexArr[$item->sex],
+                'sex' => (int)($profile->sex ?? 1),
+                'sex_show' => SexEnum::$SexArr[(int)($profile->sex ?? 1)],
                 'role_id' => $item->role_id,
-                'desc' => $item->desc,
+                'bio' => $profile->bio ?? '',
                 'role_name' => $resRole->name,
                 'address_show' => $address,
-                'address' => (int)$item->address,
-                'detail_address' => $item->detail_address,
+                'address' => (int)($profile->address_id ?? 0),
+                'detail_address' => $profile->detail_address ?? '',
                 'expires_in' => $resUserToken->expires_in,
                 'is_expired' => $resUserToken['expires_in'] < Carbon::now()->toDateTimeString() ? '已过期' : '未过期',
                 'created_at' => $item['created_at']->toDateTimeString(),
@@ -578,36 +596,28 @@ class UsersModule extends BaseModule
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
         }
-        $dep = $this->UserDep;
+        $userDep = $this->UserDep;
+        $profileDep = $this->UserProfileDep;
         $id = $param['ids'];
         if ($param['field'] == 'sex') {
             if (empty($param['sex'])) {
                 return self::error('性别不能为空');
             }
-            $data = [
-                'sex' => $param['sex'],
-            ];
-            $dep->edit($id, $data);
+            $profileDep->editByUserId($id, ['sex' => (int)$param['sex']]);
         }
 
         if ($param['field'] == 'address') {
             if (empty($param['address'])) {
                 return self::error('地址不能为空');
             }
-            $data = [
-                'address' => (int)$param['address'],
-            ];
-            $dep->edit($id, $data);
+            $profileDep->editByUserId($id, ['address_id' => (int)$param['address']]);
         }
 
         if ($param['field'] == 'detail_address') {
             if (empty($param['detail_address'])) {
                 return self::error('详细地址不能为空');
             }
-            $data = [
-                'detail_address' => $param['detail_address'],
-            ];
-            $dep->edit($id, $data);
+            $profileDep->editByUserId($id, ['detail_address' => $param['detail_address']]);
         }
 
         return self::response();
@@ -637,15 +647,17 @@ class UsersModule extends BaseModule
             'role'     => '角色',
         ];
 
-        $data = $users->map(function ($item) use ($roleDep) {
+        $profileDep = $this->UserProfileDep;
+        $data = $users->map(function ($item) use ($roleDep, $profileDep) {
             $resRole = $roleDep->first($item->role_id);
+            $profile = $profileDep->firstByUserId($item->id);
             return [
                 'id'       => $item->id,
                 'username' => $item->username,
                 'email'    => $item->email,
                 'phone'    => $item->phone,
-                'avatar'   => $item->avatar,
-                'sex'      => SexEnum::$SexArr[$item->sex],
+                'avatar'   => $profile->avatar ?? null,
+                'sex'      => SexEnum::$SexArr[(int)($profile->sex ?? 1)],
                 'role'     => $resRole['name'],
             ];
         })->toArray();
