@@ -15,6 +15,7 @@ class RoleController extends Controller{
     }
     /**
      * @OperationLog("角色新增")
+     * @Permission("role.add")
      */
     public function add(Request $request){
 
@@ -23,6 +24,7 @@ class RoleController extends Controller{
     }
     /**
      * @OperationLog("角色删除")
+     * @Permission("role.del")
      */
 
     public function del(Request $request){
@@ -32,6 +34,7 @@ class RoleController extends Controller{
 
     /**
      * @OperationLog("角色修改")
+     * @Permission("role.edit")
      */
     public function edit(Request $request){
         $this->run([RoleModule::class,'edit'],$request);
@@ -45,6 +48,7 @@ class RoleController extends Controller{
 
     /**
      * @OperationLog("设置默认角色")
+     * @Permission("role.setDefault")
      */
     public function default(Request $request){
         $this->run([RoleModule::class,'setDefault'],$request);

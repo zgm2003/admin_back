@@ -1,6 +1,7 @@
 <?php
 
 namespace app\module;
+use app\enum\ErrorCodeEnum;
 use Respect\Validation\Validator as v;
 use Respect\Validation\Exceptions\ValidationException;
 use support\Request;
@@ -8,12 +9,12 @@ use support\Request;
 class BaseModule
 {
     // 业务通用状态码常量（与 HTTP 状态码区分）
-    const CODE_SUCCESS       = 0;     // 成功
-    const CODE_PARAM_ERROR   = 100;   // 参数/校验错误
-    const CODE_UNAUTHORIZED  = 401;   // 未认证（业务层语义）
-    const CODE_FORBIDDEN     = 403;   // 无权限（业务层语义）
-    const CODE_NOT_FOUND     = 404;   // 资源不存在（业务层语义）
-    const CODE_SERVER_ERROR  = 500;   // 服务器内部错误（业务层语义）
+    const CODE_SUCCESS       = ErrorCodeEnum::SUCCESS;      // 成功
+    const CODE_PARAM_ERROR   = ErrorCodeEnum::PARAM_ERROR;  // 参数/校验错误
+    const CODE_UNAUTHORIZED  = ErrorCodeEnum::UNAUTHORIZED; // 未认证（业务层语义）
+    const CODE_FORBIDDEN     = ErrorCodeEnum::FORBIDDEN;    // 无权限（业务层语义）
+    const CODE_NOT_FOUND     = ErrorCodeEnum::NOT_FOUND;    // 资源不存在（业务层语义）
+    const CODE_SERVER_ERROR  = ErrorCodeEnum::SERVER_ERROR; // 服务器内部错误（业务层语义）
 
     /**
      * 统一响应底层方法（保持兼容：返回 [data, code, msg]）

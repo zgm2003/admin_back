@@ -4,6 +4,7 @@ namespace app\middleware;
 
 use app\dep\User\UsersDep;
 use app\dep\User\UsersTokenDep;
+use app\enum\ErrorCodeEnum;
 use Carbon\Carbon;
 use support\Request;
 use Webman\Http\Response;
@@ -19,7 +20,7 @@ class CheckToken
         $bearer = $request->header('authorization');
         if (!$bearer) {
             return json([
-                'code' => \app\module\BaseModule::CODE_UNAUTHORIZED,
+                'code' => ErrorCodeEnum::UNAUTHORIZED,
                 'data' => [],
                 'msg'  => '缺少Token',
             ]);
@@ -40,7 +41,7 @@ class CheckToken
             $row = $tokenDep->firstByToken($token);
             if (!$row) {
                 return json([
-                    'code' => \app\module\BaseModule::CODE_UNAUTHORIZED,
+                    'code' => ErrorCodeEnum::UNAUTHORIZED,
                     'data' => [],
                     'msg'  => 'Token无效或用户不存在',
                 ]);
@@ -69,7 +70,7 @@ class CheckToken
         if ($expiresAt->isPast()) {
             Redis::connection('token')->del($token);
             return json([
-                'code' => \app\module\BaseModule::CODE_UNAUTHORIZED,
+                'code' => ErrorCodeEnum::UNAUTHORIZED,
                 'data' => [],
                 'msg'  => 'Token已过期',
             ]);
@@ -82,7 +83,7 @@ class CheckToken
             Redis::connection('token')->del($token);
             $this->log("IP 地址不一致：期望 {$lastIp}，实际 {$currentIp}，Token={$token}");
             return json([
-                'code' => \app\module\BaseModule::CODE_UNAUTHORIZED,
+                'code' => ErrorCodeEnum::UNAUTHORIZED,
                 'data' => [],
                 'msg'  => 'IP地址不匹配，请重新登录',
             ]);
@@ -93,7 +94,7 @@ class CheckToken
             (new UsersTokenDep())->clearIpByToken($token);
             Redis::connection('token')->del($token);
             return json([
-                'code' => \app\module\BaseModule::CODE_UNAUTHORIZED,
+                'code' => ErrorCodeEnum::UNAUTHORIZED,
                 'data' => [],
                 'msg'  => '平台不匹配，请重新登录',
             ]);

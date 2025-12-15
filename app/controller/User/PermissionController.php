@@ -17,6 +17,7 @@ class PermissionController extends Controller{
     }
     /**
      * @OperationLog("菜单新增")
+     * @Permission("permission.add")
      */
     public function add(Request $request)
     {
@@ -26,6 +27,7 @@ class PermissionController extends Controller{
 
     /**
      * @OperationLog("菜单编辑")
+     * @Permission("permission.edit")
      */
     public function edit(Request $request){
         $this->run([PermissionModule::class,'edit'],$request);
@@ -33,6 +35,7 @@ class PermissionController extends Controller{
     }
     /**
      * @OperationLog("菜单删除")
+     * @Permission("permission.del")
      */
     public function del(Request $request)
     {

@@ -41,4 +41,32 @@ class AnnotationHelper
 
         return null;
     }
+
+    public static function getPermissionAnnotation(Request $request): ?string
+    {
+        $controllerClass = $request->controller;
+        $method          = $request->action;
+
+        if (empty($controllerClass) || empty($method)) {
+            return null;
+        }
+
+        try {
+            $refMethod  = new \ReflectionMethod($controllerClass, $method);
+            $docComment = $refMethod->getDocComment();
+            if (! $docComment) {
+                return null;
+            }
+
+            // 匹配 @Permission("xxx.xxx")
+            if (preg_match('/@Permission\("(.+?)"\)/', $docComment, $matches)) {
+                return $matches[1];
+            }
+        } catch (\ReflectionException $e) {
+            return null;
+        }
+
+        return null;
+    }
+
 }

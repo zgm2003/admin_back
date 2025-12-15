@@ -204,103 +204,126 @@ class UsersModule extends BaseModule
     {
         $user = $this->UserDep->first($request->userId);
         if (!$user) {
-            return self::response([], '用户不存在', 100);
+            return self::error('用户不存在');
         }
 
-        $data = [
+        $base = [
             'user_id'  => $user->id,
             'username' => $user->username,
             'avatar'   => $user->avatar,
         ];
 
-        // 叶子级权限 ID 列表
-        $resRole = $this->RoleDep->first($user->role_id);
-        $leafIds = json_decode($resRole->permission_id, true);
+        // 把 user 直接传下去
+        $perm = $this->buildPermissionContextByUser($user);
+
+        Cache::set(
+            'auth_perm_uid_' . $user->id,
+            $perm['buttonCodes'],
+            300
+        );
+
+        return self::success(array_merge($base, $perm));
+    }
+
+
+    /**
+     * ⭐ 权限计算唯一事实源
+     * 返回：menus / router / buttonCodes
+     */
+    private function buildPermissionContextByUser($user): array
+    {
+        $role = $this->RoleDep->first($user->role_id);
+        $leafIds = json_decode($role->permission_id ?? '', true);
+
         if (empty($leafIds) || !is_array($leafIds)) {
-            return self::response(array_merge($data, [
+            return [
                 'permissions' => [],
-                'router'      => [],
-                'buttons'     => []
-            ]));
+                'router' => [],
+                'buttonCodes' => [],
+            ];
         }
 
-        // 获取所有权限（数组），包含 type, code
+        // 2️⃣ 所有“自身启用”的权限
         $allPerms = $this->PermissionDep->getAllPermissions();
         $permMap  = array_column($allPerms, null, 'id');
 
+        // 3️⃣ 向上补齐父链
         $includeSet = [];
         foreach ($leafIds as $leafId) {
             $cur = (int)$leafId;
             while (isset($permMap[$cur]) && !isset($includeSet[$cur])) {
                 $includeSet[$cur] = true;
                 $parent = (int)$permMap[$cur]['parent_id'];
-                if ($parent === -1 || !isset($permMap[$parent])) break;
+                if ($parent === -1 || !isset($permMap[$parent])) {
+                    break;
+                }
                 $cur = $parent;
             }
         }
-        $includeIds = array_map('intval', array_keys($includeSet));
 
-        // 仅保留“自身启用且祖先链完整且启用”的权限
+        // 4️⃣ 父链完整性校验（强关联）
         $isChainEnabled = function (int $id) use ($permMap): bool {
-            if (!isset($permMap[$id])) return false;
             $cur = $id;
             while (true) {
-                // 当前节点必须存在（已过滤 is_del=NO, status=YES）
                 if (!isset($permMap[$cur])) return false;
-                $parent = $permMap[$cur]['parent_id'];
-                if ($parent === -1) break;
-                // 如果父节点不在 $permMap（通常为禁用或删除），视为链断裂
+                $parent = (int)$permMap[$cur]['parent_id'];
+                if ($parent === -1) return true;
                 if (!isset($permMap[$parent])) return false;
                 $cur = $parent;
             }
-            return true;
         };
-        $enabledIds = array_values(array_filter($includeIds, fn($id) => $isChainEnabled((int)$id)));
 
-        // ✅ 构造权限树（type=1 或 type=2）
+        $enabledIds = array_values(array_filter(
+            array_keys($includeSet),
+            fn($id) => $isChainEnabled((int)$id)
+        ));
+
+        // 5️⃣ 菜单树（目录 + 页面）
         $menusData = array_filter($allPerms, fn($p) =>
             in_array($p['id'], $enabledIds, true) &&
-            in_array($p['type'], [PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE])
+            in_array($p['type'], [
+                PermissionEnum::TYPE_DIR,
+                PermissionEnum::TYPE_PAGE
+            ])
         );
         $menus = $this->buildPermissionTree($menusData, -1);
 
-        // ✅ 构造前端路由（只保留 type = 页面（2） 且有 path & component）
+        // 6️⃣ 前端路由（仅页面）
         $router = [];
         foreach ($menusData as $m) {
             if (
                 $m['type'] == PermissionEnum::TYPE_PAGE &&
                 !empty($m['path']) &&
-                !empty($m['component']) &&
-                // 父链必须完整且启用，避免菜单禁用但仍下发路由
-                $isChainEnabled((int)$m['id'])
+                !empty($m['component'])
             ) {
                 $router[] = [
                     'name' => 'menu_' . $m['id'],
-                    'path'      => $m['path'],
+                    'path' => $m['path'],
                     'component' => $m['component'],
-                    'meta'      => [
-                        'menuId' => (string)$m['id']
+                    'meta' => [
+                        'menuId' => (string)$m['id'],
                     ],
                 ];
             }
         }
 
-        // ✅ 构造按钮权限（type = 3）
-        $buttons = [];
-        foreach ($leafIds as $id) {
-            if (isset($permMap[$id]) && $permMap[$id]['type'] == PermissionEnum::TYPE_BUTTON) {
-                $buttons[] = [
-                    'id'   => $id,
-                    'code' => $permMap[$id]['code'],
-                ];
+        // 7️⃣ 🔥 按钮权限（最终事实源）
+        $buttonCodes = [];
+        foreach ($enabledIds as $id) {
+            if (
+                isset($permMap[$id]) &&
+                $permMap[$id]['type'] === PermissionEnum::TYPE_BUTTON &&
+                !empty($permMap[$id]['code'])
+            ) {
+                $buttonCodes[] = $permMap[$id]['code'];
             }
         }
 
-        return self::response(array_merge($data, [
-            'permissions' => $menus,
-            'router'      => $router,
-            'buttons'     => $buttons,
-        ]));
+        return [
+            'permissions'  => $menus,
+            'router'       => $router,
+            'buttonCodes'  => array_values(array_unique($buttonCodes)),
+        ];
     }
 
     private function buildPermissionTree(array $items, $parentId)

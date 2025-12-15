@@ -58,11 +58,19 @@ class UsersController extends Controller
         return $this->response();
     }
 
+    /**
+     * @OperationLog("用户编辑")
+     * @Permission("user.edit")
+     */
     public function editList(Request $request)
     {
         $this->run([UsersModule::class,'editList'],$request);
         return $this->response();
     }
+    /**
+     * @OperationLog("用户删除")
+     * @Permission("user.del")
+     */
     public function delList(Request $request)
     {
         $this->run([UsersModule::class,'delList'],$request);

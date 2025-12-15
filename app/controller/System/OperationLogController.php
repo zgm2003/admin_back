@@ -13,7 +13,9 @@ class OperationLogController extends Controller{
         return $this->response();
     }
 
-
+    /**
+     * @Permission("log.del")
+     */
     public function del(Request $request){
         $this->run([OperationLogModule::class,'del'],$request);
         return $this->response();

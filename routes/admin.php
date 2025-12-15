@@ -75,5 +75,6 @@ Route::group('/api/admin', function () {
     Route::post('/UploadDriver/list', [controller\System\UploadDriverController::class, 'list']);
 })->middleware([
     app\middleware\CheckToken::class,
-    app\middleware\OperationLog::class
+    app\middleware\OperationLog::class,
+    app\middleware\CheckPermission::class,
 ]);
