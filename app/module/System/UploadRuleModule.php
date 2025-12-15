@@ -6,8 +6,7 @@ use app\dep\System\UploadRuleDep;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\enum\CommonEnum;
-use Respect\Validation\Validator as v;
-use Respect\Validation\Exceptions\ValidationException;
+use app\validate\System\UploadRuleValidate;
 
 class UploadRuleModule extends BaseModule
 {
@@ -29,16 +28,8 @@ class UploadRuleModule extends BaseModule
 
     public function add($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'title'       => v::stringType()->length(1, 100)->setName('title'),
-                'max_size_mb' => v::intVal()->min(1)->setName('max_size_mb'),
-                'image_exts'  => v::arrayType()->setName('image_exts'),
-                'file_exts'   => v::arrayType()->setName('file_exts'),
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, UploadRuleValidate::add()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $dep = $this->dep;
         $resDep = $dep->firstByTitle($param['title']);
         if ($resDep){
@@ -56,17 +47,8 @@ class UploadRuleModule extends BaseModule
 
     public function edit($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'id'          => v::intVal()->setName('id'),
-                'title'       => v::stringType()->length(1, 100)->setName('title'),
-                'max_size_mb' => v::intVal()->min(1)->setName('max_size_mb'),
-                'image_exts'  => v::arrayType()->setName('image_exts'),
-                'file_exts'   => v::arrayType()->setName('file_exts'),
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, UploadRuleValidate::edit()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $dep = $this->dep;
         $resDep = $dep->firstByTitle($param['title']);
         if ($resDep && $resDep['id'] != $param['id']){
@@ -84,13 +66,8 @@ class UploadRuleModule extends BaseModule
 
     public function del($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'id' => v::intVal()->setName('id'),
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, UploadRuleValidate::del()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $this->dep->del($param['id'], ['is_del' => CommonEnum::YES]);
         return self::success();
     }

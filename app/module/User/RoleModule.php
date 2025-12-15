@@ -6,8 +6,7 @@ use app\dep\User\RoleDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use Respect\Validation\Validator as v;
-use Respect\Validation\Exceptions\ValidationException;
+use app\validate\User\RoleValidate;
 use support\Db;
 
 
@@ -32,14 +31,8 @@ class RoleModule extends BaseModule
 
     public function add($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'name' => v::length(1, 64)->setName('角色名'),
-                'permission_id' => v::arrayType()->setName('权限'),
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, RoleValidate::add()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $resDep = $this->roleDep->firstByName($param['name']);
         if ($resDep) {
             return self::error('角色名已存在');
@@ -77,15 +70,8 @@ class RoleModule extends BaseModule
 
     public function edit($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'id' => v::intVal()->setName('ID'),
-                'name' => v::length(1, 64)->setName('角色名'),
-                'permission_id' => v::arrayType()->setName('权限')
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, RoleValidate::edit()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $dep = $this->roleDep;
         $resDep = $dep->firstByName($param['name']);
         if ($resDep && $resDep['id'] != $param['id']) {
@@ -135,13 +121,8 @@ class RoleModule extends BaseModule
      */
     public function setDefault($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'id' => v::intVal()->setName('ID'),
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, RoleValidate::setDefault()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
 
         $dep = $this->roleDep;
         $id = (int)$param['id'];

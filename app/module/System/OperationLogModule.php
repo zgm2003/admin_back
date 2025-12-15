@@ -8,8 +8,7 @@ use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use Respect\Validation\Validator as v;
-use Respect\Validation\Exceptions\ValidationException;
+use app\validate\System\OperationLogValidate;
 
 class OperationLogModule extends BaseModule
 {
@@ -40,13 +39,8 @@ class OperationLogModule extends BaseModule
 
     public function del($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'id' => v::intVal()->setName('ID')
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, OperationLogValidate::del()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
 
         $dep = $this->operationLogDep;
 
@@ -56,16 +50,7 @@ class OperationLogModule extends BaseModule
     }
     public function list($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'page_size'    => v::optional(v::intVal()),
-                'current_page' => v::optional(v::intVal()),
-                'user_id'      => v::optional(v::intVal()),
-                'action'       => v::optional(v::stringType())
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $request->all();
         $dep = $this->operationLogDep;
         $userDep = $this->userDep;
         $param['page_size'] = isset($param['page_size']) ? $param['page_size'] : 50;

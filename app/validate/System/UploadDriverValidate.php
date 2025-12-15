@@ -1,0 +1,45 @@
+<?php
+
+namespace app\validate\System;
+
+use Respect\Validation\Validator as v;
+
+class UploadDriverValidate
+{
+    public static function add(): array
+    {
+        return [
+            'driver'        => v::stringType()->length(1, 20)->setName('driver'),
+            'secret_id'     => v::stringType()->length(1, 255)->setName('secret_id'),
+            'secret_key'    => v::stringType()->length(1, 255)->setName('secret_key'),
+            'bucket'        => v::stringType()->length(1, 255)->setName('bucket'),
+            'region'        => v::stringType()->length(1, 100)->setName('region'),
+            'appid'         => v::optional(v::stringType())->setName('appid'),
+            'endpoint'      => v::optional(v::stringType())->setName('endpoint'),
+            'bucket_domain' => v::optional(v::stringType())->setName('bucket_domain'),
+        ];
+    }
+
+    public static function edit(): array
+    {
+        return [
+            'id'            => v::intVal()->setName('id'),
+            'driver'        => v::stringType()->length(1, 20)->setName('driver'),
+            'secret_id'     => v::stringType()->length(1, 255)->setName('secret_id'),
+            'secret_key'    => v::stringType()->length(1, 255)->setName('secret_key'),
+            'bucket'        => v::stringType()->length(1, 255)->setName('bucket'),
+            'region'        => v::stringType()->length(1, 100)->setName('region'),
+            'appid'         => v::optional(v::stringType())->setName('appid'),
+            'endpoint'      => v::optional(v::stringType())->setName('endpoint'),
+            'bucket_domain' => v::optional(v::stringType())->setName('bucket_domain'),
+        ];
+    }
+
+    public static function del(): array
+    {
+        return [
+            'id' => v::intVal()->setName('id'),
+        ];
+    }
+}
+

@@ -22,6 +22,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Respect\Validation\Validator as v;
 use Respect\Validation\Exceptions\ValidationException;
+use app\validate\User\UsersValidate;
 
 class UsersModule extends BaseModule
 {
@@ -45,14 +46,8 @@ class UsersModule extends BaseModule
     public function register($request)
     {
         try {
-            $param = v::input($request->all(), [
-                'username'    => v::length(2, 64)->setName('用户名'),
-                'email'       => v::email()->setName('邮箱'),
-                'password'    => v::length(6, 64)->setName('密码'),
-                'respassword' => v::length(6, 64)->setName('确认密码'),
-                'code'        => v::digit()->length(6, 6)->setName('验证码')
-            ]);
-        } catch (ValidationException $e) {
+            $param = $this->validate($request, UsersValidate::register());
+        } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
 
@@ -102,11 +97,8 @@ class UsersModule extends BaseModule
     public function login($request)
     {
         try {
-            $param = v::input($request->all(), [
-                'email'    => v::email()->setName('邮箱'),
-                'password' => v::length(6, 64)->setName('密码')
-            ]);
-        } catch (ValidationException $e) {
+            $param = $this->validate($request, UsersValidate::login());
+        } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
 
@@ -142,11 +134,8 @@ class UsersModule extends BaseModule
     public function sendCode($request)
     {
         try {
-            $param = v::input($request->all(), [
-                'email'  => v::email()->setName('邮箱'),
-                'status' => v::optional(v::intVal())
-            ]);
-        } catch (ValidationException $e) {
+            $param = $this->validate($request, UsersValidate::sendCode());
+        } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
 

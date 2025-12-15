@@ -83,13 +83,12 @@ class BaseModule
         return [$data, $code, $e->getMessage() ?: 'server error'];
     }
 
-    public static function validate(Request $request, array $rules, array $input = null): array
+    protected function validate(Request $request, array $rules, ?array $input = null): array
     {
         try {
-            $data = v::input($input ?? $request->all(), $rules);
-            return [$data, self::CODE_SUCCESS, 'success'];
+            return v::input($input ?? $request->all(), $rules);
         } catch (ValidationException $e) {
-            return [[], self::CODE_PARAM_ERROR, $e->getMessage()];
+            throw new \RuntimeException($e->getMessage(), 0, $e);
         }
     }
 }

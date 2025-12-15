@@ -7,8 +7,7 @@ use app\enum\UploadConfigEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\enum\CommonEnum;
-use Respect\Validation\Validator as v;
-use Respect\Validation\Exceptions\ValidationException;
+use app\validate\System\UploadDriverValidate;
 
 class UploadDriverModule extends BaseModule
 {
@@ -29,20 +28,8 @@ class UploadDriverModule extends BaseModule
 
     public function add($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'driver'       => v::stringType()->length(1, 20)->setName('driver'),
-                'secret_id'    => v::stringType()->length(1, 255)->setName('secret_id'),
-                'secret_key'   => v::stringType()->length(1, 255)->setName('secret_key'),
-                'bucket'       => v::stringType()->length(1, 255)->setName('bucket'),
-                'region'       => v::stringType()->length(1, 100)->setName('region'),
-                'appid'        => v::optional(v::stringType())->setName('appid'),
-                'endpoint'     => v::optional(v::stringType())->setName('endpoint'),
-                'bucket_domain'=> v::optional(v::stringType())->setName('bucket_domain'),
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, UploadDriverValidate::add()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $data = [
             'driver' => $param['driver'],
             'secret_id' => $param['secret_id'],
@@ -59,21 +46,8 @@ class UploadDriverModule extends BaseModule
 
     public function edit($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'id'           => v::intVal()->setName('id'),
-                'driver'       => v::stringType()->length(1, 20)->setName('driver'),
-                'secret_id'    => v::stringType()->length(1, 255)->setName('secret_id'),
-                'secret_key'   => v::stringType()->length(1, 255)->setName('secret_key'),
-                'bucket'       => v::stringType()->length(1, 255)->setName('bucket'),
-                'region'       => v::stringType()->length(1, 100)->setName('region'),
-                'appid'        => v::optional(v::stringType())->setName('appid'),
-                'endpoint'     => v::optional(v::stringType())->setName('endpoint'),
-                'bucket_domain'=> v::optional(v::stringType())->setName('bucket_domain'),
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, UploadDriverValidate::edit()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $data = [
             'driver' => $param['driver'],
             'secret_id' => $param['secret_id'],
@@ -90,13 +64,8 @@ class UploadDriverModule extends BaseModule
 
     public function del($request)
     {
-        try {
-            $param = v::input($request->all(), [
-                'id' => v::intVal()->setName('id'),
-            ]);
-        } catch (ValidationException $e) {
-            return self::error($e->getMessage());
-        }
+        try { $param = $this->validate($request, UploadDriverValidate::del()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $this->dep->del($param['id'], ['is_del' => CommonEnum::YES]);
         return self::success();
     }
