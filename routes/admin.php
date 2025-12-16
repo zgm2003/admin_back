@@ -73,6 +73,14 @@ Route::group('/api/admin', function () {
     Route::post('/UploadDriver/edit', [controller\System\UploadDriverController::class, 'edit']);
     Route::post('/UploadDriver/del', [controller\System\UploadDriverController::class, 'del']);
     Route::post('/UploadDriver/list', [controller\System\UploadDriverController::class, 'list']);
+
+    //系统设置（统一接口命名）
+    Route::post('/SystemSetting/init', [controller\System\SystemSettingController::class, 'init']);
+    Route::post('/SystemSetting/add', [controller\System\SystemSettingController::class, 'add']);
+    Route::post('/SystemSetting/edit', [controller\System\SystemSettingController::class, 'edit']);
+    Route::post('/SystemSetting/del', [controller\System\SystemSettingController::class, 'del']);
+    Route::post('/SystemSetting/list', [controller\System\SystemSettingController::class, 'list']);
+    Route::post('/SystemSetting/status', [controller\System\SystemSettingController::class, 'status']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\OperationLog::class,

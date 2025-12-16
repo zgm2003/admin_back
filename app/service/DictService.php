@@ -10,6 +10,7 @@ use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\enum\SexEnum;
 use app\enum\UploadConfigEnum;
+use app\enum\SystemEnum;
 
 
 class DictService
@@ -84,6 +85,10 @@ class DictService
     }
     public function setUploadDriverArr(){
         $this->dict['upload_driver_arr'] = $this->enumToDict(UploadConfigEnum::$driverArr);
+        return $this;
+    }
+    public function setSystemSettingValueTypeArr(){
+        $this->dict['system_setting_value_type_arr'] = $this->enumToDict(SystemEnum::$valueTypeArr);
         return $this;
     }
     public function setUserArr()

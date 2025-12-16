@@ -42,7 +42,6 @@
     "alibabacloud/sdk": "^1.8",
     "phpoffice/phpspreadsheet": "^5.1",
     "webman/gateway-worker": "^1.0",
-    "php-amqplib/php-amqplib": "^3.6",
     "workerman/crontab": "^1.0",
     "workerman/validation": "^3.1"
   },

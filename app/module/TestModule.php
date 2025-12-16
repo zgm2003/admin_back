@@ -3,8 +3,6 @@
 namespace app\module;
 
 //导入部分
-use app\common\RabbitMQ;
-use app\common\TestQueue;
 use app\dep\TestDep;
 use app\enum\CommonEnum;
 use app\process\CleanExportTask;
@@ -157,21 +155,7 @@ class TestModule extends BaseModule
         return self::success();
     }
 
-    public function sendTest($request)
-    {
-        try { $param = $this->validate($request, TestValidate::sendTest()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $data = [
-            'id' => $param['id'] ?? null,
-            'abc' => $param['abc'] ?? null
-        ];
-        
-        $mq = new TestQueue(config('rabbitmq'));
-        $mq->send('', TestQueue::MAIN_QUEUE, json_encode($data));
-        $mq->close();
-        
-        return self::success();
-    }
+    // 已移除 RabbitMQ 相关示例方法
 
 
 
