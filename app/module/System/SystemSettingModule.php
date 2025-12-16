@@ -4,10 +4,10 @@ namespace app\module\System;
 
 use app\dep\System\SystemSettingDep;
 use app\enum\CommonEnum;
+use app\enum\SystemEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use Respect\Validation\Validator as v;
-use Respect\Validation\Exceptions\ValidationException;
+use app\validate\System\SystemSettingValidate;
 
 class SystemSettingModule extends BaseModule
 {
@@ -29,9 +29,8 @@ class SystemSettingModule extends BaseModule
 
     public function list($request)
     {
-        try { $param = $this->validate($request, \app\validate\System\SystemSettingValidate::list()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $param['page_size'] = $param['page_size'] ?? 50;
+        $param = $request->all();
+        $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
         $res = $this->dep->list($param);
         $list = $res->map(function ($it) {
@@ -40,8 +39,10 @@ class SystemSettingModule extends BaseModule
                 'setting_key' => $it['setting_key'],
                 'setting_value' => $it['setting_value'],
                 'value_type' => $it['value_type'],
+                'value_type_name' => SystemEnum::$valueTypeArr[$it['value_type']],
                 'remark' => $it['remark'],
                 'status' => $it['status'],
+                'status_name' => CommonEnum::$statusArr[$it['status']],
                 'is_del' => $it['is_del'],
                 'created_at' => $it['created_at']->toDateTimeString(),
                 'updated_at' => $it['updated_at']->toDateTimeString(),
@@ -58,7 +59,7 @@ class SystemSettingModule extends BaseModule
 
     public function add($request)
     {
-        try { $param = $this->validate($request, \app\validate\System\SystemSettingValidate::add()); }
+        try { $param = $this->validate($request, SystemSettingValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         if ((int)$param['type'] === 2 && !is_numeric($param['value'])) return self::error('数值类型需为数字');
         if ((int)$param['type'] === 3 && !in_array(strtolower((string)$param['value']), ['0','1','true','false'], true)) return self::error('布尔类型需为 true/false 或 0/1');
@@ -69,7 +70,7 @@ class SystemSettingModule extends BaseModule
 
     public function edit($request)
     {
-        try { $param = $this->validate($request, \app\validate\System\SystemSettingValidate::edit()); }
+        try { $param = $this->validate($request, SystemSettingValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         if ((int)$param['type'] === 2 && !is_numeric($param['value'])) return self::error('数值类型需为数字');
         if ((int)$param['type'] === 3 && !in_array(strtolower((string)$param['value']), ['0','1','true','false'], true)) return self::error('布尔类型需为 true/false 或 0/1');
@@ -85,7 +86,7 @@ class SystemSettingModule extends BaseModule
 
     public function del($request)
     {
-        try { $param = $this->validate($request, \app\validate\System\SystemSettingValidate::del()); }
+        try { $param = $this->validate($request, SystemSettingValidate::del()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $this->dep->delById($param['id']);
         return self::success();
@@ -93,7 +94,7 @@ class SystemSettingModule extends BaseModule
 
     public function status($request)
     {
-        try { $param = $this->validate($request, \app\validate\System\SystemSettingValidate::status()); }
+        try { $param = $this->validate($request, SystemSettingValidate::status()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $ok = $this->dep->setStatusById((int)$param['id'], (int)$param['status']);
         if (!$ok) return self::error('配置不存在');

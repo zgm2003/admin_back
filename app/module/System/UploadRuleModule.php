@@ -75,7 +75,7 @@ class UploadRuleModule extends BaseModule
     public function list($request)
     {
         $param = $request->all();
-        $param['page_size'] = $param['page_size'] ?? 50;
+        $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
         $res = $this->dep->list($param);
         $list = $res->map(function ($item) {

@@ -92,8 +92,8 @@ class RoleModule extends BaseModule
         $dep = $this->roleDep;
         $param = $request->all();
 
-        $param['page_size'] = isset($param['page_size']) ? $param['page_size'] : 50;
-        $param['current_page'] = isset($param['current_page']) ? $param['current_page'] : 1;
+       $param['page_size'] = $param['page_size'] ?? 20;
+        $param['current_page'] = $param['current_page'] ?? 1;
         $resList = $dep->list($param);
 
         $data['list'] = $resList->map(function ($item) {
