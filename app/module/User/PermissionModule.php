@@ -237,9 +237,6 @@ class PermissionModule extends BaseModule
     {
         $param = $request->all();
 
-        $param['page_size'] = 200;
-        $param['current_page'] = 1;
-
         $PermissionDep = $this->PermissionDep;
         $resList = $PermissionDep->list($param);
 

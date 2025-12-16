@@ -52,50 +52,9 @@ class UsersController extends Controller
         return $this->response();
     }
 
-    public function initList(Request $request)
-    {
-        $this->run([UsersModule::class,'initList'],$request);
-        return $this->response();
-    }
-
-    /**
-     * @OperationLog("用户编辑")
-     * @Permission("user.edit")
-     */
-    public function editList(Request $request)
-    {
-        $this->run([UsersModule::class,'editList'],$request);
-        return $this->response();
-    }
-    /**
-     * @OperationLog("用户删除")
-     * @Permission("user.del")
-     */
-    public function delList(Request $request)
-    {
-        $this->run([UsersModule::class,'delList'],$request);
-        return $this->response();
-    }
-    public function listList(Request $request)
-    {
-        $this->run([UsersModule::class,'listList'],$request);
-        return $this->response();
-    }
-    public function batchEditList(Request $request)
-    {
-        $this->run([UsersModule::class,'batchEditList'],$request);
-        return $this->response();
-    }
-
     public function userInfo(Request $request)
     {
         $this->run([UsersModule::class,'userInfo'],$request);
-        return $this->response();
-    }
-
-    public function exportList(Request $request)
-    {
-        $this->run([UsersModule::class,'exportList'],$request);
         return $this->response();
     }
 }

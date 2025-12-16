@@ -47,13 +47,13 @@ Route::group('/api/admin', function () {
     Route::post('/Role/del', [controller\User\RoleController::class, 'del']);
     Route::post('/Role/default', [controller\User\RoleController::class, 'default']);
 
-    //用户管理
-    Route::post('/Users/initList', [controller\User\UsersController::class, 'initList']);
-    Route::post('/Users/editList', [controller\User\UsersController::class, 'editList']);
-    Route::post('/Users/delList', [controller\User\UsersController::class, 'delList']);
-    Route::post('/Users/listList', [controller\User\UsersController::class, 'listList']);
-    Route::post('/Users/batchEditList', [controller\User\UsersController::class, 'batchEditList']);
-    Route::post('/Users/exportList', [controller\User\UsersController::class, 'exportList']);
+    //用户列表管理（拆分模块）
+    Route::post('/UsersList/init', [controller\User\UsersListController::class, 'init']);
+    Route::post('/UsersList/edit', [controller\User\UsersListController::class, 'edit']);
+    Route::post('/UsersList/del', [controller\User\UsersListController::class, 'del']);
+    Route::post('/UsersList/list', [controller\User\UsersListController::class, 'list']);
+    Route::post('/UsersList/batchEdit', [controller\User\UsersListController::class, 'batchEdit']);
+    Route::post('/UsersList/export', [controller\User\UsersListController::class, 'export']);
 
     //操作日志管理
     Route::post('/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
