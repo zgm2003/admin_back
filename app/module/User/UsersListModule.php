@@ -5,7 +5,7 @@ namespace app\module\User;
 use app\dep\AddressDep;
 use app\dep\User\RoleDep;
 use app\dep\User\UsersDep;
-use app\dep\User\UsersTokenDep;
+use app\dep\User\UserSessionsDep;
 use app\dep\User\UserProfileDep;
 use app\enum\CommonEnum;
 use app\enum\SexEnum;
@@ -18,7 +18,7 @@ use app\validate\User\UsersListValidate;
 class UsersListModule extends BaseModule
 {
     public $UserDep;
-    public $UserTokenDep;
+    public $UserSessionsDep;
     public $RoleDep;
     public $AddressDep;
     public $UserProfileDep;
@@ -26,7 +26,7 @@ class UsersListModule extends BaseModule
     public function __construct()
     {
         $this->UserDep = new UsersDep();
-        $this->UserTokenDep = new UsersTokenDep();
+        $this->UserSessionsDep = new UserSessionsDep();
         $this->RoleDep = new RoleDep();
         $this->AddressDep = new AddressDep();
         $this->UserProfileDep = new UserProfileDep();
@@ -39,6 +39,7 @@ class UsersListModule extends BaseModule
             ->setRoleArr()
             ->setAuthAdressTree()
             ->setSexArr()
+            ->setPlatformArr()
             ->getDict();
         $data['dict'] = $dict;
         return self::response($data);
@@ -86,16 +87,17 @@ class UsersListModule extends BaseModule
         $dep = $this->UserDep;
         $RoleDep = $this->RoleDep;
         $AddressDep = $this->AddressDep;
-        $UserTokenDep = $this->UserTokenDep;
+        $UserSessionsDep = $this->UserSessionsDep;
         $UserProfileDep = $this->UserProfileDep;
         $param = $request->all();
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
+        $platform = $param['platform'] ?? 'admin';
 
         $resList = $dep->list($param);
-        $data['list'] = $resList->map(function ($item) use ($RoleDep, $AddressDep, $UserTokenDep, $UserProfileDep) {
+        $data['list'] = $resList->map(function ($item) use ($RoleDep, $AddressDep, $UserSessionsDep, $UserProfileDep, $platform) {
             $resRole = $RoleDep->first($item->role_id);
-            $resUserToken = $UserTokenDep->firstByUserId($item->id);
+            $resUserSession = $UserSessionsDep->firstLatestActiveByUserPlatform($item->id, $platform);
             $profile = $UserProfileDep->firstByUserId($item->id);
             $districtId = (int)($profile->address_id ?? 0);
             $addressParts = [];
@@ -110,6 +112,13 @@ class UsersListModule extends BaseModule
             $detail = $profile->detail_address ?? '';
             $address = implode('-', $addressParts);
             $address = $address ? ($address . '-' . $detail) : $detail;
+
+            $expiresAt = $resUserSession->expires_at ?? null;
+            $isExpired = '无记录';
+            if ($expiresAt) {
+                $isExpired = $expiresAt < Carbon::now()->toDateTimeString() ? '已过期' : '未过期';
+            }
+
             return [
                 'id' => $item->id,
                 'uid' => $item->uid,
@@ -125,8 +134,12 @@ class UsersListModule extends BaseModule
                 'address_show' => $address,
                 'address' => (int)($profile->address_id ?? 0),
                 'detail_address' => $profile->detail_address ?? '',
-                'expires_in' => $resUserToken->expires_in,
-                'is_expired' => $resUserToken['expires_in'] < Carbon::now()->toDateTimeString() ? '已过期' : '未过期',
+                'expires_in' => $expiresAt,
+                'is_expired' => $isExpired,
+                'ip' => $resUserSession->ip ?? '',
+                'platform' => $resUserSession->platform ?? '',
+                'device_id' => $resUserSession->device_id ?? '',
+                'last_seen_at' => $resUserSession->last_seen_at ?? '',
                 'created_at' => $item['created_at']->toDateTimeString(),
             ];
         });

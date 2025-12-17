@@ -57,4 +57,16 @@ class UsersController extends Controller
         $this->run([UsersModule::class,'userInfo'],$request);
         return $this->response();
     }
+
+    public function refresh(Request $request)
+    {
+        $this->run([UsersModule::class, 'refresh'], $request);
+        return $this->response();
+    }
+
+    public function logout(Request $request)
+    {
+        $this->run([UsersModule::class, 'logout'], $request);
+        return $this->response();
+    }
 }

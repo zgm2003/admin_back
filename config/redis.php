@@ -39,7 +39,7 @@ return [
         'host'     => '127.0.0.1',
         'port'     => 6379,
         'database' => 2,
-        'prefix'   => 'auth_token:',
+        'prefix'   => 'atk:',
         'pool'     => [
             'max_connections'    => 20,
             'min_connections'    => 2,

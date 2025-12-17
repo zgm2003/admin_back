@@ -23,4 +23,10 @@ return [
     'runtime_path' => base_path(false) . DIRECTORY_SEPARATOR . 'runtime',
     'controller_suffix' => 'Controller',
     'controller_reuse' => false,
+
+    // 用于hash token的pepper（不要泄露，不要放前端）
+    'token_pepper' => env('TOKEN_PEPPER', ''),
+
+    // 注册默认头像（你之前问“要不要默认头像”，建议要，省得数据空一堆）
+    'default_avatar' => getenv('DEFAULT_AVATAR', ''),
 ];

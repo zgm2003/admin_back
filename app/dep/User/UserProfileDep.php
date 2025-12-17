@@ -22,5 +22,10 @@ class UserProfileDep
     {
         return $this->model->where('user_id', $userId)->update($data);
     }
+
+    public function add(array $data)
+    {
+        return $this->model->insertGetId($data);
+    }
 }
 

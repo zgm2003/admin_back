@@ -13,6 +13,12 @@ class CommonEnum
 
     const DB_DEFAULT_TIME = '2000-01-01 00:00:00';
 
+    const PLATFORM_admin = 'admin';
+    const PLATFORM_WEB = 'web';
+    const PLATFORM_APP = 'app';
+    const PLATFORM_H5 = 'h5';
+    const PLATFORM_MINI = 'mini';
+
     public static $isArr = [
         self::YES => "是",
         self::NO => "否",
@@ -23,4 +29,12 @@ class CommonEnum
     ];
 
 
+    public static $platformArr = [
+        self::PLATFORM_admin => "admin",
+        self::PLATFORM_WEB => "web",
+        self::PLATFORM_APP => "appp",
+        self::PLATFORM_H5 => "h5",
+        self::PLATFORM_MINI => "mini",
+
+    ];
 }

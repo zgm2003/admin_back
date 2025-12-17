@@ -25,6 +25,7 @@ Route::group('/api', function () {
 Route::group('/api', function () {
     Route::post('/Users/register', [controller\User\UsersController::class, 'register']);
     Route::post('/Users/login', [controller\User\UsersController::class, 'login']);
+    Route::post('/Users/refresh', [controller\User\UsersController::class, 'refresh']);
     Route::post('/Users/sendCode', [controller\User\UsersController::class, 'sendCode']);
     Route::post('/Users/forgetPassword', [controller\User\UsersController::class, 'forgetPassword']);
 
@@ -35,6 +36,7 @@ Route::group('/api', function () {
 Route::group('/api', function () {
     // 需要认证的接口
     Route::post('/Users/init', [controller\User\UsersController::class, 'init']);
+    Route::post('/Users/logout', [controller\User\UsersController::class, 'logout']);
     Route::post('/Users/initPersonal', [controller\User\UsersController::class, 'initPersonal']);
     Route::post('/Users/editPersonal', [controller\User\UsersController::class, 'editPersonal']);
     Route::post('/Users/EditPassword', [controller\User\UsersController::class, 'EditPassword']);

@@ -7,6 +7,8 @@ use app\dep\AddressDep;
 use app\dep\User\PermissionDep;
 use app\dep\User\RoleDep;
 use app\dep\User\UsersDep;
+use app\dep\User\UserSessionsDep;
+use app\dep\User\UsersLoginLogDep;
 use app\dep\User\UsersTokenDep;
 use app\dep\User\UserProfileDep;
 use app\enum\CommonEnum;
@@ -15,12 +17,10 @@ use app\enum\PermissionEnum;
 use app\enum\SexEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\service\ExportService;
+use app\service\TokenService;
 use Carbon\Carbon;
 use support\Cache;
-use Webman\RedisQueue\Redis;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use support\Redis;
 use Respect\Validation\Validator as v;
 use Respect\Validation\Exceptions\ValidationException;
 use app\validate\User\UsersValidate;
@@ -30,6 +30,8 @@ class UsersModule extends BaseModule
 
     public $UserDep;
     public $UserTokenDep;
+    public $UserSessionsDep;
+    public $UsersLoginLogDep;
     public $RoleDep;
     public $PermissionDep;
     public $AddressDep;
@@ -39,6 +41,8 @@ class UsersModule extends BaseModule
     {
         $this->UserDep = new UsersDep();
         $this->UserTokenDep = new UsersTokenDep();
+        $this->UserSessionsDep = new UserSessionsDep();
+        $this->UsersLoginLogDep = new UsersLoginLogDep();
         $this->RoleDep = new RoleDep();
         $this->PermissionDep = new PermissionDep();
         $this->AddressDep = new AddressDep();
@@ -55,7 +59,9 @@ class UsersModule extends BaseModule
         }
 
         $dep = $this->UserDep;
-        $tokenDep = $this->UserTokenDep;
+        $sessionDep = $this->UserSessionsDep;
+        $logDep = $this->UsersLoginLogDep;
+
         if ($param['password'] != $param['respassword']) {
             return self::error('两次密码不一致');
         }
@@ -72,28 +78,77 @@ class UsersModule extends BaseModule
             return self::error('邮箱已存在');
         }
 
-        // 创建随机 token
-        $token = md5(uniqid(rand(), true));
-        // 设置 token 过期时间，一周后
-        $expire_time = Carbon::now()->addWeek()->toDateTimeString();
-        $data = [
+        // Get Default Role
+        $defaultRole = $this->RoleDep->firstByDefault();
+        $roleId = $defaultRole ? $defaultRole['id'] : 0; // 0 or handle error if strictly required
+
+        // Create User
+        $userData = [
             'email' => $param['email'],
             'password' => password_hash($param['password'], PASSWORD_DEFAULT),
             'username' => $param['username'],
+            'role_id'  => $roleId,
         ];
 
-        $userId = $dep->add($data);
-        $tokenData = [
+        $userId = $dep->add($userData);
+
+        // Create User Profile
+        $profileData = [
             'user_id' => $userId,
-            'token' => $token,
-            'expires_in' => $expire_time,
+            'avatar'  =>config('app.default_avatar',''),
+            'sex' => SexEnum::UNKNOWN,
+        ];
+        $this->UserProfileDep->add($profileData);
+        
+        // Auto Login Logic
+        $platformHeader = $request->header('platform', 'admin');
+        $deviceId = $request->header('device-id', '');
+
+        // Generate Tokens
+        $tokens = TokenService::generateTokenPair();
+        
+        $sessionData = [
+            'user_id' => $userId,
+            'access_token_hash' => $tokens['access_token_hash'],
+            'refresh_token_hash' => $tokens['refresh_token_hash'],
+            'platform' => $platformHeader,
+            'device_id' => $deviceId,
             'ip' => $request->getRealIp(),
+            'ua' => $request->header('user-agent'),
+            'expires_at' => $tokens['access_expires']->toDateTimeString(),
+            'refresh_expires_at' => $tokens['refresh_expires']->toDateTimeString(),
+            'last_seen_at' => $tokens['now']->toDateTimeString(),
+            'created_at' => $tokens['now']->toDateTimeString(),
+            'updated_at' => $tokens['now']->toDateTimeString(),
+            'is_del' => CommonEnum::NO,
         ];
-        $tokenDep->add($tokenData);
-        $data1 = [
-            'token' => $token,
+        
+        $sessionId = $sessionDep->add($sessionData);
+        
+        // 3. 更新 Redis 指针 (single 策略的核心)
+        // cur_sess:{platform}:{userId} => sessionId
+        // 无论 single=true/false 都更新，确保指针永远指向最新 Session
+        // 设置 30 天 TTL，避免僵尸 Key 堆积
+        $curSessKey = "cur_sess:" . strtolower(trim($platformHeader)) . ":{$userId}";
+        Redis::connection('token')->set($curSessKey, $sessionId, 30 * 24 * 3600);
+        
+        // Log Login
+        $logData = [
+            'user_id' => $userId,
+            'email' => $param['email'],
+            'platform' => $platformHeader,
+            'ip' => $request->getRealIp(),
+            'ua' => $request->header('user-agent'),
+            'success' => 1,
+            'created_at' => $tokens['now']->toDateTimeString(),
         ];
-        return self::response($data1);
+        $logDep->add($logData);
+
+        return self::response([
+            'access_token' => $tokens['access_token'],
+            'refresh_token' => $tokens['refresh_token'],
+            'expires_in' => $tokens['access_ttl']
+        ]);
     }
 
 
@@ -106,33 +161,194 @@ class UsersModule extends BaseModule
         }
 
         $dep = $this->UserDep;
-        $tokenDep = $this->UserTokenDep;
+        $sessionDep = $this->UserSessionsDep;
+        $logDep = $this->UsersLoginLogDep;
+
+        $platformHeader = $request->header('platform', 'web');
+        $deviceId = $request->header('device-id', '');
 
         $resDep = $dep->firstByEmail($param['email']);
+        
+        $logData = [
+            'email' => $param['email'],
+            'platform' => $platformHeader,
+            'ip' => $request->getRealIp(),
+            'ua' => $request->header('user-agent'),
+            'created_at' => date('Y-m-d H:i:s'),
+        ];
+
         if (!$resDep) {
-            return self::error('邮箱不存在');
+            $logData['success'] = 0;
+            $logData['reason'] = '邮箱不存在';
+            $logDep->add($logData);
+            return self::error('账号或密码错误');
         }
+        
+        $logData['user_id'] = $resDep['id'];
 
         if (!password_verify($param['password'], $resDep['password'])) {
-            return self::error('密码不正确');
+            $logData['success'] = 0;
+            $logData['reason'] = '密码错误';
+            $logDep->add($logData);
+            return self::error('账号或密码错误');
         }
 
-        //创建一个随机token,命名为$token
-        $token = md5(uniqid(rand(), true));
-        //创建token过期时间，为创建token的一周
-        $expire_time = Carbon::now()->addWeek()->toDateTimeString();
-        $data = [
-            'token' => $token,
-            'expires_in' => $expire_time,
-            'ip' => $request->getRealIp(),
-        ];
+        // Generate Tokens
+        $tokens = TokenService::generateTokenPair();
 
-        $tokenDep->editByUserId($resDep['id'], $data);
-        $data1 = [
-            'token' => $token,
+        // Check Policies: single_session_per_platform
+        $policyConfig = config('auth.policies.' . ($platformHeader ?: 'default')) ?? config('auth.default_policy');
+        
+        // 1. 如果策略开启，先清理旧会话 (Revoke DB + Del Redis)
+        // 这一步必须在 insert 之前做，否则会把新插入的也 revoke 掉
+        if (!empty($policyConfig['single_session_per_platform'])) {
+             $oldSessions = $sessionDep->listActiveByUserPlatform($resDep['id'], $platformHeader);
+             foreach ($oldSessions as $oldSession) {
+                 Redis::connection('token')->del($oldSession->access_token_hash);
+             }
+             $sessionDep->revokeByUserPlatform($resDep['id'], $platformHeader);
+        }
+
+        $sessionData = [
+            'user_id' => $resDep['id'],
+            'access_token_hash' => $tokens['access_token_hash'],
+            'refresh_token_hash' => $tokens['refresh_token_hash'],
+            'platform' => $platformHeader,
+            'device_id' => $deviceId,
+            'ip' => $request->getRealIp(),
+            'ua' => $request->header('user-agent'),
+            'expires_at' => $tokens['access_expires']->toDateTimeString(),
+            'refresh_expires_at' => $tokens['refresh_expires']->toDateTimeString(),
+            'last_seen_at' => $tokens['now']->toDateTimeString(),
+            'created_at' => $tokens['now']->toDateTimeString(),
+            'updated_at' => $tokens['now']->toDateTimeString(),
+            'is_del' => CommonEnum::NO,
         ];
-        return self::response($data1);
+        
+        // 2. 插入新会话
+        $sessionId = $sessionDep->add($sessionData);
+        
+        // 3. 更新 Redis 指针 (single 策略的核心)
+        // cur_sess:{platform}:{userId} => sessionId
+        // 无论 single=true/false 都更新，确保指针永远指向最新 Session
+        // 设置 30 天 TTL，避免僵尸 Key 堆积
+        $curSessKey = "cur_sess:" . strtolower(trim($platformHeader)) . ":{$resDep['id']}";
+        Redis::connection('token')->set($curSessKey, $sessionId, 30 * 24 * 3600);
+        
+        $logData['success'] = 1;
+        $logDep->add($logData);
+
+        return self::response([
+            'access_token' => $tokens['access_token'],
+            'refresh_token' => $tokens['refresh_token'],
+            'expires_in' => $tokens['access_ttl']
+        ]);
     }
+
+    public function refresh($request)
+    {
+        $refreshToken = $request->post('refresh_token');
+        if (!$refreshToken) {
+            return self::error('缺少刷新令牌', 401);
+        }
+
+        try {
+            $refreshHash = TokenService::hashToken($refreshToken);
+        } catch (\Exception $e) {
+            return self::error('令牌格式错误', 401);
+        }
+
+        $sessionDep = $this->UserSessionsDep;
+        $session = $sessionDep->firstValidByRefreshHash($refreshHash);
+
+        if (!$session) {
+            return self::error('刷新令牌无效或已过期', 401);
+        }
+
+        // 核心修复：检查 Refresh Token 是否过期
+        if (Carbon::parse($session['refresh_expires_at'])->isPast()) {
+             return self::error('刷新令牌已过期，请重新登录', 401);
+        }
+
+        // 🛡️ 策略补漏：在刷新时也检查互踢策略
+        // 场景：配置从 false 改为 true 后，如果不重新登录只刷新，需要在这里把其他端踢掉
+        $platformHeader = $request->header('platform', 'web');
+        $policyConfig = config('auth.policies.' . ($platformHeader ?: 'default')) ?? config('auth.default_policy');
+        
+        if (!empty($policyConfig['single_session_per_platform'])) {
+             // 校验 Redis 指针
+             $curSessKey = "cur_sess:" . strtolower(trim($platformHeader)) . ":{$session['user_id']}";
+             $allowedSessionId = Redis::connection('token')->get($curSessKey);
+
+             // 如果指针不存在，从 DB 重建
+             if (!$allowedSessionId) {
+                 $latest = $sessionDep->firstLatestActiveByUserPlatform($session['user_id'], $platformHeader);
+                 if ($latest) {
+                     $allowedSessionId = $latest->id;
+                     Redis::connection('token')->set($curSessKey, $allowedSessionId, 30 * 24 * 3600);
+                 }
+             }
+
+             // 如果指针存在，且不等于当前会话 ID，说明当前会话已被踢下线
+             if ($allowedSessionId && (int)$allowedSessionId !== (int)$session['id']) {
+                 return self::error('账号已在其他设备登录，请重新登录', 401);
+             }
+        }
+
+        $tokens = TokenService::generateTokenPair();
+        
+        $data = [
+            'access_token_hash' => $tokens['access_token_hash'],
+            'refresh_token_hash' => $tokens['refresh_token_hash'],
+            'expires_at' => $tokens['access_expires']->toDateTimeString(),
+            // 关键：保持原有的 refresh_expires_at 不变（绝对过期策略），或者仅当需要延长时才更新
+            // 这里我们选择：绝对不延长，严格遵守首次登录时的有效期
+            'refresh_expires_at' => $session['refresh_expires_at'], 
+            'last_seen_at' => $tokens['now']->toDateTimeString(),
+            'ip' => $request->getRealIp(),
+            'ua' => $request->header('user-agent'),
+        ];
+        
+        // 保存旧的 access_token_hash 以便稍后删除缓存
+        $oldAccessHash = $session['access_token_hash'] ?? null;
+
+        $sessionDep->rotateById($session['id'], $data);
+        
+        // 删除旧 access_token 的 Redis 缓存，使其立即失效
+        if (!empty($oldAccessHash)) {
+            Redis::connection('token')->del($oldAccessHash);
+        }
+
+        // 刷新成功后，确保指针指向当前 Session（防止指针过期或意外丢失）
+        // 同时续期 TTL 30 天
+        $curSessKey = "cur_sess:" . strtolower(trim($platformHeader)) . ":{$session['user_id']}";
+        Redis::connection('token')->set($curSessKey, $session['id'], 30 * 24 * 3600);
+        
+        return self::response([
+            'access_token' => $tokens['access_token'],
+            'refresh_token' => $tokens['refresh_token'],
+            'expires_in' => $tokens['access_ttl']
+        ]);
+    }
+
+    public function logout($request)
+    {
+        $bearer = $request->header('authorization');
+        if ($bearer) {
+            $token = str_replace('Bearer ', '', $bearer);
+            try {
+                $hash = TokenService::hashToken($token);
+                $session = $this->UserSessionsDep->firstValidByAccessHash($hash);
+                if ($session) {
+                    $this->UserSessionsDep->revokeById($session['id']);
+                    // Fix: Use hash as Redis key, matching CheckToken middleware
+                    Redis::connection('token')->del($hash);
+                }
+            } catch (\Exception $e) {}
+        }
+        return self::response([], '退出成功');
+    }
+
 
     public function sendCode($request)
     {
@@ -152,7 +368,8 @@ class UsersModule extends BaseModule
             'theme' => $theme,
             'code' => $code,
         ];
-        Redis::send($queue, $data);
+        // 显式使用 RedisQueue 的 Redis 类发送消息，避免与 support\Redis 冲突
+        \Webman\RedisQueue\Redis::send($queue, $data);
 
         // 使用 MD5 对 email 进行哈希，保证缓存 key 中没有特殊字符
         $cacheKey = 'email_code_' . md5($param['email']);
