@@ -310,6 +310,14 @@ class UsersModule extends BaseModule
     }
 
 
+    /**
+     * 获取限流用的邮箱Key
+     */
+    public static function getRateLimitEmail(): string
+    {
+        return request()->post('email', '');
+    }
+
     public function sendCode($request)
     {
         try {
