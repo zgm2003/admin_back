@@ -54,6 +54,7 @@ Route::group('/api/admin', function () {
     Route::post('/UsersList/list', [controller\User\UsersListController::class, 'list']);
     Route::post('/UsersList/batchEdit', [controller\User\UsersListController::class, 'batchEdit']);
     Route::post('/UsersList/export', [controller\User\UsersListController::class, 'export']);
+    Route::post('/UsersList/kick', [controller\User\UsersListController::class, 'kick']);
 
     //操作日志管理
     Route::post('/OperationLog/init', [controller\System\OperationLogController::class, 'init']);

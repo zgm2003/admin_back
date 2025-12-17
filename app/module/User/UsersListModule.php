@@ -13,6 +13,7 @@ use app\module\BaseModule;
 use app\service\DictService;
 use app\service\ExportService;
 use Carbon\Carbon;
+use support\Redis;
 use app\validate\User\UsersListValidate;
 
 class UsersListModule extends BaseModule
@@ -217,6 +218,38 @@ class UsersListModule extends BaseModule
         $exportService = new ExportService();
         $url = $exportService->export($headers, $data, 'users_export');
         return self::response(['url' => $url]);
+    }
+
+    public function kick($request)
+    {
+        $id = $request->post('id');
+        $platform = $request->post('platform');
+        
+        if (!$id) return self::error('用户ID不能为空');
+        if (!$platform) return self::error('平台不能为空');
+
+        $sessionDep = $this->UserSessionsDep;
+        
+        // 1. 获取该用户在该平台下的最新有效会话
+        $session = $sessionDep->firstLatestActiveByUserPlatform($id, $platform);
+        
+        if (!$session) {
+            return self::error('该用户当前未在线或无有效会话');
+        }
+
+        // 2. 移除 Redis 指针
+        $curSessKey = "cur_sess:" . strtolower(trim($platform)) . ":{$id}";
+        Redis::connection('token')->del($curSessKey);
+
+        // 3. 移除 Access Token 缓存 (让其立即失效)
+        if (!empty($session->access_token_hash)) {
+            Redis::connection('token')->del($session->access_token_hash);
+        }
+
+        // 4. 数据库标记为已撤销
+        $sessionDep->revokeById($session->id);
+
+        return self::response([], '用户已踢下线');
     }
 }
 
