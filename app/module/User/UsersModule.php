@@ -9,7 +9,6 @@ use app\dep\User\RoleDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UserSessionsDep;
 use app\dep\User\UsersLoginLogDep;
-use app\dep\User\UsersTokenDep;
 use app\dep\User\UserProfileDep;
 use app\enum\CommonEnum;
 use app\enum\EmailEnum;
@@ -29,7 +28,6 @@ class UsersModule extends BaseModule
 {
 
     public $UserDep;
-    public $UserTokenDep;
     public $UserSessionsDep;
     public $UsersLoginLogDep;
     public $RoleDep;
@@ -40,7 +38,6 @@ class UsersModule extends BaseModule
     public function __construct()
     {
         $this->UserDep = new UsersDep();
-        $this->UserTokenDep = new UsersTokenDep();
         $this->UserSessionsDep = new UserSessionsDep();
         $this->UsersLoginLogDep = new UsersLoginLogDep();
         $this->RoleDep = new RoleDep();
@@ -343,6 +340,18 @@ class UsersModule extends BaseModule
                     $this->UserSessionsDep->revokeById($session['id']);
                     // Fix: Use hash as Redis key, matching CheckToken middleware
                     Redis::connection('token')->del($hash);
+
+                    // 补充：按需清理 cur_sess 指针
+                    // 如果 Redis 里的 cur_sess 刚好指向当前这个要注销的会话，就把它删掉
+                    // 这样能保持 Redis 状态干净，避免指针指向一个已注销的死会话
+                    $platform = $session['platform'];
+                    if ($platform) {
+                        $curSessKey = "cur_sess:" . strtolower(trim($platform)) . ":{$session['user_id']}";
+                        $currentPtr = Redis::connection('token')->get($curSessKey);
+                        if ($currentPtr && (int)$currentPtr === (int)$session['id']) {
+                            Redis::connection('token')->del($curSessKey);
+                        }
+                    }
                 }
             } catch (\Exception $e) {}
         }
