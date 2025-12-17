@@ -4,11 +4,11 @@ namespace app\middleware;
 
 use app\dep\User\UserSessionsDep;
 use app\enum\ErrorCodeEnum;
-use app\service\TokenService;
+use app\service\User\TokenService;
 use Carbon\Carbon;
+use support\Redis;
 use support\Request;
 use Webman\Http\Response;
-use support\Redis;
 
 class CheckToken
 {

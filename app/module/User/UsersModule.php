@@ -5,22 +5,22 @@ namespace app\module\User;
 use app\dep\AddressDep;
 use app\dep\User\PermissionDep;
 use app\dep\User\RoleDep;
+use app\dep\User\UserProfileDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UserSessionsDep;
-use app\dep\User\UserProfileDep;
 use app\enum\CommonEnum;
 use app\enum\EmailEnum;
 use app\enum\SexEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\service\TokenService;
 use app\service\User\PermissionService;
+use app\service\User\TokenService;
+use app\validate\User\UsersValidate;
 use Carbon\Carbon;
+use Respect\Validation\Exceptions\ValidationException;
+use Respect\Validation\Validator as v;
 use support\Cache;
 use support\Redis;
-use Respect\Validation\Validator as v;
-use Respect\Validation\Exceptions\ValidationException;
-use app\validate\User\UsersValidate;
 
 class UsersModule extends BaseModule
 {
