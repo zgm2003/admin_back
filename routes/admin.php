@@ -61,6 +61,11 @@ Route::group('/api/admin', function () {
     Route::post('/OperationLog/list', [controller\System\OperationLogController::class, 'list']);
     Route::post('/OperationLog/del', [controller\System\OperationLogController::class, 'del']);
 
+    //用户登录日志管理
+    Route::post('/UsersLoginLog/init', [controller\System\UsersLoginLogController::class, 'init']);
+    Route::post('/UsersLoginLog/list', [controller\System\UsersLoginLogController::class, 'list']);
+
+
     //上传规则
     Route::post('/UploadRule/init', [controller\System\UploadRuleController::class, 'init']);
     Route::post('/UploadRule/add', [controller\System\UploadRuleController::class, 'add']);
