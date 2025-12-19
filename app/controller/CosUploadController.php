@@ -3,7 +3,6 @@
 namespace app\controller;
 
 use support\Request;
-use Qcloud\Cos\Client;
 use TencentCloud\Sts\V20180813\Models\GetFederationTokenRequest;
 use TencentCloud\Sts\V20180813\StsClient;
 use TencentCloud\Common\Credential;
