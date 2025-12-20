@@ -73,7 +73,7 @@ class UploadSettingDep
 
     public function clearStatus()
     {
-        return $this->model->where('status', 1)->update(['status' => 2]);
+        return $this->model->where('status', CommonEnum::YES)->update(['status' => CommonEnum::NO]);
     }
 
     public function getActive()
@@ -86,8 +86,17 @@ class UploadSettingDep
                 'ud.driver', 'ud.secret_id', 'ud.secret_key', 'ud.bucket', 'ud.region', 'ud.appid', 'ud.role_arn', 'ud.endpoint', 'ud.bucket_domain',
                 'ur.title as rule_title', 'ur.max_size_mb', 'ur.image_exts', 'ur.file_exts'
             )
-            ->where('us.status', 1)
+            ->where('us.status', CommonEnum::YES)
             ->where('us.is_del', CommonEnum::NO)
             ->first();
+    }
+    
+    public function hasEnabledIn(array $ids): bool
+    {
+        return $this->model
+            ->whereIn('id', $ids)
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->exists();
     }
 }

@@ -52,7 +52,7 @@ class UploadSettingModule extends BaseModule
             'remark'    => $param['remark'] ?? '',
         ];
 
-        if ((int)$param['status'] === 1) {
+        if ((int)$param['status'] === CommonEnum::YES) {
             Db::beginTransaction();
             try {
                 $this->dep->clearStatus();
@@ -85,7 +85,7 @@ class UploadSettingModule extends BaseModule
             'remark'    => $param['remark'] ?? '',
         ];
 
-        if ((int)$param['status'] === 1) {
+        if ((int)$param['status'] === CommonEnum::YES) {
             Db::beginTransaction();
             try {
                 $this->dep->clearStatus();
@@ -105,7 +105,11 @@ class UploadSettingModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadSettingValidate::del()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $this->dep->del($param['id'], ['is_del' => CommonEnum::YES]);
+        $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [ (int)$param['id'] ];
+        if ($this->dep->hasEnabledIn($ids)) {
+            return self::error('包含启用的上传设置，无法删除');
+        }
+        $this->dep->del($ids, ['is_del' => CommonEnum::YES]);
         return self::success();
     }
     
@@ -114,7 +118,7 @@ class UploadSettingModule extends BaseModule
         try { $param = $this->validate($request, UploadSettingValidate::status()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         
-        if ((int)$param['status'] === 1) {
+        if ((int)$param['status'] === CommonEnum::YES) {
             Db::beginTransaction();
             try {
                 $this->dep->clearStatus();
