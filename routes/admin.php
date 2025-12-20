@@ -80,6 +80,14 @@ Route::group('/api/admin', function () {
     Route::post('/UploadDriver/del', [controller\System\UploadDriverController::class, 'del']);
     Route::post('/UploadDriver/list', [controller\System\UploadDriverController::class, 'list']);
 
+    //上传配置
+    Route::post('/UploadSetting/init', [controller\System\UploadSettingController::class, 'init']);
+    Route::post('/UploadSetting/add', [controller\System\UploadSettingController::class, 'add']);
+    Route::post('/UploadSetting/edit', [controller\System\UploadSettingController::class, 'edit']);
+    Route::post('/UploadSetting/del', [controller\System\UploadSettingController::class, 'del']);
+    Route::post('/UploadSetting/list', [controller\System\UploadSettingController::class, 'list']);
+    Route::post('/UploadSetting/status', [controller\System\UploadSettingController::class, 'status']);
+
     //系统设置（统一接口命名）
     Route::post('/SystemSetting/init', [controller\System\SystemSettingController::class, 'init']);
     Route::post('/SystemSetting/add', [controller\System\SystemSettingController::class, 'add']);

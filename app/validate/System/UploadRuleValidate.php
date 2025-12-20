@@ -10,7 +10,7 @@ class UploadRuleValidate
     {
         return [
             'title'       => v::stringType()->length(1, 100)->setName('title'),
-            'max_size_mb' => v::intVal()->min(1)->setName('max_size_mb'),
+            'max_size_mb' => v::intVal()->min(1)->max(10240)->setName('max_size_mb'),
             'image_exts'  => v::arrayType()->setName('image_exts'),
             'file_exts'   => v::arrayType()->setName('file_exts'),
         ];
@@ -21,7 +21,7 @@ class UploadRuleValidate
         return [
             'id'          => v::intVal()->setName('id'),
             'title'       => v::stringType()->length(1, 100)->setName('title'),
-            'max_size_mb' => v::intVal()->min(1)->setName('max_size_mb'),
+            'max_size_mb' => v::intVal()->min(1)->max(10240)->setName('max_size_mb'),
             'image_exts'  => v::arrayType()->setName('image_exts'),
             'file_exts'   => v::arrayType()->setName('file_exts'),
         ];
@@ -30,7 +30,7 @@ class UploadRuleValidate
     public static function del(): array
     {
         return [
-            'id' => v::intVal()->setName('id'),
+            'id' => v::oneOf(v::intVal(), v::arrayType())->setName('ID'),
         ];
     }
 

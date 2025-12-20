@@ -12,13 +12,15 @@ class UploadRuleController extends Controller{
     }
     /**
      * @OperationLog("上传规则新增")
+     * @Permission("uploadRule.add")
      */
     public function add(Request $request){
         $this->run([UploadRuleModule::class,'add'],$request);
         return $this->response();
     }
     /**
-     * @OperationLog("上传规则编辑")s
+     * @OperationLog("上传规则编辑")
+     * @Permission("uploadRule.edit")
      */
     public function edit(Request $request){
         $this->run([UploadRuleModule::class,'edit'],$request);
@@ -26,6 +28,7 @@ class UploadRuleController extends Controller{
     }
     /**
      * @OperationLog("上传规则删除")
+     * @Permission("uploadRule.del")
      */
     public function del(Request $request){
         $this->run([UploadRuleModule::class,'del'],$request);

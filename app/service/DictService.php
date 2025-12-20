@@ -3,6 +3,8 @@
 namespace app\service;
 
 use app\dep\AddressDep;
+use app\dep\System\UploadDriverDep;
+use app\dep\System\UploadRuleDep;
 use app\dep\User\RoleDep;
 use app\dep\User\PermissionDep;
 use app\dep\User\UsersDep;
@@ -85,6 +87,20 @@ class DictService
     }
     public function setUploadDriverArr(){
         $this->dict['upload_driver_arr'] = $this->enumToDict(UploadConfigEnum::$driverArr);
+        return $this;
+    }
+    public function setUploadDriverList(){
+        $dep = new UploadDriverDep();
+        $this->dict['upload_driver_list'] = $dep->setDict()->map(function($item){
+            return ['label' => $item->driver . ' - ' . $item->bucket, 'value' => $item->id];
+        });
+        return $this;
+    }
+    public function setUploadRuleList(){
+        $dep = new UploadRuleDep();
+        $this->dict['upload_rule_list'] = $dep->setDict()->map(function($item){
+            return ['label' => $item->title, 'value' => $item->id];
+        });
         return $this;
     }
     public function setSystemSettingValueTypeArr(){

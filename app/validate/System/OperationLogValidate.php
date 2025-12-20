@@ -9,7 +9,7 @@ class OperationLogValidate
     public static function del(): array
     {
         return [
-            'id' => v::intVal()->setName('ID'),
+            'id' => v::oneOf(v::intVal(), v::arrayType())->setName('ID'),
         ];
     }
 

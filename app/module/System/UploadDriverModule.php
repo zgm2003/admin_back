@@ -30,12 +30,17 @@ class UploadDriverModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadDriverValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $exists = $this->dep->firstByDriverBucket($param['driver'], $param['bucket']);
+        if ($exists) {
+            return self::error('同一驱动下该桶已存在');
+        }
         $data = [
             'driver' => $param['driver'],
             'secret_id' => $param['secret_id'],
             'secret_key' => $param['secret_key'],
             'bucket' => $param['bucket'],
             'region' => $param['region'],
+            'role_arn' => $param['role_arn'] ?? null,
             'appid' => $param['appid'] ?? null,
             'endpoint' => $param['endpoint'] ?? null,
             'bucket_domain' => $param['bucket_domain'] ?? null,
@@ -48,12 +53,17 @@ class UploadDriverModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadDriverValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $exists = $this->dep->firstByDriverBucket($param['driver'], $param['bucket']);
+        if ($exists && $exists['id'] != $param['id']) {
+            return self::error('同一驱动下该桶已存在');
+        }
         $data = [
             'driver' => $param['driver'],
             'secret_id' => $param['secret_id'],
             'secret_key' => $param['secret_key'],
             'bucket' => $param['bucket'],
             'region' => $param['region'],
+            'role_arn' => $param['role_arn'] ?? null,
             'appid' => $param['appid'] ?? null,
             'endpoint' => $param['endpoint'] ?? null,
             'bucket_domain' => $param['bucket_domain'] ?? null,
@@ -85,6 +95,7 @@ class UploadDriverModule extends BaseModule
                 'secret_key' => $item['secret_key'],
                 'bucket' => $item['bucket'],
                 'region' => $item['region'],
+                'role_arn' => $item['role_arn'],
                 'appid' => $item['appid'],
                 'endpoint' => $item['endpoint'],
                 'bucket_domain' => $item['bucket_domain'],

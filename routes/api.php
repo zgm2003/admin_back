@@ -31,6 +31,7 @@ Route::group('/api', function () {
 
     Route::post('/test', [controller\TestController::class, 'test']);
     Route::post('/test/sendTest', [controller\TestController::class, 'sendTest']);
+
 });
 
 Route::group('/api', function () {
@@ -42,7 +43,8 @@ Route::group('/api', function () {
     Route::post('/Users/EditPassword', [controller\User\UsersController::class, 'EditPassword']);
 
 
-    Route::post('/getUploadToken', [controller\CosUploadController::class, 'getUploadToken']);
+
+    Route::post('/getUploadToken', [controller\UploadController::class, 'getUploadToken']);
 
 
 })->middleware([

@@ -15,6 +15,7 @@ class UploadDriverValidate
             'bucket'        => v::stringType()->length(1, 255)->setName('bucket'),
             'region'        => v::stringType()->length(1, 100)->setName('region'),
             'appid'         => v::optional(v::stringType())->setName('appid'),
+            'role_arn'    => v::optional(v::stringType())->setName('role_arn'),
             'endpoint'      => v::optional(v::stringType())->setName('endpoint'),
             'bucket_domain' => v::optional(v::stringType())->setName('bucket_domain'),
         ];
@@ -30,6 +31,7 @@ class UploadDriverValidate
             'bucket'        => v::stringType()->length(1, 255)->setName('bucket'),
             'region'        => v::stringType()->length(1, 100)->setName('region'),
             'appid'         => v::optional(v::stringType())->setName('appid'),
+            'role_arn'    => v::optional(v::stringType())->setName('role_arn'),
             'endpoint'      => v::optional(v::stringType())->setName('endpoint'),
             'bucket_domain' => v::optional(v::stringType())->setName('bucket_domain'),
         ];
@@ -38,7 +40,7 @@ class UploadDriverValidate
     public static function del(): array
     {
         return [
-            'id' => v::intVal()->setName('id'),
+            'id' => v::oneOf(v::intVal(), v::arrayType())->setName('ID'),
         ];
     }
 }

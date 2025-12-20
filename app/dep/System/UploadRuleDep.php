@@ -23,6 +23,11 @@ class UploadRuleDep
         return $this->model->where('title', $title)->first();
     }
 
+    public function setDict()
+    {
+        return $this->model->select(['id','title'])->where('is_del', CommonEnum::NO)->get();
+    }
+
     public function add($data)
     {
         return $this->model->insertGetId($data);

@@ -30,6 +30,20 @@ class UploadDriverDep
         return $this->model->whereIn('id', $id)->update($data);
     }
 
+    public function firstByDriverBucket($driver, $bucket)
+    {
+        return $this->model
+            ->where('driver', $driver)
+            ->where('bucket', $bucket)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
+    }
+
+    public function setDict()
+    {
+        return $this->model->select(['id','driver','bucket'])->where('is_del', CommonEnum::NO)->get();
+    }
+
     public function del($id, $data)
     {
         if (!is_array($id)) $id = [$id];

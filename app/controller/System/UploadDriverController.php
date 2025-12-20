@@ -12,6 +12,7 @@ class UploadDriverController extends Controller{
     }
     /**
      * @OperationLog("上传驱动新增")
+     * @Permission("uploadDriver.add")
      */
     public function add(Request $request){
         $this->run([UploadDriverModule::class,'add'],$request);
@@ -19,6 +20,7 @@ class UploadDriverController extends Controller{
     }
     /**
      * @OperationLog("上传驱动编辑")
+     * @Permission("uploadDriver.edit")
      */
     public function edit(Request $request){
         $this->run([UploadDriverModule::class,'edit'],$request);
@@ -26,6 +28,7 @@ class UploadDriverController extends Controller{
     }
     /**
      * @OperationLog("上传驱动删除")
+     * @Permission("uploadDriver.del")
      */
     public function del(Request $request){
         $this->run([UploadDriverModule::class,'del'],$request);

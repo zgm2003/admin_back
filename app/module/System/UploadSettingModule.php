@@ -1,0 +1,160 @@
+<?php
+
+namespace app\module\System;
+
+use app\dep\System\UploadDriverDep;
+use app\dep\System\UploadRuleDep;
+use app\dep\System\UploadSettingDep;
+use app\module\BaseModule;
+use app\service\DictService;
+use app\enum\CommonEnum;
+use app\validate\System\UploadSettingValidate;
+use support\Db;
+
+class UploadSettingModule extends BaseModule
+{
+    public $dep;
+    public $uploadDriverDep;
+    public $uploadRuleDep;
+
+    public function __construct()
+    {
+        $this->dep = new UploadSettingDep();
+        $this->uploadDriverDep = new UploadDriverDep;
+        $this->uploadRuleDep = new UploadRuleDep;
+
+    }
+
+    public function init($request){
+        $dictService = new DictService();
+        $data['dict'] = $dictService
+            ->setCommonStatusArr()
+            ->setUploadDriverList()
+            ->setUploadRuleList()
+            ->getDict();
+        return self::success($data);
+    }
+
+    public function add($request)
+    {
+        try { $param = $this->validate($request, UploadSettingValidate::add()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        
+        $exists = $this->dep->firstByDriverRule($param['driver_id'], $param['rule_id']);
+        if ($exists) {
+            return self::error('该驱动与规则组合已存在');
+        }
+
+        $data = [
+            'driver_id' => $param['driver_id'],
+            'rule_id'   => $param['rule_id'],
+            'status'    => $param['status'],
+            'remark'    => $param['remark'] ?? '',
+        ];
+
+        if ((int)$param['status'] === 1) {
+            Db::beginTransaction();
+            try {
+                $this->dep->clearStatus();
+                $this->dep->add($data);
+                Db::commit();
+            } catch (\Throwable $e) {
+                Db::rollBack();
+                return self::error('新增失败：' . $e->getMessage());
+            }
+        } else {
+            $this->dep->add($data);
+        }
+        return self::success();
+    }
+
+    public function edit($request)
+    {
+        try { $param = $this->validate($request, UploadSettingValidate::edit()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        
+        $exists = $this->dep->firstByDriverRule($param['driver_id'], $param['rule_id']);
+        if ($exists && $exists['id'] != $param['id']) {
+            return self::error('该驱动与规则组合已存在');
+        }
+
+        $data = [
+            'driver_id' => $param['driver_id'],
+            'rule_id'   => $param['rule_id'],
+            'status'    => $param['status'],
+            'remark'    => $param['remark'] ?? '',
+        ];
+
+        if ((int)$param['status'] === 1) {
+            Db::beginTransaction();
+            try {
+                $this->dep->clearStatus();
+                $this->dep->edit($param['id'], $data);
+                Db::commit();
+            } catch (\Throwable $e) {
+                Db::rollBack();
+                return self::error('编辑失败：' . $e->getMessage());
+            }
+        } else {
+            $this->dep->edit($param['id'], $data);
+        }
+        return self::success();
+    }
+
+    public function del($request)
+    {
+        try { $param = $this->validate($request, UploadSettingValidate::del()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $this->dep->del($param['id'], ['is_del' => CommonEnum::YES]);
+        return self::success();
+    }
+    
+    public function status($request)
+    {
+        try { $param = $this->validate($request, UploadSettingValidate::status()); }
+        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        
+        if ((int)$param['status'] === 1) {
+            Db::beginTransaction();
+            try {
+                $this->dep->clearStatus();
+                $this->dep->edit($param['id'], ['status' => $param['status']]);
+                Db::commit();
+            } catch (\Throwable $e) {
+                Db::rollBack();
+                return self::error('状态变更失败：' . $e->getMessage());
+            }
+        } else {
+            $this->dep->edit($param['id'], ['status' => $param['status']]);
+        }
+        return self::success();
+    }
+
+    public function list($request)
+    {
+        $param = $request->all();
+        $param['page_size'] = $param['page_size'] ?? 20;
+        $param['current_page'] = $param['current_page'] ?? 1;
+        $res = $this->dep->list($param);
+        $list = $res->map(function ($item) {
+            return [
+                'id' => $item['id'],
+                'driver_id' => $item['driver_id'],
+                'rule_id' => $item['rule_id'],
+                'driver_name' => $item['driver'] . ' - ' . $item['bucket'],
+                'rule_name' => $item['rule_title'],
+                'status' => $item['status'],
+                'remark' => $item['remark'],
+                'created_at' => $item['created_at']->toDateTimeString(),
+                'updated_at' => $item['updated_at']->toDateTimeString(),
+            ];
+        });
+        $page = [
+            'page_size' => $param['page_size'],
+            'current_page' => $param['current_page'],
+            'total_page' => $res->lastPage(),
+            'total' => $res->total(),
+        ];
+        return self::paginate($list, $page);
+    }
+}

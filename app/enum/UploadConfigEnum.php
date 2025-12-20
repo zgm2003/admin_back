@@ -67,12 +67,12 @@ class UploadConfigEnum
 
     // 驱动（对象存储提供商）
     const DRIVER_COS   = 'cos';   // 腾讯云 COS
-//    const DRIVER_OSS   = 'oss';   // 阿里云 OSS
+    const DRIVER_OSS   = 'oss';   // 阿里云 OSS
 //    const DRIVER_S3    = 's3';    // AWS S3 及兼容
 //    const DRIVER_QINIU = 'qiniu'; // 七牛云 Kodo
     public static $driverArr = [
         self::DRIVER_COS   => '腾讯云 COS',
-//        self::DRIVER_OSS   => '阿里云 OSS',
+        self::DRIVER_OSS   => '阿里云 OSS',
 //        self::DRIVER_S3    => 'AWS S3',
 //        self::DRIVER_QINIU => '七年云 Kodo',
     ];
