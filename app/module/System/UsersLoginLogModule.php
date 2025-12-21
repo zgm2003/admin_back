@@ -24,6 +24,7 @@ class UsersLoginLogModule extends BaseModule
 
         $dict = $dictService
             ->setUserArr()
+            ->setPlatformArr()
             ->getDict();
 
         $data['dict'] = $dict;

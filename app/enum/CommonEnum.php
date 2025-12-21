@@ -32,7 +32,7 @@ class CommonEnum
     public static $platformArr = [
         self::PLATFORM_admin => "admin",
         self::PLATFORM_WEB => "web",
-        self::PLATFORM_APP => "appp",
+        self::PLATFORM_APP => "app",
         self::PLATFORM_H5 => "h5",
         self::PLATFORM_MINI => "mini",
 
