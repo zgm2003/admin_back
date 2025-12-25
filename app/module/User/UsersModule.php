@@ -48,52 +48,7 @@ class UsersModule extends BaseModule
 
     public function register($request)
     {
-        try {
-            $param = $this->validate($request, UsersValidate::register());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
-
-        $dep = $this->UserDep;
-
-        if ($param['password'] != $param['respassword']) {
-            return self::error('两次密码不一致');
-        }
-
-        // 用 MD5 生成安全的缓存 key
-        $cacheKey = 'email_code_' . md5($param['email']);
-        $code = Cache::get($cacheKey);
-        if ($code != $param['code']) {
-            return self::error('验证码错误');
-        }
-
-        if ($dep->firstByEmail($param['email'])) {
-            return self::error('邮箱已存在');
-        }
-
-        // Get Default Role
-        $defaultRole = $this->RoleDep->firstByDefault();
-        $roleId = $defaultRole ? $defaultRole['id'] : 0;
-
-        // Create User
-        $userData = [
-            'email' => $param['email'],
-            'password' => password_hash($param['password'], PASSWORD_DEFAULT),
-            'username' => $param['username'],
-            'role_id'  => $roleId,
-        ];
-
-        $userId = $dep->add($userData);
-
-        // Create User Profile
-        $this->UserProfileDep->add([
-            'user_id' => $userId,
-            'avatar'  => config('app.default_avatar', ''),
-            'sex' => SexEnum::UNKNOWN,
-        ]);
-
-        // Auto Login Logic: Create Session & Return Tokens
-        return self::response($this->createSession($userId, $param['email'], $request));
+        return self::error('注册功能已合并至登录，请直接登录');
     }
 
 
@@ -104,6 +59,30 @@ class UsersModule extends BaseModule
         return self::success($dict);
     }
 
+    /**
+     * 判断异常是否为唯一键冲突 (MySQL Error 1062)
+     */
+    private function isDuplicateKey(\Throwable $e): bool
+    {
+        // 1) Illuminate/DBAL 类异常经常有 errorInfo
+        if (property_exists($e, 'errorInfo') && is_array($e->errorInfo)) {
+            // MySQL duplicate entry error code
+            if (isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
+                return true;
+            }
+        }
+
+        // 2) PDOException 也可能有 errorInfo
+        if ($e instanceof \PDOException && isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
+            return true;
+        }
+
+        // 3) 兜底：从 message 判断（不同驱动 message 会有差异）
+        $msg = $e->getMessage();
+        return (strpos($msg, 'Duplicate entry') !== false) || (strpos($msg, '1062') !== false);
+    }
+
+
     public function login($request)
     {
         try {
@@ -112,49 +91,98 @@ class UsersModule extends BaseModule
             return self::error($e->getMessage());
         }
 
-        $platformHeader = $request->header('platform', 'web');
         $loginType = $param['login_type'];
-        $resDep = null;
 
-        // 根据 login_type 精准查找
-        if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
-            if (!isValidEmail($param['login_account'])) {
-                return self::error('邮箱格式不正确');
+        // 1. 验证阶段
+        if ($loginType === SystemEnum::LOGIN_TYPE_USERNAME) {
+            if (empty($param['password'])) {
+                return self::error('请输入密码');
             }
-            $resDep = $this->UserDep->firstByEmail($param['login_account']);
-        } elseif ($loginType === SystemEnum::LOGIN_TYPE_PHONE) {
-            // 简单校验手机号格式
-            if (!is_valid_phone_number($param['login_account'])) {
-                return self::error('手机号格式不正确');
+            // 用户名登录
+            $resDep = $this->UserDep->firstByUsername($param['login_account']);
+            if (!$resDep || empty($resDep['password']) || !password_verify($param['password'], $resDep['password'])) {
+                 return self::error('账号或密码错误');
             }
-            $resDep = $this->UserDep->firstByPhone($param['login_account']);
+        } else {
+            // 邮箱或手机号登录 (需验证码)
+            if (empty($param['code'])) {
+                return self::error('请输入验证码');
+            }
+            
+            $cacheKey = '';
+            if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
+                if (!isValidEmail($param['login_account'])) return self::error('邮箱格式不正确');
+                $cacheKey = 'email_code_' . md5($param['login_account']);
+            } elseif ($loginType === SystemEnum::LOGIN_TYPE_PHONE) {
+                if (!is_valid_phone_number($param['login_account'])) return self::error('手机号格式不正确');
+                $cacheKey = 'phone_code_' . md5($param['login_account']);
+            }
+
+            $code = Cache::get($cacheKey);
+            if (!$code || $code != $param['code']) {
+                return self::error('验证码错误或已失效');
+            }
+            Cache::delete($cacheKey);
+            
+            // 查找用户
+            if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
+                $resDep = $this->UserDep->firstByEmail($param['login_account']);
+            } else {
+                $resDep = $this->UserDep->firstByPhone($param['login_account']);
+            }
+
+            // 自动注册逻辑
+            if (!$resDep) {
+                \support\Db::beginTransaction();
+                try {
+                    // Get Default Role
+                    $defaultRole = $this->RoleDep->firstByDefault();
+                    $roleId = $defaultRole ? $defaultRole['id'] : 0;
+                    
+                    $userData = [
+                        'username' => $param['login_account'], // 默认用户名
+                        'password' => null, // 无密码
+                        'role_id'  => $roleId,
+                        'email'    => $loginType === SystemEnum::LOGIN_TYPE_EMAIL ? $param['login_account'] : null,
+                        'phone'    => $loginType === SystemEnum::LOGIN_TYPE_PHONE ? $param['login_account'] : null,
+                    ];
+                    $userId = $this->UserDep->add($userData);
+                    
+                    $this->UserProfileDep->add([
+                        'user_id' => $userId,
+                        'avatar'  => config('app.default_avatar', ''),
+                        'sex' => SexEnum::UNKNOWN,
+                    ]);
+                    
+                    \support\Db::commit();
+                    
+                    // 重新获取用户对象
+                    $resDep = $this->UserDep->first($userId);
+                } catch (\Exception $e) {
+                    \support\Db::rollBack();
+                    
+                    // 幂等处理：如果是唯一键冲突，说明并发请求已经创建了用户
+                    if ($this->isDuplicateKey($e)) {
+                        // 重试查找用户
+                        if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
+                            $resDep = $this->UserDep->firstByEmail($param['login_account']);
+                        } else {
+                            $resDep = $this->UserDep->firstByPhone($param['login_account']);
+                        }
+                        
+                        // 如果重查还是没找到（极小概率），则抛出原异常
+                        if (!$resDep) {
+                            return self::error('自动注册失败(并发冲突): ' . $e->getMessage());
+                        }
+                        // 如果找到了，继续下面的登录逻辑
+                    } else {
+                        // logger()->error('auto register failed', ['err' => (string)$e]);
+                        return self::error('自动注册失败，请稍后重试');
+                    }
+                }
+            }
         }
-
-        $logData = [
-            'login_account' => $param['login_account'],
-            'login_type' => $loginType,
-            'platform' => $platformHeader,
-            'ip' => $request->getRealIp(),
-            'ua' => $request->header('user-agent'),
-            'created_at' => date('Y-m-d H:i:s'),
-            'success' => 0,
-        ];
-
-        if (!$resDep) {
-            $logData['reason'] = '账号不存在';
-            \Webman\RedisQueue\Redis::send('user-login-log', $logData);
-            return self::error('账号或密码错误');
-        }
-
-        $logData['user_id'] = $resDep['id'];
-
-        if (!password_verify($param['password'], $resDep['password'])) {
-            $logData['reason'] = '密码错误';
-            \Webman\RedisQueue\Redis::send('user-login-log', $logData);
-            return self::error('账号或密码错误');
-        }
-
-        // Create Session & Return Tokens
+        
         return self::response($this->createSession($resDep['id'], $param['login_account'], $request, $loginType));
     }
 
@@ -351,24 +379,35 @@ class UsersModule extends BaseModule
             return self::error($e->getMessage());
         }
 
-        // 生成验证码
-        $code = rand(100000, 999999);
-        // 获取邮件主题，防止状态传值错误，建议加个 isset 判断
-        $theme = isset(EmailEnum::$statusArr[$param['status']]) ? EmailEnum::$statusArr[$param['status']] : '默认主题';
-        $queue = "email-send";
-        $data = [
-            'email' => $param['email'],
-            'theme' => $theme,
-            'code' => $code,
-        ];
-        // 显式使用 RedisQueue 的 Redis 类发送消息，避免与 support\Redis 冲突
-        \Webman\RedisQueue\Redis::send($queue, $data);
+        $account = $param['login_account'];
+        
+        // 判断是邮箱还是手机号
+        if (isValidEmail($account)) {
+            // 邮箱发送逻辑
+            $code = rand(100000, 999999);
+            $theme = isset(EmailEnum::$statusArr[$param['status'] ?? 0]) ? EmailEnum::$statusArr[$param['status'] ?? 0] : '默认主题';
+            $queue = "email-send";
+            $data = [
+                'email' => $account,
+                'theme' => $theme,
+                'code' => $code,
+            ];
+            \Webman\RedisQueue\Redis::send($queue, $data);
 
-        // 使用 MD5 对 email 进行哈希，保证缓存 key 中没有特殊字符
-        $cacheKey = 'email_code_' . md5($param['email']);
-        // 设置验证码缓存，5 分钟有效，300 秒
-        Cache::set($cacheKey, $code, 300);
-        return self::response([], '验证码发送成功');
+            $cacheKey = 'email_code_' . md5($account);
+            Cache::set($cacheKey, $code, 300);
+            return self::response([], '验证码发送成功');
+
+        } elseif (is_valid_phone_number($account)) {
+            // 手机号发送逻辑 (Mock)
+            $code = 123456; // 方便测试
+            // TODO: 接入真实的短信发送服务
+            $cacheKey = 'phone_code_' . md5($account);
+            Cache::set($cacheKey, $code, 300);
+            return self::response([], '验证码发送成功(测试:123456)');
+        } else {
+            return self::error('请输入正确的邮箱或手机号');
+        }
     }
 
     public function forgetPassword($request)
@@ -541,4 +580,6 @@ class UsersModule extends BaseModule
 
         return self::response([], '密码修改成功', 200);
     }
+
+
 }

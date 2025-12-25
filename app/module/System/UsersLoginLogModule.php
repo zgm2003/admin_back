@@ -6,6 +6,7 @@ use app\dep\System\UsersLoginLogDep;
 use app\dep\User\UsersDep;
 use app\module\BaseModule;
 use app\service\DictService;
+use app\enum\SystemEnum;
 
 class UsersLoginLogModule extends BaseModule
 {
@@ -25,6 +26,7 @@ class UsersLoginLogModule extends BaseModule
         $dict = $dictService
             ->setUserArr()
             ->setPlatformArr()
+            ->setLoginTypeArr()
             ->getDict();
 
         $data['dict'] = $dict;
@@ -57,6 +59,7 @@ class UsersLoginLogModule extends BaseModule
                 'user_name' => $username,
                 'login_account' => $item['login_account'],
                 'login_type' => $item['login_type'],
+                'login_type_name' => SystemEnum::$loginTypeArr[$item['login_type']],
                 'platform' => $item['platform'],
                 'ip' => $item['ip'],
                 'ua' => $item['ua'],

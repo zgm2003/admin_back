@@ -30,6 +30,11 @@ class UsersDep
         return $res;
     }
 
+    public function firstByUsername($username){
+        $res = $this->model->where('username',$username)->first();
+        return $res;
+    }
+
     public function firstByAccount($account)
     {
         return $this->model->where('email', $account)

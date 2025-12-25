@@ -22,7 +22,8 @@ class UsersValidate
     {
         return [
             'login_account' => v::stringType()->length(1, 120)->setName('账号'),
-            'password'      => v::length(6, 64)->setName('密码'),
+            'password'      => v::optional(v::length(6, 64))->setName('密码'),
+            'code'          => v::optional(v::digit()->length(6, 6))->setName('验证码'),
             'login_type'    => v::stringType()->in(array_keys(SystemEnum::$loginTypeArr))->setName('登录类型')
         ];
     }
@@ -30,7 +31,7 @@ class UsersValidate
     public static function sendCode(): array
     {
         return [
-            'email'  => v::email()->setName('邮箱'),
+            'login_account' => v::stringType()->setName('账号'),
             'status' => v::optional(v::intVal()),
         ];
     }

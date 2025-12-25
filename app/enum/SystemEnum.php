@@ -18,10 +18,12 @@ class SystemEnum
 
     const LOGIN_TYPE_EMAIL = 'email';
     const LOGIN_TYPE_PHONE = 'phone';
+    const LOGIN_TYPE_USERNAME = 'username';
 
     public static $loginTypeArr = [
         self::LOGIN_TYPE_EMAIL => '邮箱登录',
         self::LOGIN_TYPE_PHONE => '手机号登录',
+        self::LOGIN_TYPE_USERNAME => '账号登录',
     ];
 }
 
