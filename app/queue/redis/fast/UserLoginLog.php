@@ -2,8 +2,8 @@
 
 namespace app\queue\redis\fast;
 
+use app\dep\System\UsersLoginLogDep;
 use Webman\RedisQueue\Consumer;
-use app\dep\User\UsersLoginLogDep;
 
 class UserLoginLog implements Consumer
 {

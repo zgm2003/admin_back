@@ -1,8 +1,8 @@
 <?php
 
-namespace app\dep\User;
+namespace app\dep\System;
 
-use app\model\User\UsersLoginLogModel;
+use app\model\System\UsersLoginLogModel;
 
 class UsersLoginLogDep
 {
@@ -24,8 +24,11 @@ class UsersLoginLogDep
             ->when(!empty($param['user_id']), function ($query) use ($param) {
                 $query->where('user_id', $param['user_id']);
             })
-            ->when(!empty($param['email']), function ($query) use ($param) {
-                $query->where('email', 'like', "%{$param['email']}%");
+            ->when(!empty($param['login_account']), function ($query) use ($param) {
+                $query->where('login_account', 'like', "%{$param['login_account']}%");
+            })
+            ->when(!empty($param['login_type']), function ($query) use ($param) {
+                $query->where('login_type', $param['login_type']);
             })
             ->when(!empty($param['ip']), function ($query) use ($param) {
                 $query->where('ip', 'like', "%{$param['ip']}%");

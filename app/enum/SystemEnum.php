@@ -15,5 +15,13 @@ class SystemEnum
         self::VALUE_BOOL   => '布尔',
         self::VALUE_JSON   => 'JSON',
     ];
+
+    const LOGIN_TYPE_EMAIL = 'email';
+    const LOGIN_TYPE_PHONE = 'phone';
+
+    public static $loginTypeArr = [
+        self::LOGIN_TYPE_EMAIL => '邮箱登录',
+        self::LOGIN_TYPE_PHONE => '手机号登录',
+    ];
 }
 

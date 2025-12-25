@@ -2,8 +2,8 @@
 
 namespace app\module\System;
 
+use app\dep\System\UsersLoginLogDep;
 use app\dep\User\UsersDep;
-use app\dep\User\UsersLoginLogDep;
 use app\module\BaseModule;
 use app\service\DictService;
 
@@ -55,7 +55,8 @@ class UsersLoginLogModule extends BaseModule
             return [
                 'id' => $item['id'],
                 'user_name' => $username,
-                'email' => $item['email'],
+                'login_account' => $item['login_account'],
+                'login_type' => $item['login_type'],
                 'platform' => $item['platform'],
                 'ip' => $item['ip'],
                 'ua' => $item['ua'],

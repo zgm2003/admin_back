@@ -11,6 +11,7 @@ use app\dep\User\UserSessionsDep;
 use app\enum\CommonEnum;
 use app\enum\EmailEnum;
 use app\enum\SexEnum;
+use app\enum\SystemEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\service\User\PermissionService;
@@ -96,6 +97,13 @@ class UsersModule extends BaseModule
     }
 
 
+    public function getLoginConfig()
+    {
+        $dictService = new DictService();
+        $dict = $dictService->setLoginTypeArr()->getDict();
+        return self::success($dict);
+    }
+
     public function login($request)
     {
         try {
@@ -105,10 +113,26 @@ class UsersModule extends BaseModule
         }
 
         $platformHeader = $request->header('platform', 'web');
-        $resDep = $this->UserDep->firstByEmail($param['email']);
+        $loginType = $param['login_type'];
+        $resDep = null;
+
+        // 根据 login_type 精准查找
+        if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
+            if (!isValidEmail($param['login_account'])) {
+                return self::error('邮箱格式不正确');
+            }
+            $resDep = $this->UserDep->firstByEmail($param['login_account']);
+        } elseif ($loginType === SystemEnum::LOGIN_TYPE_PHONE) {
+            // 简单校验手机号格式
+            if (!is_valid_phone_number($param['login_account'])) {
+                return self::error('手机号格式不正确');
+            }
+            $resDep = $this->UserDep->firstByPhone($param['login_account']);
+        }
 
         $logData = [
-            'email' => $param['email'],
+            'login_account' => $param['login_account'],
+            'login_type' => $loginType,
             'platform' => $platformHeader,
             'ip' => $request->getRealIp(),
             'ua' => $request->header('user-agent'),
@@ -117,7 +141,7 @@ class UsersModule extends BaseModule
         ];
 
         if (!$resDep) {
-            $logData['reason'] = '邮箱不存在';
+            $logData['reason'] = '账号不存在';
             \Webman\RedisQueue\Redis::send('user-login-log', $logData);
             return self::error('账号或密码错误');
         }
@@ -131,14 +155,14 @@ class UsersModule extends BaseModule
         }
 
         // Create Session & Return Tokens
-        return self::response($this->createSession($resDep['id'], $param['email'], $request));
+        return self::response($this->createSession($resDep['id'], $param['login_account'], $request, $loginType));
     }
 
     /**
      * 通用会话创建逻辑
      * 包含：生成Token、策略检查(互踢)、写入Session DB、更新Redis指针、异步日志
      */
-    private function createSession(int $userId, string $email, $request): array
+    private function createSession(int $userId, string $loginAccount, $request, string $loginType = 'email'): array
     {
         $platformHeader = $request->header('platform', 'web');
         $deviceId = $request->header('device-id', '');
@@ -182,7 +206,8 @@ class UsersModule extends BaseModule
         // 6. Async Log (Success)
         \Webman\RedisQueue\Redis::send('user-login-log', [
             'user_id' => $userId,
-            'email' => $email,
+            'login_account' => $loginAccount, // 记录当前登录的账号
+            'login_type' => $loginType, // 记录准确的登录类型
             'platform' => $platformHeader,
             'ip' => $request->getRealIp(),
             'ua' => $request->header('user-agent'),
@@ -437,7 +462,7 @@ class UsersModule extends BaseModule
     {
         try {
             $param = v::input($request->all(), [
-                'username'       => v::length(1, 64)->setName('用户名'),
+                'username'       => v::length(1, 50)->setName('用户名'),
                 'avatar'         => v::optional(v::stringType()),
                 'phone'          => v::optional(v::stringType()),
                 'sex'            => v::intVal()->setName('性别'),

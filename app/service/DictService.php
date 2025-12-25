@@ -19,6 +19,10 @@ class DictService
 {
     public $dict = [];
 
+    public function setLoginTypeArr(){
+        $this->dict['login_type_arr'] = $this->enumToDict(SystemEnum::$loginTypeArr);
+        return $this;
+    }
     public function setSexArr(){
         $this->dict['sexArr'] = $this->enumToDict(SexEnum::$SexArr);
         return $this;

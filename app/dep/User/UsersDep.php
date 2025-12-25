@@ -25,6 +25,19 @@ class UsersDep
         return $res;
     }
 
+    public function firstByPhone($phone){
+        $res = $this->model->where('phone',$phone)->first();
+        return $res;
+    }
+
+    public function firstByAccount($account)
+    {
+        return $this->model->where('email', $account)
+            ->orWhere('username', $account)
+            ->orWhere('phone', $account)
+            ->first();
+    }
+
     public function add($data)
     {
         $res = $this->model->insertGetId($data);
