@@ -17,6 +17,7 @@ class UploadModule extends BaseModule
         'upload',
         'file',
         'image',
+        'article'
     ];
 
     public function getUploadToken($request)
