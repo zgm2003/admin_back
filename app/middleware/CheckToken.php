@@ -106,7 +106,7 @@ class CheckToken
         
         // Bind Platform
         if (!empty($policyConfig['bind_platform'])) {
-             if ($currentPlatform && strtolower($session['platform']) !== strtolower($currentPlatform)) {
+             if (!$currentPlatform || strtolower($session['platform']) !== strtolower($currentPlatform)) {
                  return json(['code' => ErrorCodeEnum::UNAUTHORIZED, 'msg' => '平台不匹配', 'data' => []]);
              }
         }
@@ -114,7 +114,7 @@ class CheckToken
         // Bind Device
         $currentDevice = $request->header('device-id');
         if (!empty($policyConfig['bind_device']) && !empty($session['device_id'])) {
-             if ($currentDevice && $currentDevice !== $session['device_id']) {
+             if (!$currentDevice || $currentDevice !== $session['device_id']) {
                  return json(['code' => ErrorCodeEnum::UNAUTHORIZED, 'msg' => '设备变更，请重新登录', 'data' => []]);
              }
         }

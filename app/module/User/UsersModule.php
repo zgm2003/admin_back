@@ -269,7 +269,7 @@ class UsersModule extends BaseModule
         }
 
         // Check Policy
-        $platform = $request->header('platform', 'admin');
+        $platform = $session['platform'];
         if (!$this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id'])) {
             return self::error('账号已在其他设备登录，请重新登录', 401);
         }
