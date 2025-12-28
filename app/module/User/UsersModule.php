@@ -94,21 +94,32 @@ class UsersModule extends BaseModule
         $loginType = $param['login_type'];
 
         // 1. 验证阶段
-        if ($loginType === SystemEnum::LOGIN_TYPE_USERNAME) {
+        if ($loginType === SystemEnum::LOGIN_TYPE_PASSWORD) {
             if (empty($param['password'])) {
                 return self::error('请输入密码');
             }
-            // 用户名登录
-            $resDep = $this->UserDep->firstByUsername($param['login_account']);
-            if (!$resDep || empty($resDep['password']) || !password_verify($param['password'], $resDep['password'])) {
-                 return self::error('账号或密码错误');
+            $account = $param['login_account'];
+
+            // 智能判断账号类型 (Email / Phone)
+            if (isValidEmail($account)) {
+                $resDep = $this->UserDep->firstByEmail($account);
+            } elseif (is_valid_phone_number($account)) {
+                $resDep = $this->UserDep->firstByPhone($account);
+            } else {
+                // 如果既不是邮箱也不是手机号，直接返回错误（因为username已废弃作为登录凭证）
+                return self::error('请输入正确的邮箱或手机号');
             }
+
+            if (!$resDep) return self::error('账号或密码错误');
+            if (empty($resDep['password'])) return self::error('该账号未设置密码，请使用验证码登录后设置密码');
+            if (!password_verify($param['password'], $resDep['password'])) return self::error('账号或密码错误');
+
         } else {
             // 邮箱或手机号登录 (需验证码)
             if (empty($param['code'])) {
                 return self::error('请输入验证码');
             }
-            
+
             $cacheKey = '';
             if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
                 if (!isValidEmail($param['login_account'])) return self::error('邮箱格式不正确');
@@ -123,7 +134,7 @@ class UsersModule extends BaseModule
                 return self::error('验证码错误或已失效');
             }
             Cache::delete($cacheKey);
-            
+
             // 查找用户
             if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
                 $resDep = $this->UserDep->firstByEmail($param['login_account']);
@@ -138,29 +149,29 @@ class UsersModule extends BaseModule
                     // Get Default Role
                     $defaultRole = $this->RoleDep->firstByDefault();
                     $roleId = $defaultRole ? $defaultRole['id'] : 0;
-                    
+
                     $userData = [
-                        'username' => $param['login_account'], // 默认用户名
+                        'username' => 'User_' . rand(100000, 999999), // 生成默认随机昵称
                         'password' => null, // 无密码
-                        'role_id'  => $roleId,
-                        'email'    => $loginType === SystemEnum::LOGIN_TYPE_EMAIL ? $param['login_account'] : null,
-                        'phone'    => $loginType === SystemEnum::LOGIN_TYPE_PHONE ? $param['login_account'] : null,
+                        'role_id' => $roleId,
+                        'email' => $loginType === SystemEnum::LOGIN_TYPE_EMAIL ? $param['login_account'] : null,
+                        'phone' => $loginType === SystemEnum::LOGIN_TYPE_PHONE ? $param['login_account'] : null,
                     ];
                     $userId = $this->UserDep->add($userData);
-                    
+
                     $this->UserProfileDep->add([
                         'user_id' => $userId,
-                        'avatar'  => config('app.default_avatar', ''),
+                        'avatar' => config('app.default_avatar', ''),
                         'sex' => SexEnum::UNKNOWN,
                     ]);
-                    
+
                     \support\Db::commit();
-                    
+
                     // 重新获取用户对象
                     $resDep = $this->UserDep->first($userId);
                 } catch (\Exception $e) {
                     \support\Db::rollBack();
-                    
+
                     // 幂等处理：如果是唯一键冲突，说明并发请求已经创建了用户
                     if ($this->isDuplicateKey($e)) {
                         // 重试查找用户
@@ -169,7 +180,7 @@ class UsersModule extends BaseModule
                         } else {
                             $resDep = $this->UserDep->firstByPhone($param['login_account']);
                         }
-                        
+
                         // 如果重查还是没找到（极小概率），则抛出原异常
                         if (!$resDep) {
                             return self::error('自动注册失败(并发冲突): ' . $e->getMessage());
@@ -182,7 +193,7 @@ class UsersModule extends BaseModule
                 }
             }
         }
-        
+
         return self::response($this->createSession($resDep['id'], $param['login_account'], $request, $loginType));
     }
 
@@ -265,7 +276,7 @@ class UsersModule extends BaseModule
         if (!$session) return self::error('刷新令牌无效或已过期', 401);
 
         if (Carbon::parse($session['refresh_expires_at'])->isPast()) {
-             return self::error('刷新令牌已过期，请重新登录', 401);
+            return self::error('刷新令牌已过期，请重新登录', 401);
         }
 
         // Check Policy
@@ -275,18 +286,18 @@ class UsersModule extends BaseModule
         }
 
         $tokens = TokenService::generateTokenPair();
-        
+
         // Rotate Session
         $this->UserSessionsDep->rotateById($session['id'], [
             'access_token_hash' => $tokens['access_token_hash'],
             'refresh_token_hash' => $tokens['refresh_token_hash'],
             'expires_at' => $tokens['access_expires']->toDateTimeString(),
-            'refresh_expires_at' => $session['refresh_expires_at'], 
+            'refresh_expires_at' => $session['refresh_expires_at'],
             'last_seen_at' => $tokens['now']->toDateTimeString(),
             'ip' => $request->getRealIp(),
             'ua' => $request->header('user-agent'),
         ]);
-        
+
         // Cleanup Old Access Token
         if (!empty($session['access_token_hash'])) {
             Redis::connection('token')->del($session['access_token_hash']);
@@ -294,7 +305,7 @@ class UsersModule extends BaseModule
 
         // Update Pointer
         $this->updateSessionPointer($session['user_id'], $platform, $session['id']);
-        
+
         return self::response([
             'access_token' => $tokens['access_token'],
             'refresh_token' => $tokens['refresh_token'],
@@ -311,13 +322,14 @@ class UsersModule extends BaseModule
             $token = str_replace('Bearer ', '', $bearer);
             $hash = TokenService::hashToken($token);
             $session = $this->UserSessionsDep->firstValidByAccessHash($hash);
-            
+
             if ($session) {
                 $this->UserSessionsDep->revokeById($session['id']);
                 Redis::connection('token')->del($hash);
                 $this->clearSessionPointerIfMatches($session['user_id'], $session['platform'], $session['id']);
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
 
         return self::response([], '退出成功');
     }
@@ -380,7 +392,7 @@ class UsersModule extends BaseModule
         }
 
         $account = $param['login_account'];
-        
+
         // 判断是邮箱还是手机号
         if (isValidEmail($account)) {
             // 邮箱发送逻辑
@@ -414,9 +426,9 @@ class UsersModule extends BaseModule
     {
         try {
             $param = v::input($request->all(), [
-                'email'      => v::email()->setName('邮箱'),
-                'newpassword'=> v::length(6, 64)->setName('新密码'),
-                'code'       => v::digit()->length(6, 6)->setName('验证码')
+                'email' => v::email()->setName('邮箱'),
+                'newpassword' => v::length(6, 64)->setName('新密码'),
+                'code' => v::digit()->length(6, 6)->setName('验证码')
             ]);
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
@@ -450,9 +462,9 @@ class UsersModule extends BaseModule
         $profile = $this->UserProfileDep->firstByUserId($user->id);
 
         $base = [
-            'user_id'  => $user->id,
+            'user_id' => $user->id,
             'username' => $user->username,
-            'avatar'   => $profile->avatar,
+            'avatar' => $profile->avatar,
         ];
 
         // 把 user 直接传下去
@@ -501,13 +513,13 @@ class UsersModule extends BaseModule
     {
         try {
             $param = v::input($request->all(), [
-                'username'       => v::length(1, 50)->setName('用户名'),
-                'avatar'         => v::optional(v::stringType()),
-                'phone'          => v::optional(v::stringType()),
-                'sex'            => v::intVal()->setName('性别'),
-                'address'        => v::intVal()->setName('地址'),
+                'username' => v::length(1, 50)->setName('用户名'),
+                'avatar' => v::optional(v::stringType()),
+                'phone' => v::optional(v::stringType()),
+                'sex' => v::intVal()->setName('性别'),
+                'address' => v::intVal()->setName('地址'),
                 'detail_address' => v::optional(v::stringType()),
-                'bio'            => v::optional(v::stringType())
+                'bio' => v::optional(v::stringType())
             ]);
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
@@ -543,7 +555,7 @@ class UsersModule extends BaseModule
     {
         try {
             $param = v::input($request->all(), [
-                'password'    => v::length(6, 64)->setName('原始密码'),
+                'password' => v::length(6, 64)->setName('原始密码'),
                 'newpassword' => v::length(6, 64)->setName('新密码'),
                 'respassword' => v::length(6, 64)->setName('确认新密码')
             ]);
