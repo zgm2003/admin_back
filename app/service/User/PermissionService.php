@@ -35,120 +35,124 @@ class PermissionService
             ];
         }
 
-        // 2️⃣ 所有“自身启用”的权限
+        // 1. 获取全量权限数据 (建议Dep层做缓存)
         $allPerms = $this->permissionDep->getAllPermissions();
         $permMap  = array_column($allPerms, null, 'id');
 
-        // 3️⃣ 向上补齐父链
-        $includeSet = [];
+        // 2. 高效计算有效权限ID (叶子节点向上回溯 + 路径缓存)
+        $enabledIdMap = [];
         foreach ($leafIds as $leafId) {
-            $cur = (int)$leafId;
-            while (isset($permMap[$cur]) && !isset($includeSet[$cur])) {
-                $includeSet[$cur] = true;
-                $parent = (int)$permMap[$cur]['parent_id'];
-                if ($parent === -1 || !isset($permMap[$parent])) {
+            $curr = (int)$leafId;
+            if (!isset($permMap[$curr])) continue;
+
+            $path = [];
+            $isValid = false;
+            $visited = []; // 环检测
+
+            while (isset($permMap[$curr])) {
+                // 如果遇到已确认有效的节点，则当前路径剩余部分必然有效
+                if (isset($enabledIdMap[$curr])) {
+                    $isValid = true;
                     break;
                 }
-                $cur = $parent;
+                
+                // 环检测
+                if (isset($visited[$curr])) break;
+                $visited[$curr] = true;
+
+                $path[] = $curr;
+                $parentId = (int)$permMap[$curr]['parent_id'];
+
+                if ($parentId === -1) {
+                    $isValid = true;
+                    break;
+                }
+                $curr = $parentId;
+            }
+
+            if ($isValid) {
+                foreach ($path as $id) {
+                    $enabledIdMap[$id] = true;
+                }
             }
         }
+        
+        $enabledIds = array_keys($enabledIdMap);
 
-        // 4️⃣ 父链完整性校验（强关联）
-        $isChainEnabled = function (int $id) use ($permMap): bool {
-            $cur = $id;
-            while (true) {
-                if (!isset($permMap[$cur])) return false;
-                $parent = (int)$permMap[$cur]['parent_id'];
-                if ($parent === -1) return true;
-                if (!isset($permMap[$parent])) return false;
-                $cur = $parent;
+        // 3. 分类收集数据
+        $menusData = [];
+        $routerData = [];
+        $buttonCodes = [];
+
+        foreach ($enabledIds as $id) {
+            $p = $permMap[$id];
+            
+            // 按钮权限
+            if ($p['type'] === PermissionEnum::TYPE_BUTTON && !empty($p['code'])) {
+                $buttonCodes[] = $p['code'];
             }
-        };
 
-        $enabledIds = array_values(array_filter(
-            array_keys($includeSet),
-            fn($id) => $isChainEnabled((int)$id)
-        ));
-
-        // 5️⃣ 菜单树（目录 + 页面）
-        // 过滤规则：
-        // 1. 在 enabledIds 中（有权限）
-        // 2. 类型是目录或页面
-        // 3. show_menu 不等于 NO（即只保留显示或未设置的，CommonEnum::NO = 2）
-        $menusData = array_filter($allPerms, fn($p) =>
-            in_array($p['id'], $enabledIds, true) &&
-            in_array($p['type'], [
-                PermissionEnum::TYPE_DIR,
-                PermissionEnum::TYPE_PAGE
-            ]) &&
-            (!isset($p['show_menu']) || (int)$p['show_menu'] !== CommonEnum::NO)
-        );
-        $menus = $this->buildPermissionTree($menusData, -1);
-        
-        // 6️⃣ 前端路由（仅页面）
-        // 注意：路由不需要过滤 show_menu，隐藏菜单的页面依然需要注册路由
-        $routerData = array_filter($allPerms, fn($p) =>
-            in_array($p['id'], $enabledIds, true) &&
-            $p['type'] == PermissionEnum::TYPE_PAGE
-        );
-        
-        $router = [];
-        foreach ($routerData as $m) {
-            if (
-                !empty($m['path']) &&
-                !empty($m['component'])
-            ) {
-                $router[] = [
-                    'name' => 'menu_' . $m['id'],
-                    'path' => $m['path'],
-                    'component' => $m['component'],
-                    'meta' => [
-                        'menuId' => (string)$m['id'],
-                    ],
+            // 路由数据 (仅页面)
+            if ($p['type'] == PermissionEnum::TYPE_PAGE && !empty($p['path']) && !empty($p['component'])) {
+                 $routerData[] = [
+                    'name' => 'menu_' . $p['id'],
+                    'path' => $p['path'],
+                    'component' => $p['component'],
+                    'meta' => ['menuId' => (string)$p['id']],
                 ];
             }
-        }
 
-        // 7️⃣ 🔥 按钮权限（最终事实源）
-        $buttonCodes = [];
-        foreach ($enabledIds as $id) {
-            if (
-                isset($permMap[$id]) &&
-                $permMap[$id]['type'] === PermissionEnum::TYPE_BUTTON &&
-                !empty($permMap[$id]['code'])
-            ) {
-                $buttonCodes[] = $permMap[$id]['code'];
+            // 菜单数据 (目录 + 页面)
+            // 注：前端需要全量数据来处理面包屑和Tab显隐，这里不过滤 show_menu
+            if (in_array($p['type'], [PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE])) {
+                $menusData[] = $p;
             }
         }
+
+        // 4. 构建树 (O(N)复杂度)
+        $menus = $this->buildPermissionTree($menusData);
 
         return [
             'permissions'  => $menus,
-            'router'       => $router,
+            'router'       => $routerData,
             'buttonCodes'  => array_values(array_unique($buttonCodes)),
         ];
     }
 
-    private function buildPermissionTree(array $items, $parentId)
+    /**
+     * O(N) 复杂度构建树
+     */
+    private function buildPermissionTree(array $items)
     {
         $tree = [];
+        $map = [];
+
+        // 初始化 Map
         foreach ($items as $item) {
-            if ($item['parent_id'] === $parentId) {
-                $children = $this->buildPermissionTree($items, $item['id']);
-                $node     = [
-                    'index'    => (string)$item['id'],
-                    'label'    => $item['name'],
-                    'path'     => $item['path'],
-                    'icon'     => $item['icon'],
-                    'children' => [],
-                    'i18n_key' => isset($item['i18n_key']) ? $item['i18n_key'] : '',
-                    'show_menu'=> isset($item['show_menu']) ? (int)$item['show_menu'] : CommonEnum::YES,
-                ];
-                if (!empty($children)) {
-                    $node['children'] = $children;
+            $map[$item['id']] = [
+                'index'    => (string)$item['id'],
+                'label'    => $item['name'],
+                'path'     => $item['path'],
+                'icon'     => $item['icon'],
+                'children' => [],
+                'i18n_key' => $item['i18n_key'] ?? '',
+                'show_menu'=> isset($item['show_menu']) ? (int)$item['show_menu'] : CommonEnum::YES,
+                'parent_id'=> (int)$item['parent_id'], // 用于后续挂载
+            ];
+        }
+
+        // 组装树
+        foreach ($map as $id => &$node) {
+            $parentId = $node['parent_id'];
+            if ($parentId === -1) {
+                $tree[] = &$node;
+            } else {
+                if (isset($map[$parentId])) {
+                    $map[$parentId]['children'][] = &$node;
                 }
-                $tree[] = $node;
             }
         }
+
         return $tree;
     }
 }
