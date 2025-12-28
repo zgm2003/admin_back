@@ -4,6 +4,7 @@ namespace app\validate\User;
 
 use Respect\Validation\Validator as v;
 use app\enum\PermissionEnum;
+use app\enum\CommonEnum;
 
 class PermissionValidate
 {
@@ -19,6 +20,7 @@ class PermissionValidate
             'i18n_key'  => v::optional(v::length(1, 128)),
             'code'      => v::optional(v::length(1, 128)),
             'sort'      => v::intVal()->between(1, 1000)->setName('排序'),
+            'show_menu' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO]))->setName('是否显示菜单'),
         ];
     }
 
@@ -35,6 +37,7 @@ class PermissionValidate
             'i18n_key'  => v::optional(v::length(1, 128)),
             'code'      => v::optional(v::length(1, 128)),
             'sort'      => v::intVal()->between(1, 1000)->setName('排序'),
+            'show_menu' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO]))->setName('是否显示菜单'),
         ];
     }
 

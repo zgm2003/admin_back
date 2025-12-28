@@ -5,6 +5,7 @@ namespace app\service\User;
 use app\dep\User\PermissionDep;
 use app\dep\User\RoleDep;
 use app\enum\PermissionEnum;
+use app\enum\CommonEnum;
 
 class PermissionService
 {
@@ -70,20 +71,30 @@ class PermissionService
         ));
 
         // 5️⃣ 菜单树（目录 + 页面）
+        // 过滤规则：
+        // 1. 在 enabledIds 中（有权限）
+        // 2. 类型是目录或页面
+        // 3. show_menu 不等于 NO（即只保留显示或未设置的，CommonEnum::NO = 2）
         $menusData = array_filter($allPerms, fn($p) =>
             in_array($p['id'], $enabledIds, true) &&
             in_array($p['type'], [
                 PermissionEnum::TYPE_DIR,
                 PermissionEnum::TYPE_PAGE
-            ])
+            ]) &&
+            (!isset($p['show_menu']) || (int)$p['show_menu'] !== CommonEnum::NO)
         );
         $menus = $this->buildPermissionTree($menusData, -1);
-
+        
         // 6️⃣ 前端路由（仅页面）
+        // 注意：路由不需要过滤 show_menu，隐藏菜单的页面依然需要注册路由
+        $routerData = array_filter($allPerms, fn($p) =>
+            in_array($p['id'], $enabledIds, true) &&
+            $p['type'] == PermissionEnum::TYPE_PAGE
+        );
+        
         $router = [];
-        foreach ($menusData as $m) {
+        foreach ($routerData as $m) {
             if (
-                $m['type'] == PermissionEnum::TYPE_PAGE &&
                 !empty($m['path']) &&
                 !empty($m['component'])
             ) {
@@ -129,7 +140,8 @@ class PermissionService
                     'path'     => $item['path'],
                     'icon'     => $item['icon'],
                     'children' => [],
-                    'i18n_key' => isset($item['i18n_key']) ? $item['i18n_key'] : ''
+                    'i18n_key' => isset($item['i18n_key']) ? $item['i18n_key'] : '',
+                    'show_menu'=> isset($item['show_menu']) ? (int)$item['show_menu'] : CommonEnum::YES,
                 ];
                 if (!empty($children)) {
                     $node['children'] = $children;
