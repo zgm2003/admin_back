@@ -496,6 +496,7 @@ class UsersModule extends BaseModule
             'address' => (int)($profile->address_id ?? 0),
             'detail_address' => $profile->detail_address ?? '',
             'sex' => (int)($profile->sex ?? 1),
+            'birthday' => $profile->birthday ?? '',
             'bio' => $profile->bio ?? '',
             'is_self' => $param['user_id'] == $request->userId ? CommonEnum::YES : CommonEnum::NO,
         ];
@@ -515,11 +516,12 @@ class UsersModule extends BaseModule
             $param = v::input($request->all(), [
                 'username' => v::length(1, 50)->setName('用户名'),
                 'avatar' => v::optional(v::stringType()),
-                'phone' => v::optional(v::stringType()),
-                'sex' => v::intVal()->setName('性别'),
-                'address' => v::intVal()->setName('地址'),
+                'phone'          => v::optional(v::stringType()),
+                'sex'            => v::intVal()->setName('性别'),
+                'birthday'       => v::optional(v::stringType())->setName('生日'),
+                'address'        => v::intVal()->setName('地址'),
                 'detail_address' => v::optional(v::stringType()),
-                'bio' => v::optional(v::stringType())
+                'bio'            => v::optional(v::stringType())
             ]);
         } catch (ValidationException $e) {
             return self::error($e->getMessage());
@@ -540,6 +542,7 @@ class UsersModule extends BaseModule
         $profileData = [
             'avatar' => $param['avatar'] ?? null,
             'sex' => (int)$param['sex'],
+            'birthday' => $param['birthday'] ?? null,
             'address_id' => (int)$param['address'],
             'detail_address' => $param['detail_address'] ?? '',
             'bio' => $param['bio'] ?? '',
