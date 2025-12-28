@@ -97,6 +97,6 @@ Route::group('/api/admin', function () {
     Route::post('/SystemSetting/status', [controller\System\SystemSettingController::class, 'status']);
 })->middleware([
     app\middleware\CheckToken::class,
-    app\middleware\OperationLog::class,
     app\middleware\CheckPermission::class,
+    app\middleware\OperationLog::class,
 ]);

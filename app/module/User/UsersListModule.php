@@ -13,6 +13,7 @@ use app\module\BaseModule;
 use app\service\DictService;
 use app\service\ExportService;
 use Carbon\Carbon;
+use support\Cache;
 use support\Redis;
 use app\validate\User\UsersListValidate;
 
@@ -69,6 +70,10 @@ class UsersListModule extends BaseModule
         ];
         $userDep->edit($param['id'], $userData);
         $profileDep->editByUserId($param['id'], $profileData);
+        
+        // Clear permission cache
+        Cache::delete('auth_perm_uid_' . $param['id']);
+
         return self::response();
     }
 

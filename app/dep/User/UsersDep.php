@@ -128,5 +128,10 @@ class UsersDep
         return $res;
     }
 
+    public function getUserIdsByRoleIds(array $roleIds)
+    {
+        return $this->model->whereIn('role_id', $roleIds)->pluck('id');
+    }
+
 
 }

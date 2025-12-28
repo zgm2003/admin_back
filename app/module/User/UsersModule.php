@@ -192,7 +192,7 @@ class UsersModule extends BaseModule
      */
     private function createSession(int $userId, string $loginAccount, $request, string $loginType = 'email'): array
     {
-        $platformHeader = $request->header('platform', 'web');
+        $platformHeader = $request->header('platform', 'admin');
         $deviceId = $request->header('device-id', '');
 
         // 1. Generate Tokens

@@ -3,10 +3,12 @@
 namespace app\module\User;
 
 use app\dep\User\RoleDep;
+use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\User\RoleValidate;
+use support\Cache;
 use support\Db;
 
 
@@ -64,6 +66,14 @@ class RoleModule extends BaseModule
             return self::error('默认角色不能删除');
         }
         $dep->del($ids, ['is_del' => CommonEnum::YES]);
+
+        // Clear cache for users with these roles
+        $usersDep = new UsersDep();
+        $userIds = $usersDep->getUserIdsByRoleIds($ids);
+        foreach ($userIds as $uid) {
+            Cache::delete('auth_perm_uid_' . $uid);
+        }
+
         return self::success();
     }
 
@@ -82,6 +92,13 @@ class RoleModule extends BaseModule
             'permission_id' => json_encode($param['permission_id']),
         ];
         $dep->edit($param['id'], $data);
+
+        // Clear cache for users with this role
+        $usersDep = new UsersDep();
+        $userIds = $usersDep->getUserIdsByRoleIds([$param['id']]);
+        foreach ($userIds as $uid) {
+            Cache::delete('auth_perm_uid_' . $uid);
+        }
 
         return self::success();
     }
