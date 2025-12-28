@@ -109,6 +109,11 @@ class PermissionService
             }
         }
 
+        // 修复：按 sort 字段排序，确保菜单顺序正确
+        usort($menusData, function ($a, $b) {
+            return $a['sort'] <=> $b['sort'];
+        });
+
         // 4. 构建树 (O(N)复杂度)
         $menus = $this->buildPermissionTree($menusData);
 
@@ -136,6 +141,7 @@ class PermissionService
                 'icon'     => $item['icon'],
                 'children' => [],
                 'i18n_key' => $item['i18n_key'] ?? '',
+                'sort'     => (int)$item['sort'],
                 'show_menu'=> isset($item['show_menu']) ? (int)$item['show_menu'] : CommonEnum::YES,
                 'parent_id'=> (int)$item['parent_id'], // 用于后续挂载
             ];
