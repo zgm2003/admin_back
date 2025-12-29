@@ -25,5 +25,14 @@ class SystemEnum
         self::LOGIN_TYPE_PHONE => '手机号登录',
         self::LOGIN_TYPE_PASSWORD => '密码登录',
     ];
+
+    // 密码修改验证方式
+    const VERIFY_TYPE_PASSWORD = 'password';
+    const VERIFY_TYPE_CODE = 'code';
+
+    public static $verifyTypeArr = [
+        self::VERIFY_TYPE_PASSWORD => '原密码验证',
+        self::VERIFY_TYPE_CODE => '验证码验证',
+    ];
 }
 

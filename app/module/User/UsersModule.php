@@ -483,7 +483,7 @@ class UsersModule extends BaseModule
     {
         $param = $request->all();
         $dictService = new DictService();
-        $user = $this->UserDep->first($param['user_id']);;
+        $user = $this->UserDep->first($param['user_id']);
         $profile = $this->UserProfileDep->firstByUserId($user->id);
         $resRole = $this->RoleDep->first($user->role_id);
         $data['list'] = [
@@ -499,11 +499,13 @@ class UsersModule extends BaseModule
             'birthday' => $profile->birthday ?? '',
             'bio' => $profile->bio ?? '',
             'is_self' => $param['user_id'] == $request->userId ? CommonEnum::YES : CommonEnum::NO,
+            'has_password' => !empty($user->password), // 是否已设置密码
         ];
 
         $dict = $dictService
             ->setAuthAdressTree()
             ->setSexArr()
+            ->setVerifyTypeArr()
             ->getDict();
 
         $data['dict'] = $dict;
@@ -594,6 +596,150 @@ class UsersModule extends BaseModule
         $dep->edit($user->id, $data);
 
         return self::response([], '密码修改成功', 200);
+    }
+
+    /**
+     * 更新手机号（需登录 + 新手机号验证码）
+     */
+    public function updatePhone($request)
+    {
+        try {
+            $param = $this->validate($request, UsersValidate::updatePhone());
+        } catch (\RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        $phone = $param['phone'];
+
+        // 验证手机号格式
+        if (!is_valid_phone_number($phone)) {
+            return self::error('手机号格式不正确');
+        }
+
+        // 验证码校验
+        $cacheKey = 'phone_code_' . md5($phone);
+        $code = Cache::get($cacheKey);
+        if (!$code || $code != $param['code']) {
+            return self::error('验证码错误或已失效');
+        }
+
+        // 检查手机号是否已被其他用户占用
+        $exists = $this->UserDep->firstByPhone($phone);
+        if ($exists && $exists['id'] != $request->userId) {
+            return self::error('该手机号已被其他账号绑定');
+        }
+
+        // 更新手机号
+        $this->UserDep->edit($request->userId, ['phone' => $phone]);
+        Cache::delete($cacheKey);
+
+        return self::response([], '手机号绑定成功');
+    }
+
+    /**
+     * 更新邮箱（需登录 + 新邮箱验证码）
+     */
+    public function updateEmail($request)
+    {
+        try {
+            $param = $this->validate($request, UsersValidate::updateEmail());
+        } catch (\RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        $email = $param['email'];
+
+        // 验证码校验
+        $cacheKey = 'email_code_' . md5($email);
+        $code = Cache::get($cacheKey);
+        if (!$code || $code != $param['code']) {
+            return self::error('验证码错误或已失效');
+        }
+
+        // 检查邮箱是否已被其他用户占用
+        $exists = $this->UserDep->firstByEmail($email);
+        if ($exists && $exists['id'] != $request->userId) {
+            return self::error('该邮箱已被其他账号绑定');
+        }
+
+        // 更新邮箱
+        $this->UserDep->edit($request->userId, ['email' => $email]);
+        Cache::delete($cacheKey);
+
+        return self::response([], '邮箱绑定成功');
+    }
+
+    /**
+     * 更新密码（需登录）
+     * 支持两种验证方式：
+     * 1. 原密码验证（verify_type = password）
+     * 2. 验证码验证（verify_type = code）—— 适用于忘记原密码或首次设置
+     */
+    public function updatePassword($request)
+    {
+        try {
+            $param = $this->validate($request, UsersValidate::updatePassword());
+        } catch (\RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        $user = $this->UserDep->first($request->userId);
+        $verifyType = $param['verify_type'];
+
+        // 密码一致性检查
+        if ($param['new_password'] !== $param['confirm_password']) {
+            return self::error('两次输入的密码不一致');
+        }
+
+        // 根据验证类型进行身份验证
+        if ($verifyType === SystemEnum::VERIFY_TYPE_PASSWORD) {
+            // 原密码验证
+            if (empty($param['old_password'])) {
+                return self::error('请输入原密码');
+            }
+            if (empty($user->password)) {
+                return self::error('您尚未设置密码，请使用验证码方式');
+            }
+            if (!password_verify($param['old_password'], $user->password)) {
+                return self::error('原密码错误');
+            }
+        } else {
+            // 验证码验证
+            if (empty($param['code'])) {
+                return self::error('请输入验证码');
+            }
+
+            // 优先使用邮箱，其次手机号
+            $account = $user->email ?: $user->phone;
+            if (!$account) {
+                return self::error('请先绑定邮箱或手机号');
+            }
+
+            // 根据账号类型确定缓存Key
+            if (isValidEmail($account)) {
+                $cacheKey = 'email_code_' . md5($account);
+            } else {
+                $cacheKey = 'phone_code_' . md5($account);
+            }
+
+            $code = Cache::get($cacheKey);
+            if (!$code || $code != $param['code']) {
+                return self::error('验证码错误或已失效');
+            }
+            Cache::delete($cacheKey);
+        }
+
+        // 防止新密码与原密码相同
+        if (!empty($user->password) && password_verify($param['new_password'], $user->password)) {
+            return self::error('新密码不能与原密码相同');
+        }
+
+        // 更新密码
+        $this->UserDep->edit($user->id, [
+            'password' => password_hash($param['new_password'], PASSWORD_DEFAULT)
+        ]);
+
+        return self::response([], '密码设置成功');
     }
 
 

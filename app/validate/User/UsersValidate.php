@@ -35,5 +35,32 @@ class UsersValidate
             'status' => v::optional(v::intVal()),
         ];
     }
+
+    public static function updatePhone(): array
+    {
+        return [
+            'phone' => v::stringType()->length(11, 11)->setName('手机号'),
+            'code' => v::digit()->length(6, 6)->setName('验证码'),
+        ];
+    }
+
+    public static function updateEmail(): array
+    {
+        return [
+            'email' => v::email()->setName('邮箱'),
+            'code' => v::digit()->length(6, 6)->setName('验证码'),
+        ];
+    }
+
+    public static function updatePassword(): array
+    {
+        return [
+            'verify_type' => v::in(array_keys(SystemEnum::$verifyTypeArr))->setName('验证类型'),
+            'old_password' => v::optional(v::stringType())->setName('原密码'),
+            'code' => v::optional(v::digit()->length(6, 6))->setName('验证码'),
+            'new_password' => v::length(6, 64)->setName('新密码'),
+            'confirm_password' => v::length(6, 64)->setName('确认密码'),
+        ];
+    }
 }
 

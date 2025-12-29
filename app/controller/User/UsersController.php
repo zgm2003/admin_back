@@ -64,6 +64,25 @@ class UsersController extends Controller
         return $this->response();
     }
 
+    // 账号与安全模块
+    public function updatePhone(Request $request)
+    {
+        $this->run([UsersModule::class, 'updatePhone'], $request);
+        return $this->response();
+    }
+
+    public function updateEmail(Request $request)
+    {
+        $this->run([UsersModule::class, 'updateEmail'], $request);
+        return $this->response();
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $this->run([UsersModule::class, 'updatePassword'], $request);
+        return $this->response();
+    }
+
     public function userInfo(Request $request)
     {
         $this->run([UsersModule::class,'userInfo'],$request);

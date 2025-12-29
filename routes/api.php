@@ -42,6 +42,10 @@ Route::group('/api', function () {
     Route::post('/Users/initPersonal', [controller\User\UsersController::class, 'initPersonal']);
     Route::post('/Users/editPersonal', [controller\User\UsersController::class, 'editPersonal']);
     Route::post('/Users/EditPassword', [controller\User\UsersController::class, 'EditPassword']);
+    // 账号与安全模块
+    Route::post('/Users/updatePhone', [controller\User\UsersController::class, 'updatePhone']);
+    Route::post('/Users/updateEmail', [controller\User\UsersController::class, 'updateEmail']);
+    Route::post('/Users/updatePassword', [controller\User\UsersController::class, 'updatePassword']);
 
 
 
