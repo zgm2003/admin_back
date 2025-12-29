@@ -13,11 +13,42 @@ use app\enum\PermissionEnum;
 use app\enum\SexEnum;
 use app\enum\UploadConfigEnum;
 use app\enum\SystemEnum;
+use support\Cache;
 
 
 class DictService
 {
     public $dict = [];
+    
+    // Redis 缓存Key
+    const CACHE_KEY_PERMISSION_TREE = 'dict_permission_tree';
+    const CACHE_KEY_ADDRESS_TREE = 'dict_address_tree';
+    const CACHE_TTL = 300; // 5分钟
+
+    /**
+     * 清除所有缓存
+     */
+    public static function clearCache(): void
+    {
+        Cache::delete(self::CACHE_KEY_PERMISSION_TREE);
+        Cache::delete(self::CACHE_KEY_ADDRESS_TREE);
+    }
+
+    /**
+     * 清除权限树缓存
+     */
+    public static function clearPermissionCache(): void
+    {
+        Cache::delete(self::CACHE_KEY_PERMISSION_TREE);
+    }
+
+    /**
+     * 清除地址缓存（地址数据变更时手动调用）
+     */
+    public static function clearAddressCache(): void
+    {
+        Cache::delete(self::CACHE_KEY_ADDRESS_TREE);
+    }
 
     public function setLoginTypeArr(){
         $this->dict['login_type_arr'] = $this->enumToDict(SystemEnum::$loginTypeArr);
@@ -29,48 +60,78 @@ class DictService
     }
     public function setPermissionTree()
     {
-
+        // 尝试从Redis缓存获取树形结构
+        $cached = Cache::get(self::CACHE_KEY_PERMISSION_TREE);
+        if ($cached !== null) {
+            $this->dict['permission_tree'] = $cached;
+            return $this;
+        }
+        
+        // 复用 PermissionDep 的缓存数据，避免重复DB查询
         $dep = new PermissionDep();
-
-        $resCategory = $dep->allOK()->map(function ($item) {
+        $allPermissions = $dep->getAllPermissions();
+        
+        // 转换为树形结构
+        $resCategory = array_map(function ($item) {
             return [
-                'id' => $item->id,
-                'label' => $item->name,
-                'value' => $item->id,
-                'parent_id' => $item->parent_id,
+                'id' => $item['id'],
+                'label' => $item['name'],
+                'value' => $item['id'],
+                'parent_id' => $item['parent_id'],
             ];
-        });
-        $this->dict['permission_tree'] = listToTree($resCategory->toArray(), -1);
+        }, $allPermissions);
+        $tree = listToTree($resCategory, -1);
+        
+        Cache::set(self::CACHE_KEY_PERMISSION_TREE, $tree, self::CACHE_TTL);
+        $this->dict['permission_tree'] = $tree;
+        
         return $this;
     }
 
     public function setAuthAdressTree()
     {
+        // 尝试从Redis缓存获取树形结构
+        $cached = Cache::get(self::CACHE_KEY_ADDRESS_TREE);
+        if ($cached !== null) {
+            $this->dict['auth_address_tree'] = $cached;
+            return $this;
+        }
 
+        // 复用 AddressDep 的缓存数据，避免重复DB查询
         $dep = new AddressDep();
-
-        $resCategory = $dep->all()->map(function ($item) {
+        $allAddressMap = $dep->getAllMap();
+        
+        // 转换为树形结构
+        $resCategory = array_map(function ($item) {
             return [
-                'id' => $item->id,
-                'label' => $item->name,
-                'value' => $item->id,
-                'parent_id' => $item->parent_id,
+                'id' => $item['id'],
+                'label' => $item['name'],
+                'value' => $item['id'],
+                'parent_id' => $item['parent_id'],
             ];
-        });
-        $this->dict['auth_address_tree'] = listToTree($resCategory->toArray(), -1);
+        }, $allAddressMap);
+        $tree = listToTree($resCategory, -1);
+        
+        // 永久缓存（不设TTL）
+        Cache::set(self::CACHE_KEY_ADDRESS_TREE, $tree);
+        $this->dict['auth_address_tree'] = $tree;
+        
         return $this;
     }
     public function setRoleArr()
     {
+        // role表数据量小，直接查询无需缓存
         $roleDep = new RoleDep();
         $res = $roleDep->allOK();
-        // 遍历集合并处理每个元素
-        $this->dict['roleArr'] = $res->map(function ($item) {
+        $arr = $res->map(function ($item) {
             return [
                 'value' => $item->id,
                 'label' => $item->name,
             ];
         });
+        
+        $this->dict['roleArr'] = $arr;
+        
         return $this;
     }
     public function setPermissionTypeArr(){

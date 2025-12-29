@@ -101,23 +101,26 @@ class UsersListModule extends BaseModule
         $platform = $param['platform'] ?? 'admin';
 
         $resList = $dep->list($param);
-        $data['list'] = $resList->map(function ($item) use ($RoleDep, $AddressDep, $UserSessionsDep, $UserProfileDep, $platform) {
-            $resRole = $RoleDep->first($item->role_id);
-            $resUserSession = $UserSessionsDep->firstLatestActiveByUserPlatform($item->id, $platform);
-            $profile = $UserProfileDep->firstByUserId($item->id);
+        
+        // === 优化：批量预加载所有关联数据 ===
+        $userIds = $resList->pluck('id')->toArray();
+        $roleIds = $resList->pluck('role_id')->unique()->toArray();
+        
+        // 批量查询，返回Map (key => model)
+        $roleMap = $RoleDep->getMapByIds($roleIds);
+        $profileMap = $UserProfileDep->getMapByUserIds($userIds);
+        $sessionMap = $UserSessionsDep->getLatestActiveMapByUserIds($userIds, $platform);
+        
+        $data['list'] = $resList->map(function ($item) use ($roleMap, $profileMap, $sessionMap, $AddressDep, $platform) {
+            $resRole = $roleMap->get($item->role_id);
+            $profile = $profileMap->get($item->id);
+            $resUserSession = $sessionMap->get($item->id);
+            
+            // 地址路径构建（使用内存缓存）
             $districtId = (int)($profile->address_id ?? 0);
-            $addressParts = [];
-            if ($districtId) {
-                $node = $AddressDep->first($districtId);
-                while ($node) {
-                    array_unshift($addressParts, $node->name);
-                    if ($node->parent_id === -1) break;
-                    $node = $AddressDep->first($node->parent_id);
-                }
-            }
+            $addressPath = $AddressDep->buildAddressPath($districtId);
             $detail = $profile->detail_address ?? '';
-            $address = implode('-', $addressParts);
-            $address = $address ? ($address . '-' . $detail) : $detail;
+            $address = $addressPath ? ($addressPath . '-' . $detail) : $detail;
 
             $expiresAt = $resUserSession->expires_at ?? null;
             $isExpired = '无记录';
@@ -136,9 +139,9 @@ class UsersListModule extends BaseModule
                 'sex_show' => SexEnum::$SexArr[(int)($profile->sex ?? 1)],
                 'role_id' => $item->role_id,
                 'bio' => $profile->bio ?? '',
-                'role_name' => $resRole->name,
+                'role_name' => $resRole->name ?? '',
                 'address_show' => $address,
-                'address' => (int)($profile->address_id ?? 0),
+                'address' => $districtId,
                 'detail_address' => $profile->detail_address ?? '',
                 'expires_in' => $expiresAt,
                 'is_expired' => $isExpired,
@@ -198,6 +201,13 @@ class UsersListModule extends BaseModule
         $users = $this->UserDep->getUsersByIds($param['ids']);
         $roleDep = $this->RoleDep;
         $profileDep = $this->UserProfileDep;
+        
+        // === 优化：批量预加载 ===
+        $userIds = $users->pluck('id')->toArray();
+        $roleIds = $users->pluck('role_id')->unique()->toArray();
+        $roleMap = $roleDep->getMapByIds($roleIds);
+        $profileMap = $profileDep->getMapByUserIds($userIds);
+        
         $headers = [
             'id' => '用户ID',
             'username' => '用户名',
@@ -207,9 +217,9 @@ class UsersListModule extends BaseModule
             'sex' => '性别',
             'role' => '角色',
         ];
-        $data = $users->map(function ($item) use ($roleDep, $profileDep) {
-            $resRole = $roleDep->first($item->role_id);
-            $profile = $profileDep->firstByUserId($item->id);
+        $data = $users->map(function ($item) use ($roleMap, $profileMap) {
+            $resRole = $roleMap->get($item->role_id);
+            $profile = $profileMap->get($item->id);
             return [
                 'id' => $item->id,
                 'username' => $item->username,
@@ -217,7 +227,7 @@ class UsersListModule extends BaseModule
                 'phone' => $item->phone,
                 'avatar' => $profile->avatar ?? null,
                 'sex' => SexEnum::$SexArr[(int)($profile->sex ?? 1)],
-                'role' => $resRole['name'],
+                'role' => $resRole->name ?? '',
             ];
         })->toArray();
         $exportService = new ExportService();

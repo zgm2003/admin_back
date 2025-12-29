@@ -44,6 +44,7 @@ class RoleModule extends BaseModule
             'permission_id' => json_encode($param['permission_id']),
         ];
         $this->roleDep->add($data);
+        
         return self::success();
     }
 

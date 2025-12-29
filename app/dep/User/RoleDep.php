@@ -140,4 +140,19 @@ class RoleDep
         return $res;
     }
 
+    /**
+     * 批量获取角色(按ID列表)
+     * @param array $ids
+     * @return \Illuminate\Support\Collection  id => RoleModel
+     */
+    public function getMapByIds(array $ids)
+    {
+        if (empty($ids)) return collect();
+        return $this->model
+            ->whereIn('id', array_unique($ids))
+            ->where('is_del', CommonEnum::NO)
+            ->get()
+            ->keyBy('id');
+    }
+
 }

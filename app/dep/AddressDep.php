@@ -5,14 +5,79 @@ namespace app\dep;
 
 use app\model\AddressModel;
 use app\enum\CommonEnum;
+use support\Cache;
 
 class AddressDep
 {
     public $model;
+    
+    // Redis 缓存Key（永久缓存，地址数据几乎不变）
+    const CACHE_KEY_ALL_MAP = 'addr_all_map';
 
     public function __construct()
     {
         $this->model = new AddressModel();
+    }
+
+    /**
+     * 获取全量地址Map（永久缓存）
+     * @return array  id => address_row
+     */
+    public function getAllMap(): array
+    {
+        // 尝试从Redis缓存获取
+        $cached = Cache::get(self::CACHE_KEY_ALL_MAP);
+        if ($cached !== null) {
+            return $cached;
+        }
+        
+        // 查询并永久缓存（不设TTL）
+        $all = $this->model->get();
+        $map = [];
+        foreach ($all as $item) {
+            $map[$item->id] = $item->toArray();
+        }
+        
+        Cache::set(self::CACHE_KEY_ALL_MAP, $map); // 无TTL = 永久
+        
+        return $map;
+    }
+
+    /**
+     * 清除地址缓存（引入新地址数据时手动调用）
+     */
+    public static function clearCache(): void
+    {
+        Cache::delete(self::CACHE_KEY_ALL_MAP);
+    }
+
+    /**
+     * 根据district_id构建完整地址路径（省-市-区）
+     * @param int $districtId
+     * @return string
+     */
+    public function buildAddressPath(int $districtId): string
+    {
+        if (!$districtId) return '';
+        
+        $map = $this->getAllMap();
+        $parts = [];
+        $currentId = $districtId;
+        $visited = []; // 防止死循环
+        
+        while (isset($map[$currentId]) && !isset($visited[$currentId])) {
+            $visited[$currentId] = true;
+            $node = $map[$currentId];
+            // Redis反序列化后是数组
+            $name = is_array($node) ? $node['name'] : $node->name;
+            $parentId = is_array($node) ? $node['parent_id'] : $node->parent_id;
+            
+            array_unshift($parts, $name);
+            if ($parentId === -1) break;
+            $currentId = $parentId;
+        }
+        
+        return implode('-', $parts);
     }
 
     public function first($id)

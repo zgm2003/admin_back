@@ -133,5 +133,18 @@ class UsersDep
         return $this->model->whereIn('role_id', $roleIds)->pluck('id');
     }
 
+    /**
+     * 批量获取用户(按ID列表)
+     * @param array $ids
+     * @return \Illuminate\Support\Collection  id => UserModel
+     */
+    public function getMapByIds(array $ids)
+    {
+        if (empty($ids)) return collect();
+        return $this->model
+            ->whereIn('id', array_unique($ids))
+            ->get()
+            ->keyBy('id');
+    }
 
 }

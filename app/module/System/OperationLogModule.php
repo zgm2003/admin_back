@@ -57,13 +57,17 @@ class OperationLogModule extends BaseModule
         $param['current_page'] = $param['current_page'] ?? 1;
 
         $resList = $dep->list($param);
+        
+        // === 优化：批量预加载用户数据 ===
+        $userIds = $resList->pluck('user_id')->unique()->toArray();
+        $userMap = $userDep->getMapByIds($userIds);
 
-        $data['list'] = $resList->map(function ($item) use ($userDep){
-            $resUser = $userDep->first($item['user_id']);
+        $data['list'] = $resList->map(function ($item) use ($userMap){
+            $resUser = $userMap->get($item['user_id']);
             return [
                 'id' => $item['id'],
-                'user_name' => $resUser['username'],
-                'user_email' => $resUser['email'],
+                'user_name' => $resUser->username ?? 'Unknown',
+                'user_email' => $resUser->email ?? '',
                 'action' => $item['action'],
                 'request_data' => $item['request_data'],
                 'response_data' => $item['response_data'],

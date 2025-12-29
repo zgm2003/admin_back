@@ -5,10 +5,15 @@ namespace app\dep\User;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\model\User\PermissionModel;
+use support\Cache;
 
 class PermissionDep
 {
     public $model;
+    
+    // Redis 缓存Key
+    const CACHE_KEY_ALL = 'perm_all_permissions';
+    const CACHE_TTL = 300; // 5分钟
 
     public function __construct()
     {
@@ -137,6 +142,13 @@ class PermissionDep
 
     public function getAllPermissions()
     {
+        // 尝试从Redis缓存获取
+        $cached = Cache::get(self::CACHE_KEY_ALL);
+        if ($cached !== null) {
+            return $cached;
+        }
+        
+        // 查询并缓存
         $permissions = $this->model
             ->where('is_del', CommonEnum::NO)
             ->where('status', CommonEnum::YES)
@@ -144,10 +156,19 @@ class PermissionDep
             ->orderBy('sort')
             ->orderBy('id')
             ->get()->toArray();
+        
+        Cache::set(self::CACHE_KEY_ALL, $permissions, self::CACHE_TTL);
+        
         return $permissions;
     }
 
-
+    /**
+     * 清除权限缓存（权限变更时调用）
+     */
+    public static function clearCache(): void
+    {
+        Cache::delete(self::CACHE_KEY_ALL);
+    }
 
 
 }

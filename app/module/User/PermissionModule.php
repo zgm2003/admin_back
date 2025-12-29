@@ -119,6 +119,10 @@ class PermissionModule extends BaseModule
             $this->PermissionDep->add($data);
         }
 
+        // 清除权限缓存
+        PermissionDep::clearCache();
+        DictService::clearPermissionCache();
+        
         return self::success();
     }
 
@@ -208,6 +212,10 @@ class PermissionModule extends BaseModule
             $this->PermissionDep->edit($param['id'],$data);
         }
 
+        // 清除权限缓存
+        PermissionDep::clearCache();
+        DictService::clearPermissionCache();
+        
         return self::success();
     }
 
@@ -222,6 +230,11 @@ class PermissionModule extends BaseModule
         $dep = $this->PermissionDep;
 
         $dep->del($ids, ['is_del' => CommonEnum::YES]);
+        
+        // 清除权限缓存
+        PermissionDep::clearCache();
+        DictService::clearPermissionCache();
+        
         return self::success();
     }
 
@@ -288,6 +301,11 @@ class PermissionModule extends BaseModule
             'status' => $param['status'],
         ];
         $this->PermissionDep->edit($param['id'], $data);
+        
+        // 清除权限缓存
+        PermissionDep::clearCache();
+        DictService::clearPermissionCache();
+        
         return self::success();
     }
 

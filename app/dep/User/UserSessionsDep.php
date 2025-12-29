@@ -116,4 +116,31 @@ class UserSessionsDep
         $ids = is_array($id) ? $id : [$id];
         return $this->model->whereIn('id', $ids)->update(['is_del' => CommonEnum::YES]);
     }
+
+    /**
+     * 批量获取用户最新活跃会话(按user_id+platform)
+     * @param array $userIds
+     * @param string $platform
+     * @return \Illuminate\Support\Collection  user_id => SessionModel
+     */
+    public function getLatestActiveMapByUserIds(array $userIds, string $platform)
+    {
+        if (empty($userIds)) return collect();
+        $now = date('Y-m-d H:i:s');
+        
+        // 使用子查询获取每个用户的最新会话ID
+        $subQuery = $this->model
+            ->selectRaw('MAX(id) as max_id')
+            ->whereIn('user_id', array_unique($userIds))
+            ->where('platform', $platform)
+            ->whereNull('revoked_at')
+            ->where('is_del', CommonEnum::NO)
+            ->where('refresh_expires_at', '>', $now)
+            ->groupBy('user_id');
+        
+        return $this->model
+            ->whereIn('id', $subQuery)
+            ->get()
+            ->keyBy('user_id');
+    }
 }

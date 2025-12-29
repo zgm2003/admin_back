@@ -43,14 +43,18 @@ class UsersLoginLogModule extends BaseModule
         $param['current_page'] = $param['current_page'] ?? 1;
 
         $resList = $dep->list($param);
+        
+        // === 优化：批量预加载用户数据 ===
+        $userIds = $resList->pluck('user_id')->filter()->unique()->toArray();
+        $userMap = $userDep->getMapByIds($userIds);
 
-        $data['list'] = $resList->map(function ($item) use ($userDep) {
-            // 如果日志中有 user_id，尝试获取用户名；否则使用日志中的 email
+        $data['list'] = $resList->map(function ($item) use ($userMap) {
+            // 使用预加载的Map获取用户
             $username = 'Unknown';
             if (!empty($item['user_id'])) {
-                $resUser = $userDep->first($item['user_id']);
+                $resUser = $userMap->get($item['user_id']);
                 if ($resUser) {
-                    $username = $resUser['username'];
+                    $username = $resUser->username;
                 }
             }
             
@@ -59,7 +63,7 @@ class UsersLoginLogModule extends BaseModule
                 'user_name' => $username,
                 'login_account' => $item['login_account'],
                 'login_type' => $item['login_type'],
-                'login_type_name' => SystemEnum::$loginTypeArr[$item['login_type']],
+                'login_type_name' => SystemEnum::$loginTypeArr[$item['login_type']] ?? '',
                 'platform' => $item['platform'],
                 'ip' => $item['ip'],
                 'ua' => $item['ua'],
