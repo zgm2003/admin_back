@@ -206,10 +206,10 @@ class UsersModule extends BaseModule
         $platformHeader = $request->header('platform', 'admin');
         $deviceId = $request->header('device-id', '');
 
-        // 1. Generate Tokens
+         // 1. 生成Token对
         $tokens = TokenService::generateTokenPair();
 
-        // 2. Check Policies: single_session_per_platform (Revoke Old)
+        // 2. 单端登录策略检查 (互踢)
         $policyConfig = config('auth.policies.' . ($platformHeader ?: 'default')) ?? config('auth.default_policy');
         if (!empty($policyConfig['single_session_per_platform'])) {
             $oldSessions = $this->UserSessionsDep->listActiveByUserPlatform($userId, $platformHeader);
@@ -219,7 +219,7 @@ class UsersModule extends BaseModule
             $this->UserSessionsDep->revokeByUserPlatform($userId, $platformHeader);
         }
 
-        // 3. Create Session Data
+        
         $sessionData = [
             'user_id' => $userId,
             'access_token_hash' => $tokens['access_token_hash'],
@@ -236,13 +236,13 @@ class UsersModule extends BaseModule
             'is_del' => CommonEnum::NO,
         ];
 
-        // 4. Insert DB
+        // 3. 写入会话到数据库
         $sessionId = $this->UserSessionsDep->add($sessionData);
 
-        // 5. Update Redis Pointer
+        // 4. 更新Redis指针
         $this->updateSessionPointer($userId, $platformHeader, $sessionId);
 
-        // 6. Async Log (Success)
+        // 5. 异步日志 (成功)
         \Webman\RedisQueue\Redis::send('user-login-log', [
             'user_id' => $userId,
             'login_account' => $loginAccount, // 记录当前登录的账号

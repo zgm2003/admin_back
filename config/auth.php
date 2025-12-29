@@ -10,7 +10,7 @@ return [
             'bind_platform' => true,
             'bind_device'   => true,
             'bind_ip'       => true,
-            'single_session_per_platform' => false,
+            'single_session_per_platform' => true,
         ],
 
         // C端：多通道（允许同平台多个设备同时在线）

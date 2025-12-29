@@ -17,7 +17,9 @@ class CheckToken
 
     public function process(Request $request, callable $next): Response
     {
+        // 1. 获取 Token
         $bearer = $request->header('authorization');
+        // 1.1 检查是否携带 Token
         if (!$bearer) {
             return json([
                 'code' => ErrorCodeEnum::UNAUTHORIZED,
@@ -25,8 +27,10 @@ class CheckToken
                 'msg'  => '缺少Token',
             ]);
         }
+        // 1.2 解析 Token
         $token = str_replace('Bearer ', '', $bearer);
 
+        // 1.3 验证 Token 格式
         try {
             $tokenHash = TokenService::hashToken($token);
         } catch (\Exception $e) {
@@ -37,10 +41,10 @@ class CheckToken
             ]);
         }
 
-        // Use hash as key in Redis to match DB storage
+        // 2. 从 Redis 读取缓存
         $redisKey = $tokenHash;
 
-        // 1. 从 Redis 读取
+        // 2.1 从 Redis 读取缓存
         $cached = Redis::connection('token')->get($redisKey);
         
         $session = null;
@@ -61,7 +65,7 @@ class CheckToken
         }
 
         if (!$session) {
-            // 2. 缓存未命中，查库
+            // 2.2 缓存未命中，查库
             $sessionDep = new UserSessionsDep();
             $row = $sessionDep->firstValidByAccessHash($tokenHash);
             
@@ -76,7 +80,7 @@ class CheckToken
             // Convert model/object to array
             $session = is_object($row) ? $row->toArray() : (array)$row;
             
-            // 写入 Redis
+            // 2.3 写入 Redis
             $value = implode('|', [
                 $session['user_id'],
                 $session['expires_at'],
@@ -88,7 +92,7 @@ class CheckToken
             Redis::connection('token')->set($redisKey, $value, self::REDIS_TTL);
         }
 
-        // 3. 检查过期
+        // 3.1  检查过期
         if (Carbon::parse($session['expires_at'])->isPast()) {
              Redis::connection('token')->del($redisKey);
              return json([
@@ -98,20 +102,20 @@ class CheckToken
             ]);
         }
 
-        // 4. 安全策略校验
+        // 4.1 安全策略校验
         $currentPlatform = $request->header('platform');
         
-        // Load policy
+        // 4.2 Load policy
         $policyConfig = config('auth.policies.' . ($session['platform'] ?: 'default')) ?? config('auth.default_policy');
         
-        // Bind Platform
+        // 4.3 Bind Platform
         if (!empty($policyConfig['bind_platform'])) {
              if (!$currentPlatform || strtolower($session['platform']) !== strtolower($currentPlatform)) {
                  return json(['code' => ErrorCodeEnum::UNAUTHORIZED, 'msg' => '平台不匹配', 'data' => []]);
              }
         }
         
-        // Bind Device
+        // 4.4 Bind Device
         $currentDevice = $request->header('device-id');
         if (!empty($policyConfig['bind_device']) && !empty($session['device_id'])) {
              if (!$currentDevice || $currentDevice !== $session['device_id']) {
@@ -119,7 +123,7 @@ class CheckToken
              }
         }
         
-        // Bind IP
+        // 4.5 Bind IP
         $currentIp = $request->getRealIp();
         if (!empty($policyConfig['bind_ip'])) {
              if ($session['ip'] !== $currentIp) {
@@ -128,18 +132,18 @@ class CheckToken
              }
         }
 
-        // 5. 挂载信息
+        // 5.1 挂载信息
         $request->userId = $session['user_id'];
         $request->sessionId = $session['id'];
 
-        // 6. 🛡️ single_session_per_platform 策略（立刻生效）
+        // 6.2 🛡️ single_session_per_platform 策略（立刻生效）
         if (!empty($policyConfig['single_session_per_platform'])) {
             $curSessKey = "cur_sess:" . strtolower(trim($session['platform'])) . ":{$session['user_id']}";
             
-            // 6.1 读取 Redis 指针
+            // 6.2.1 读取 Redis 指针
             $allowedSessionId = Redis::connection('token')->get($curSessKey);
 
-            // 6.2 如果指针不存在，从 DB 重建
+            // 6.2.2 如果指针不存在，从 DB 重建
             if (!$allowedSessionId) {
                 $latest = (new UserSessionsDep())->firstLatestActiveByUserPlatform($session['user_id'], $session['platform']);
                 if ($latest) {
@@ -148,7 +152,7 @@ class CheckToken
                     Redis::connection('token')->set($curSessKey, $allowedSessionId, 30 * 24 * 3600);
                 }
             }
-            // 补丁 3：如果指针存在，但 DB 中该会话已无效，需重新计算指针
+            // 6.2.3 补丁 3：如果指针存在，但 DB 中该会话已无效，需重新计算指针
             else {
                 // 优化：仅当裁决失败时才去验证指针的有效性，避免每次请求都查库
                 if ((int)$allowedSessionId !== (int)$session['id']) {
@@ -174,23 +178,23 @@ class CheckToken
                 }
             }
 
-            // 6.3 裁决：如果当前 sessionId 不等于允许的 sessionId，则踢下线
+            // 6.3.1 裁决：如果当前 sessionId 不等于允许的 sessionId，则踢下线
             if ($allowedSessionId && (int)$allowedSessionId !== (int)$session['id']) {
-                // 可选：顺便把这个非法的 session 在 DB 标记为 revoke，减少后续无意义查询
+                // 6.3.1.1 可选：顺便把这个非法的 session 在 DB 标记为 revoke，减少后续无意义查询
                 // (new UserSessionsDep())->revokeById($session['id']);
                 
-                // 清除当前 token 的缓存，确保下次直接被拦截
+                // 6.3.1.2 清除当前 token 的缓存，确保下次直接被拦截
                 Redis::connection('token')->del($redisKey);
 
                 return json([
                     'code' => ErrorCodeEnum::UNAUTHORIZED,
-                    'msg'  => '账号已在其他设备登录', 
+                    'msg'  => '账号已在其他设备登录', // 6.3.1.3 提示信息，当前会话被踢下线
                     'data' => []
                 ]);
             }
         }
         
-        // 续期 Redis 缓存
+        // 6.4 续期 Redis 缓存
         Redis::connection('token')->expire($redisKey, self::REDIS_TTL);
 
         return $next($request);
