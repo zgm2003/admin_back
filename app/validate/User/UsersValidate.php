@@ -2,6 +2,7 @@
 
 namespace app\validate\User;
 
+use app\enum\EmailEnum;
 use app\enum\SystemEnum;
 use Respect\Validation\Validator as v;
 
@@ -31,8 +32,8 @@ class UsersValidate
     public static function sendCode(): array
     {
         return [
-            'login_account' => v::stringType()->setName('账号'),
-            'status' => v::optional(v::intVal()),
+            'account' => v::stringType()->setName('账号'),
+            'scene' => v::in(array_keys(EmailEnum::$sceneArr))->setName('场景'),
         ];
     }
 

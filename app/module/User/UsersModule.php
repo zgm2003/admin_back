@@ -391,13 +391,14 @@ class UsersModule extends BaseModule
             return self::error($e->getMessage());
         }
 
-        $account = $param['login_account'];
+        $account = $param['account'];
+        $scene = $param['scene'];
+        $theme = EmailEnum::getTheme($scene);
 
         // 判断是邮箱还是手机号
         if (isValidEmail($account)) {
             // 邮箱发送逻辑
             $code = rand(100000, 999999);
-            $theme = isset(EmailEnum::$statusArr[$param['status'] ?? 0]) ? EmailEnum::$statusArr[$param['status'] ?? 0] : '默认主题';
             $queue = "email-send";
             $data = [
                 'email' => $account,
