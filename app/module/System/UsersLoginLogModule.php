@@ -67,7 +67,7 @@ class UsersLoginLogModule extends BaseModule
                 'platform' => $item['platform'],
                 'ip' => $item['ip'],
                 'ua' => $item['ua'],
-                'success' => $item['success'],
+                'is_success' => $item['is_success'],
                 'reason' => $item['reason'] ?? '',
                 'created_at' => $item['created_at']->toDateTimeString(),
             ];

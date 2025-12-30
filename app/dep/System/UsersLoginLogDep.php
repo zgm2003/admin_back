@@ -36,8 +36,8 @@ class UsersLoginLogDep
             ->when(!empty($param['platform']), function ($query) use ($param) {
                 $query->where('platform', 'like', "%{$param['platform']}%");
             })
-             ->when(isset($param['success']) && $param['success'] !== '', function ($query) use ($param) {
-                $query->where('success', $param['success']);
+            ->when(!empty($param['is_success']), function ($query) use ($param) {
+                $query->where('is_success', $param['is_success']);
             })
             ->when(!empty($param['date']), function ($query) use ($param) {
                 if (is_array($param['date']) && count($param['date']) === 2) {

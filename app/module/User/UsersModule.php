@@ -110,9 +110,18 @@ class UsersModule extends BaseModule
                 return self::error('请输入正确的邮箱或手机号');
             }
 
-            if (!$resDep) return self::error('账号或密码错误');
-            if (empty($resDep['password'])) return self::error('该账号未设置密码，请使用验证码登录后设置密码');
-            if (!password_verify($param['password'], $resDep['password'])) return self::error('账号或密码错误');
+                if (!$resDep) {
+                $this->logLoginAttempt(null, $account, SystemEnum::LOGIN_TYPE_PASSWORD, $request, CommonEnum::NO, 'account_not_found');
+                return self::error('账号或密码错误');
+            }
+            if (empty($resDep['password'])) {
+                $this->logLoginAttempt($resDep['id'], $account, SystemEnum::LOGIN_TYPE_PASSWORD, $request, CommonEnum::NO, 'no_password_set');
+                return self::error('该账号未设置密码，请使用验证码登录后设置密码');
+            }
+            if (!password_verify($param['password'], $resDep['password'])) {
+                $this->logLoginAttempt($resDep['id'], $account, SystemEnum::LOGIN_TYPE_PASSWORD, $request, CommonEnum::NO, 'wrong_password');
+                return self::error('账号或密码错误');
+            }
 
         } else {
             // 邮箱或手机号登录 (需验证码)
@@ -131,6 +140,7 @@ class UsersModule extends BaseModule
 
             $code = Cache::get($cacheKey);
             if (!$code || $code != $param['code']) {
+                $this->logLoginAttempt(null, $param['login_account'], $loginType, $request, CommonEnum::NO, 'invalid_code');
                 return self::error('验证码错误或已失效');
             }
             Cache::delete($cacheKey);
@@ -198,6 +208,24 @@ class UsersModule extends BaseModule
     }
 
     /**
+     * 记录登录日志（成功/失败）
+     */
+    private function logLoginAttempt(?int $userId, string $loginAccount, string $loginType, $request, int $isSuccess, string $reason = ''): void
+    {
+        $platformHeader = $request->header('platform', 'admin');
+        \Webman\RedisQueue\Redis::send('user-login-log', [
+            'user_id' => $userId,
+            'login_account' => $loginAccount,
+            'login_type' => $loginType,
+            'platform' => $platformHeader,
+            'ip' => $request->getRealIp(),
+            'ua' => $request->header('user-agent'),
+            'is_success' => $isSuccess,
+            'reason' => $reason,
+        ]);
+    }
+
+    /**
      * 通用会话创建逻辑
      * 包含：生成Token、策略检查(互踢)、写入Session DB、更新Redis指针、异步日志
      */
@@ -243,16 +271,7 @@ class UsersModule extends BaseModule
         $this->updateSessionPointer($userId, $platformHeader, $sessionId);
 
         // 5. 异步日志 (成功)
-        \Webman\RedisQueue\Redis::send('user-login-log', [
-            'user_id' => $userId,
-            'login_account' => $loginAccount, // 记录当前登录的账号
-            'login_type' => $loginType, // 记录准确的登录类型
-            'platform' => $platformHeader,
-            'ip' => $request->getRealIp(),
-            'ua' => $request->header('user-agent'),
-            'success' => 1,
-            'created_at' => $tokens['now']->toDateTimeString(),
-        ]);
+        $this->logLoginAttempt($userId, $loginAccount, $loginType, $request, CommonEnum::YES);
 
         return [
             'access_token' => $tokens['access_token'],
@@ -492,11 +511,13 @@ class UsersModule extends BaseModule
             'email' => $user->email,
             'avatar' => $profile->avatar,
             'phone' => $user->phone,
+
             'role_id' => $user->role_id,
             'role_name' => $resRole['name'],
+
             'address' => (int)($profile->address_id ?? 0),
             'detail_address' => $profile->detail_address ?? '',
-            'sex' => (int)($profile->sex ?? 1),
+            'sex' => (int)($profile->sex ?? 0),
             'birthday' => $profile->birthday ?? '',
             'bio' => $profile->bio ?? '',
             'is_self' => $param['user_id'] == $request->userId ? CommonEnum::YES : CommonEnum::NO,
