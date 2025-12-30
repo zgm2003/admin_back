@@ -45,7 +45,6 @@ class UserSessionsDep
 
     public function rotateById(int $id, array $data): int
     {
-        $data['updated_at'] = date('Y-m-d H:i:s');
         return (int) $this->model->where('id', $id)->update($data);
     }
 
@@ -53,7 +52,6 @@ class UserSessionsDep
     {
         return (int) $this->model->where('id', $id)->update([
             'revoked_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
         ]);
     }
 
@@ -66,7 +64,6 @@ class UserSessionsDep
             ->where('is_del', CommonEnum::NO)
             ->update([
                 'revoked_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
             ]);
     }
 
@@ -74,7 +71,6 @@ class UserSessionsDep
     {
         return (int) $this->model->where('id', $id)->update([
             'last_seen_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
         ]);
     }
 

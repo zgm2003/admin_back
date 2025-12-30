@@ -259,8 +259,6 @@ class UsersModule extends BaseModule
             'expires_at' => $tokens['access_expires']->toDateTimeString(),
             'refresh_expires_at' => $tokens['refresh_expires']->toDateTimeString(),
             'last_seen_at' => $tokens['now']->toDateTimeString(),
-            'created_at' => $tokens['now']->toDateTimeString(),
-            'updated_at' => $tokens['now']->toDateTimeString(),
             'is_del' => CommonEnum::NO,
         ];
 
