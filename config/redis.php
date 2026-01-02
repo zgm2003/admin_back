@@ -14,9 +14,9 @@
 
 return [
     'default' => [
-        'password' => '',
-        'host' => '127.0.0.1',
-        'port' => 6379,
+        'password' => getenv('REDIS_PASSWORD') ?: '',
+        'host' => getenv('REDIS_HOST') ?: '127.0.0.1',
+        'port' => (int)(getenv('REDIS_PORT') ?: 6379),
         'database' => 0,
         'pool' => [ // 连接池配置
             'max_connections' => 10,     // 连接池最大连接数
@@ -27,17 +27,17 @@ return [
         ],
     ],
     'cache' => [ // <==== 新增
-        'password' => '',
-        'host' => '127.0.0.1',
-        'port' => 6379,
+        'password' => getenv('REDIS_PASSWORD') ?: '',
+        'host' => getenv('REDIS_HOST') ?: '127.0.0.1',
+        'port' => (int)(getenv('REDIS_PORT') ?: 6379),
         'database' => 1,
         'prefix' => 'webman_cache-',
     ],
     // 专门的 Token 缓存
     'token' => [
-        'password' => '',
-        'host'     => '127.0.0.1',
-        'port'     => 6379,
+        'password' => getenv('REDIS_PASSWORD') ?: '',
+        'host'     => getenv('REDIS_HOST') ?: '127.0.0.1',
+        'port'     => (int)(getenv('REDIS_PORT') ?: 6379),
         'database' => 2,
         'prefix'   => 'atk:',
         'pool'     => [

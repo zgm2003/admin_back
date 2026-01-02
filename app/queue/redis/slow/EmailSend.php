@@ -1,6 +1,6 @@
 <?php
 
-namespace app\queue\redis\fast;
+namespace app\queue\redis\slow;
 
 use app\lib\TenCentCloud\EmailSdk;
 use Webman\RedisQueue\Consumer;
