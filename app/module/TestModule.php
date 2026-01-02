@@ -150,8 +150,10 @@ class TestModule extends BaseModule
     public function test($request)
     {
         $param = $request->all();
-        $sdk = new CleanExportTask();
-        $sdk->cleanOldFiles();
+        $queue = 'test-test';
+        $data = 666;
+        Redis::send($queue, $data);
+
         return self::success();
     }
 

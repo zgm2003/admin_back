@@ -2,6 +2,7 @@
 
 namespace app\queue\redis\fast;
 
+use support\Log;
 use Webman\RedisQueue\Consumer;
 
 class TestTest implements Consumer
@@ -16,11 +17,12 @@ class TestTest implements Consumer
     // 消费
     public function consume($data)
     {
-
+        Log::channel('redis-queue')->info('test123456:',['error' => $data]);
     }
     public function onConsumeFailure(\Throwable $e, $package)
     {
-        $this->log('operation-log error', $e->getMessage());
+//        $this->log('operation-log error', $e->getMessage());
+        Log::channel('default')->info('test123456:',['error' => '123456']);
 
 
     }
