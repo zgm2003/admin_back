@@ -18,8 +18,6 @@ use app\service\User\PermissionService;
 use app\service\User\TokenService;
 use app\validate\User\UsersValidate;
 use Carbon\Carbon;
-use Respect\Validation\Exceptions\ValidationException;
-use Respect\Validation\Validator as v;
 use support\Cache;
 use support\Redis;
 
@@ -443,12 +441,8 @@ class UsersModule extends BaseModule
     public function forgetPassword($request)
     {
         try {
-            $param = v::input($request->all(), [
-                'email' => v::email()->setName('邮箱'),
-                'newpassword' => v::length(6, 64)->setName('新密码'),
-                'code' => v::digit()->length(6, 6)->setName('验证码')
-            ]);
-        } catch (ValidationException $e) {
+            $param = $this->validate($request, UsersValidate::forgetPassword());
+        } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
 
@@ -535,17 +529,8 @@ class UsersModule extends BaseModule
     public function editPersonal($request)
     {
         try {
-            $param = v::input($request->all(), [
-                'username' => v::length(1, 50)->setName('用户名'),
-                'avatar' => v::optional(v::stringType()),
-                'phone'          => v::optional(v::stringType()),
-                'sex'            => v::intVal()->setName('性别'),
-                'birthday'       => v::optional(v::stringType())->setName('生日'),
-                'address'        => v::intVal()->setName('地址'),
-                'detail_address' => v::optional(v::stringType()),
-                'bio'            => v::optional(v::stringType())
-            ]);
-        } catch (ValidationException $e) {
+            $param = $this->validate($request, UsersValidate::editPersonal());
+        } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
         $userDep = $this->UserDep;
@@ -579,12 +564,8 @@ class UsersModule extends BaseModule
     public function EditPassword($request)
     {
         try {
-            $param = v::input($request->all(), [
-                'password' => v::length(6, 64)->setName('原始密码'),
-                'newpassword' => v::length(6, 64)->setName('新密码'),
-                'respassword' => v::length(6, 64)->setName('确认新密码')
-            ]);
-        } catch (ValidationException $e) {
+            $param = $this->validate($request, UsersValidate::editPassword());
+        } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
         $dep = $this->UserDep;

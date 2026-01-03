@@ -63,5 +63,37 @@ class UsersValidate
             'confirm_password' => v::length(6, 64)->setName('确认密码'),
         ];
     }
+
+    public static function forgetPassword(): array
+    {
+        return [
+            'email' => v::email()->setName('邮箱'),
+            'newpassword' => v::length(6, 64)->setName('新密码'),
+            'code' => v::digit()->length(6, 6)->setName('验证码'),
+        ];
+    }
+
+    public static function editPersonal(): array
+    {
+        return [
+            'username' => v::length(1, 50)->setName('用户名'),
+            'avatar' => v::optional(v::stringType()),
+            'phone' => v::optional(v::stringType()),
+            'sex' => v::intVal()->setName('性别'),
+            'birthday' => v::optional(v::stringType())->setName('生日'),
+            'address' => v::intVal()->setName('地址'),
+            'detail_address' => v::optional(v::stringType()),
+            'bio' => v::optional(v::stringType()),
+        ];
+    }
+
+    public static function editPassword(): array
+    {
+        return [
+            'password' => v::length(6, 64)->setName('原始密码'),
+            'newpassword' => v::length(6, 64)->setName('新密码'),
+            'respassword' => v::length(6, 64)->setName('确认新密码'),
+        ];
+    }
 }
 
