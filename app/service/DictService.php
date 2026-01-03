@@ -13,6 +13,7 @@ use app\enum\PermissionEnum;
 use app\enum\SexEnum;
 use app\enum\UploadConfigEnum;
 use app\enum\SystemEnum;
+use app\enum\AiEnum;
 use support\Cache;
 
 
@@ -199,6 +200,16 @@ class DictService
 
     public function setPlatformArr(){
         $this->dict['platformArr'] = $this->enumToDict(CommonEnum::$platformArr);
+        return $this;
+    }
+
+    public function setAiDriverArr(){
+        $this->dict['ai_driver_arr'] = $this->enumToDict(AiEnum::$driverArr);
+        return $this;
+    }
+
+    public function setAiModeArr(){
+        $this->dict['ai_mode_arr'] = $this->enumToDict(AiEnum::$modeArr);
         return $this;
     }
 
