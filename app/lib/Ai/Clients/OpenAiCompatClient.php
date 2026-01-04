@@ -129,8 +129,9 @@ class OpenAiCompatClient implements AiClientInterface
         $baseUrl = preg_replace('#/chat/completions$#', '', $baseUrl);
         $url = $baseUrl . '/chat/completions';
 
-        // 强制开启 stream
+        // 强制开启 stream 并请求返回 usage
         $payload['stream'] = true;
+        $payload['stream_options'] = ['include_usage' => true];
 
         $jsonBody = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
@@ -138,6 +139,7 @@ class OpenAiCompatClient implements AiClientInterface
 
         $fullContent = '';
         $usage = ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null];
+        $requestId = null;
 
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -154,7 +156,7 @@ class OpenAiCompatClient implements AiClientInterface
             ],
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$fullContent, &$usage, $onChunk) {
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$fullContent, &$usage, &$requestId, $onChunk) {
                 // 解析 SSE 数据
                 $lines = explode("\n", $data);
                 foreach ($lines as $line) {
@@ -174,14 +176,22 @@ class OpenAiCompatClient implements AiClientInterface
                             continue;
                         }
                         $chunk = json_decode($jsonStr, true);
-                        if ($chunk && isset($chunk['choices'][0]['delta']['content'])) {
+                        if (!$chunk) {
+                            continue;
+                        }
+                        // 捕获 request_id
+                        if (isset($chunk['id']) && !$requestId) {
+                            $requestId = $chunk['id'];
+                        }
+                        // 捕获内容
+                        if (isset($chunk['choices'][0]['delta']['content'])) {
                             $deltaContent = $chunk['choices'][0]['delta']['content'];
                             $fullContent .= $deltaContent;
                             // 回调通知前端
                             $onChunk($deltaContent, $chunk);
                         }
-                        // 部分模型在最后一个 chunk 中返回 usage
-                        if ($chunk && isset($chunk['usage'])) {
+                        // 捕获 usage（通常在最后一个 chunk）
+                        if (isset($chunk['usage'])) {
                             $usage = [
                                 'prompt_tokens' => $chunk['usage']['prompt_tokens'] ?? null,
                                 'completion_tokens' => $chunk['usage']['completion_tokens'] ?? null,
@@ -207,11 +217,12 @@ class OpenAiCompatClient implements AiClientInterface
             throw new RuntimeException('API 错误 [' . $httpCode . ']');
         }
 
-        Log::debug('AI 流式响应完成', ['content_length' => strlen($fullContent)]);
+        Log::debug('AI 流式响应完成', ['content_length' => strlen($fullContent), 'usage' => $usage, 'request_id' => $requestId]);
 
         return [
             'content' => $fullContent,
             'usage' => $usage,
+            'request_id' => $requestId,
         ];
     }
 }

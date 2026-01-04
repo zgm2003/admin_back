@@ -365,6 +365,7 @@ class AiChatModule extends BaseModule
         $promptTokens = $result['usage']['prompt_tokens'];
         $completionTokens = $result['usage']['completion_tokens'];
         $totalTokens = $result['usage']['total_tokens'];
+        $requestId = $result['request_id'] ?? null;
 
         $assistantMessageId = $this->messagesDep->add([
             'conversation_id' => $conversationId,
@@ -375,7 +376,7 @@ class AiChatModule extends BaseModule
             'total_tokens' => $totalTokens,
             'cost' => null,
             'model_snapshot' => $modelCode,
-            'meta_json' => null,
+            'meta_json' => $requestId ? json_encode(['request_id' => $requestId], JSON_UNESCAPED_UNICODE) : null,
             'status' => CommonEnum::YES,
             'is_del' => CommonEnum::NO,
         ]);
