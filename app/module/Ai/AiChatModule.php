@@ -235,6 +235,7 @@ class AiChatModule extends BaseModule
         $maxHistory = (int)($param['max_history'] ?? 20);
 
         // 1. 处理会话
+        $isNewConversation = false;
         if (empty($conversationId)) {
             if (empty($agentId)) {
                 return self::error('会话ID为空时，智能体ID必填');
@@ -247,6 +248,7 @@ class AiChatModule extends BaseModule
                 'status' => CommonEnum::YES,
                 'is_del' => CommonEnum::NO,
             ]);
+            $isNewConversation = true;
             // 通知前端新会话 ID
             $onChunk('conversation', ['conversation_id' => $conversationId]);
         } else {
@@ -384,9 +386,50 @@ class AiChatModule extends BaseModule
         // 更新会话的 last_message_at
         $this->conversationsDep->updateLastMessageAt($conversationId);
 
+        // 新会话时自动生成标题
+        if ($isNewConversation) {
+            $this->generateTitle($conversationId, $content, $userId, $client, $endpoint, $apiKey, $modelCode);
+        }
+
         // 通知前端流结束
         $onChunk('done', ['conversation_id' => $conversationId]);
 
         return self::success(['conversation_id' => $conversationId]);
+    }
+
+    /**
+     * 自动生成会话标题
+     */
+    private function generateTitle(int $conversationId, string $userMessage, int $userId, $client, string $endpoint, string $apiKey, string $modelCode): void
+    {
+        try {
+            $prompt = "请根据以下用户消息，生成一个简短的会话标题（不超过20个字），直接返回标题文本，不要任何解释：\n\n" . $userMessage;
+            
+            $result = $client->chatCompletions([
+                'model' => $modelCode,
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+                'max_tokens' => 50,
+                'temperature' => 0.7,
+            ], [
+                'endpoint' => $endpoint,
+                'apiKey' => $apiKey,
+            ]);
+
+            $title = trim($result['content'] ?? '');
+            // 清理标题（去除引号、截断长度）
+            $title = trim($title, '"\'「」『』');
+            if (mb_strlen($title) > 30) {
+                $title = mb_substr($title, 0, 30) . '...';
+            }
+
+            if (!empty($title)) {
+                $this->conversationsDep->updateTitle($conversationId, $title, $userId);
+            }
+        } catch (\Throwable $e) {
+            // 生成标题失败不影响主流程，只记录日志
+            \support\Log::warning('AI 生成标题失败', ['error' => $e->getMessage()]);
+        }
     }
 }
