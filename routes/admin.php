@@ -120,7 +120,6 @@ Route::group('/api/admin', function () {
 
     // AI 消息管理
     Route::post('/AiMessage/list', [controller\Ai\AiMessageController::class, 'list']);
-    Route::post('/AiMessage/add', [controller\Ai\AiMessageController::class, 'add']);
     Route::post('/AiMessage/del', [controller\Ai\AiMessageController::class, 'del']);
 
     // AI 对话（发送消息并获取回复）

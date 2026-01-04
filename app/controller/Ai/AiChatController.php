@@ -77,6 +77,7 @@ class AiChatController extends Controller
         }
 
         // SSE 不需要返回 Response，返回 null
+        // 连接由前端收到 done 事件后主动关闭
         return null;
     }
 

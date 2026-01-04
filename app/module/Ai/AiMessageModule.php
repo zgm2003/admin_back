@@ -70,47 +70,6 @@ class AiMessageModule extends BaseModule
     }
 
     /**
-     * 新增消息
-     */
-    public function add($request): array
-    {
-        try {
-            $param = $this->validate($request, AiMessageValidate::add());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
-
-        // 校验会话存在且属于当前用户
-        $conversation = $this->conversationsDep->getById((int)$param['conversation_id'], $request->userId);
-        if (!$conversation) {
-            return self::error('会话不存在');
-        }
-        if ($conversation->status !== CommonEnum::YES) {
-            return self::error('会话已禁用');
-        }
-
-        // 处理 meta_json
-        $metaJson = null;
-        if (isset($param['meta_json'])) {
-            $metaJson = is_string($param['meta_json'])
-                ? json_decode($param['meta_json'], true)
-                : $param['meta_json'];
-        }
-
-        $data = [
-            'conversation_id' => (int)$param['conversation_id'],
-            'role' => (int)$param['role'],
-            'content' => $param['content'],
-            'meta_json' => $metaJson ? json_encode($metaJson) : null,
-            'status' => CommonEnum::YES,
-            'is_del' => CommonEnum::NO,
-        ];
-
-        $this->dep->add($data);
-        return self::success();
-    }
-
-    /**
      * 删除消息
      */
     public function del($request): array
