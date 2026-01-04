@@ -1,0 +1,100 @@
+<?php
+
+namespace app\dep\Ai;
+
+use app\model\Ai\AiConversationModel;
+use app\enum\CommonEnum;
+
+class AiConversationsDep
+{
+    protected AiConversationModel $model;
+
+    public function __construct()
+    {
+        $this->model = new AiConversationModel();
+    }
+
+    /**
+     * 列表查询（分页 + 过滤）
+     * 排序：last_message_at desc (null排后面), id desc
+     */
+    public function list(array $param)
+    {
+        $pageSize = $param['page_size'] ?? 20;
+        $currentPage = $param['current_page'] ?? 1;
+
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('user_id', $param['user_id'])
+            ->when(!empty($param['agent_id']), function ($q) use ($param) {
+                $q->where('agent_id', (int)$param['agent_id']);
+            })
+            ->orderByRaw('last_message_at IS NULL ASC')
+            ->orderBy('last_message_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate($pageSize, ['*'], 'page', $currentPage);
+    }
+
+    /**
+     * 根据 ID 获取单条（需检查 user_id 归属）
+     */
+    public function getById(int $id, int $userId = null)
+    {
+        $query = $this->model
+            ->where('id', $id)
+            ->where('is_del', CommonEnum::NO);
+
+        if ($userId !== null) {
+            $query->where('user_id', $userId);
+        }
+
+        return $query->first();
+    }
+
+    /**
+     * 创建会话
+     */
+    public function create(array $data): int
+    {
+        return $this->model->insertGetId($data);
+    }
+
+    /**
+     * 更新标题（支持单个或批量）
+     */
+    public function updateTitle($ids, string $title, int $userId): int
+    {
+        $ids = is_array($ids) ? $ids : [$ids];
+        return $this->model
+            ->whereIn('id', $ids)
+            ->where('user_id', $userId)
+            ->where('is_del', CommonEnum::NO)
+            ->update(['title' => $title]);
+    }
+
+    /**
+     * 软删除（支持单个或批量，需校验 user_id）
+     */
+    public function softDelete($ids, int $userId): int
+    {
+        $ids = is_array($ids) ? $ids : [$ids];
+        return $this->model
+            ->whereIn('id', $ids)
+            ->where('user_id', $userId)
+            ->where('is_del', CommonEnum::NO)
+            ->update(['is_del' => CommonEnum::YES]);
+    }
+
+    /**
+     * 批量查询，返回 id => model 的 Collection
+     */
+    public function getMapByIds(array $ids)
+    {
+        if (empty($ids)) return collect();
+        return $this->model
+            ->whereIn('id', array_unique($ids))
+            ->where('is_del', CommonEnum::NO)
+            ->get()
+            ->keyBy('id');
+    }
+}

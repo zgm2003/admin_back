@@ -4,7 +4,7 @@ namespace app\model\Ai;
 
 use support\Model;
 
-class AiModel extends Model
+class AiModelModel extends Model
 {
     /**
      * 表名

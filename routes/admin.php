@@ -97,20 +97,26 @@ Route::group('/api/admin', function () {
     Route::post('/SystemSetting/status', [controller\System\SystemSettingController::class, 'status']);
 
     // AI 模型配置
-    Route::post('/AiModel/init', [controller\Ai\AiModelController::class, 'init']);
-    Route::post('/AiModel/list', [controller\Ai\AiModelController::class, 'list']);
-    Route::post('/AiModel/add', [controller\Ai\AiModelController::class, 'add']);
-    Route::post('/AiModel/edit', [controller\Ai\AiModelController::class, 'edit']);
-    Route::post('/AiModel/del', [controller\Ai\AiModelController::class, 'del']);
-    Route::post('/AiModel/status', [controller\Ai\AiModelController::class, 'status']);
+    Route::post('/AiModelModel/init', [controller\Ai\AiModelController::class, 'init']);
+    Route::post('/AiModelModel/list', [controller\Ai\AiModelController::class, 'list']);
+    Route::post('/AiModelModel/add', [controller\Ai\AiModelController::class, 'add']);
+    Route::post('/AiModelModel/edit', [controller\Ai\AiModelController::class, 'edit']);
+    Route::post('/AiModelModel/del', [controller\Ai\AiModelController::class, 'del']);
+    Route::post('/AiModelModel/status', [controller\Ai\AiModelController::class, 'status']);
 
     // AI 智能体配置
-    Route::post('/AiAgent/init', [controller\Ai\AiAgentController::class, 'init']);
-    Route::post('/AiAgent/list', [controller\Ai\AiAgentController::class, 'list']);
-    Route::post('/AiAgent/add', [controller\Ai\AiAgentController::class, 'add']);
-    Route::post('/AiAgent/edit', [controller\Ai\AiAgentController::class, 'edit']);
-    Route::post('/AiAgent/del', [controller\Ai\AiAgentController::class, 'del']);
-    Route::post('/AiAgent/status', [controller\Ai\AiAgentController::class, 'status']);
+    Route::post('/AiAgentModel/init', [controller\Ai\AiAgentController::class, 'init']);
+    Route::post('/AiAgentModel/list', [controller\Ai\AiAgentController::class, 'list']);
+    Route::post('/AiAgentModel/add', [controller\Ai\AiAgentController::class, 'add']);
+    Route::post('/AiAgentModel/edit', [controller\Ai\AiAgentController::class, 'edit']);
+    Route::post('/AiAgentModel/del', [controller\Ai\AiAgentController::class, 'del']);
+    Route::post('/AiAgentModel/status', [controller\Ai\AiAgentController::class, 'status']);
+
+    // AI 会话管理
+    Route::post('/AiConversationModel/list', [controller\Ai\AiConversationController::class, 'list']);
+    Route::post('/AiConversationModel/add', [controller\Ai\AiConversationController::class, 'add']);
+    Route::post('/AiConversationModel/edit', [controller\Ai\AiConversationController::class, 'edit']);
+    Route::post('/AiConversationModel/del', [controller\Ai\AiConversationController::class, 'del']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

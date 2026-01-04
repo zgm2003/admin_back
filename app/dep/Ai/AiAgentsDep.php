@@ -2,16 +2,16 @@
 
 namespace app\dep\Ai;
 
-use app\model\Ai\AiAgent;
+use app\model\Ai\AiAgentModel;
 use app\enum\CommonEnum;
 
 class AiAgentsDep
 {
-    protected AiAgent $model;
+    protected AiAgentModel $model;
 
     public function __construct()
     {
-        $this->model = new AiAgent();
+        $this->model = new AiAgentModel();
     }
 
     /**
@@ -94,5 +94,18 @@ class AiAgentsDep
             ->whereIn('id', $ids)
             ->where('is_del', CommonEnum::NO)
             ->update(['status' => $status]);
+    }
+
+    /**
+     * 批量查询，返回 id => model 的 Collection
+     */
+    public function getMapByIds(array $ids)
+    {
+        if (empty($ids)) return collect();
+        return $this->model
+            ->whereIn('id', array_unique($ids))
+            ->where('is_del', CommonEnum::NO)
+            ->get()
+            ->keyBy('id');
     }
 }

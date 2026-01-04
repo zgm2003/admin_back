@@ -4,7 +4,7 @@ namespace app\model\Ai;
 
 use support\Model;
 
-class AiAgent extends Model
+class AiAgentModel extends Model
 {
     protected $table = 'ai_agents';
 

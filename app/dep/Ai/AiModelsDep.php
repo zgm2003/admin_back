@@ -2,16 +2,16 @@
 
 namespace app\dep\Ai;
 
-use app\model\Ai\AiModel;
+use app\model\Ai\AiModelModel;
 use app\enum\CommonEnum;
 
 class AiModelsDep
 {
-    protected AiModel $model;
+    protected AiModelModel $model;
 
     public function __construct()
     {
-        $this->model = new AiModel();
+        $this->model = new AiModelModel();
     }
 
     /**
