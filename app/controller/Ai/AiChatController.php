@@ -24,6 +24,22 @@ class AiChatController extends Controller
     }
 
     /**
+     * 获取 SSE CORS 响应头
+     */
+    private function getSseHeaders(Request $request): array
+    {
+        $origin = $request->header('origin', '*');
+        return [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+            'Access-Control-Allow-Origin' => $origin,
+            'Access-Control-Allow-Credentials' => 'true',
+        ];
+    }
+
+    /**
      * 发送消息并获取 AI 回复（流式 SSE）
      */
     public function stream(Request $request)
@@ -39,13 +55,8 @@ class AiChatController extends Controller
         $userId = $request->userId;
         $connection = $request->connection;
 
-        // 2. 发送 SSE 响应头
-        $connection->send(new WorkermanResponse(200, [
-            'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
-            'Connection' => 'keep-alive',
-            'X-Accel-Buffering' => 'no',
-        ], "\r\n"));
+        // 2. 发送 SSE 响应头（包含 CORS）
+        $connection->send(new WorkermanResponse(200, $this->getSseHeaders($request), "\r\n"));
 
         // 3. 调用流式接口
         $module = new AiChatModule();
@@ -75,10 +86,7 @@ class AiChatController extends Controller
     private function sseError(Request $request, string $msg)
     {
         $connection = $request->connection;
-        $connection->send(new WorkermanResponse(200, [
-            'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
-        ], "\r\n"));
+        $connection->send(new WorkermanResponse(200, $this->getSseHeaders($request), "\r\n"));
         $connection->send(new ServerSentEvents([
             'event' => 'error',
             'data' => json_encode(['msg' => $msg], JSON_UNESCAPED_UNICODE),
