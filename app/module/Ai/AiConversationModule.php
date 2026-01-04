@@ -108,8 +108,8 @@ class AiConversationModule extends BaseModule
             return self::success(['affected' => 0]);
         }
 
-        $affected = $this->dep->updateTitle($ids, $param['title'], $userId);
-        return self::success(['affected' => $affected]);
+        $this->dep->updateTitle($ids, $param['title'], $userId);
+        return self::success();
     }
 
     public function del($request): array
@@ -123,7 +123,7 @@ class AiConversationModule extends BaseModule
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
         $userId = $request->userId;
 
-        $affected = $this->dep->del($ids, $userId);
-        return self::success(['affected' => $affected]);
+        $this->dep->del($ids, $userId);
+        return self::success();
     }
 }

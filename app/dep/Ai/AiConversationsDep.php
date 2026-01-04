@@ -80,6 +80,17 @@ class AiConversationsDep
     }
 
     /**
+     * 更新会话的最后消息时间
+     */
+    public function updateLastMessageAt(int $id): int
+    {
+        return $this->model
+            ->where('id', $id)
+            ->where('is_del', CommonEnum::NO)
+            ->update(['last_message_at' => date('Y-m-d H:i:s')]);
+    }
+
+    /**
      * 批量查询，返回 id => model 的 Collection
      */
     public function getMapByIds(array $ids)

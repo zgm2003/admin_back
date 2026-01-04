@@ -117,6 +117,15 @@ Route::group('/api/admin', function () {
     Route::post('/AiConversation/add', [controller\Ai\AiConversationController::class, 'add']);
     Route::post('/AiConversation/edit', [controller\Ai\AiConversationController::class, 'edit']);
     Route::post('/AiConversation/del', [controller\Ai\AiConversationController::class, 'del']);
+
+    // AI 消息管理
+    Route::post('/AiMessage/list', [controller\Ai\AiMessageController::class, 'list']);
+    Route::post('/AiMessage/add', [controller\Ai\AiMessageController::class, 'add']);
+    Route::post('/AiMessage/del', [controller\Ai\AiMessageController::class, 'del']);
+
+    // AI 对话（发送消息并获取回复）
+    Route::post('/AiChat/send', [controller\Ai\AiChatController::class, 'send']);
+    Route::post('/AiChat/stream', [controller\Ai\AiChatController::class, 'stream']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

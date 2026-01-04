@@ -25,6 +25,17 @@ class AiEnum
         self::DRIVER_HUNYUAN => '混元',
     ];
 
+    // 消息角色
+    const ROLE_USER = 1;
+    const ROLE_ASSISTANT = 2;
+    const ROLE_SYSTEM = 3;
+
+    public static $roleArr = [
+        self::ROLE_USER => 'user',
+        self::ROLE_ASSISTANT => 'assistant',
+        self::ROLE_SYSTEM => 'system',
+    ];
+
     // AI 智能体模式
     const MODE_CHAT = 'chat';
     const MODE_RAG = 'rag';

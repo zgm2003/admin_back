@@ -1,0 +1,217 @@
+<?php
+
+namespace app\lib\Ai\Clients;
+
+use app\lib\Ai\AiClientInterface;
+use RuntimeException;
+use support\Log;
+
+/**
+ * OpenAI 兼容接口客户端
+ * 支持通义千问、DeepSeek、Moonshot、智谱等 OpenAI 兼容接口
+ */
+class OpenAiCompatClient implements AiClientInterface
+{
+    private string $defaultBaseUrl;
+
+    public function __construct(string $defaultBaseUrl = '')
+    {
+        $this->defaultBaseUrl = $defaultBaseUrl;
+    }
+
+    /**
+     * 获取默认的 baseUrl
+     */
+    public function getDefaultBaseUrl(): string
+    {
+        return $this->defaultBaseUrl;
+    }
+
+    /**
+     * 调用 chat/completions 接口
+     * @param array $payload 请求参数（model, messages, temperature, max_tokens 等）
+     * @param array $config 配置信息（baseUrl, apiKey, endpoint 等）
+     * @return array 返回结构：['content' => string, 'usage' => array, 'raw' => array]
+     * @throws RuntimeException
+     */
+    public function chatCompletions(array $payload, array $config): array
+    {
+        $baseUrl = $config['endpoint'] ?? $config['baseUrl'] ?? $this->defaultBaseUrl;
+        $apiKey = $config['apiKey'] ?? '';
+
+        if (empty($baseUrl)) {
+            throw new RuntimeException('未配置 API baseUrl');
+        }
+        if (empty($apiKey)) {
+            throw new RuntimeException('未配置 API Key');
+        }
+
+        // 移除 baseUrl 末尾可能已包含的 /chat/completions
+        $baseUrl = rtrim($baseUrl, '/');
+        $baseUrl = preg_replace('#/chat/completions$#', '', $baseUrl);
+        $url = $baseUrl . '/chat/completions';
+
+        $jsonBody = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+        Log::debug('AI 请求', ['url' => $url, 'payload' => $payload]);
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $jsonBody,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 120,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey,
+            ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        Log::debug('AI 响应', ['httpCode' => $httpCode, 'response' => $response]);
+
+        if ($response === false) {
+            throw new RuntimeException('请求失败: ' . $curlError);
+        }
+
+        $result = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new RuntimeException('响应解析失败: ' . json_last_error_msg());
+        }
+
+        // 处理 API 错误响应
+        if ($httpCode >= 400 || isset($result['error'])) {
+            $errorMsg = $result['error']['message'] ?? ($result['message'] ?? '未知错误');
+            throw new RuntimeException('API 错误 [' . $httpCode . ']: ' . $errorMsg);
+        }
+
+        // 统一返回格式
+        return [
+            'content' => $result['choices'][0]['message']['content'] ?? '',
+            'usage' => [
+                'prompt_tokens' => $result['usage']['prompt_tokens'] ?? null,
+                'completion_tokens' => $result['usage']['completion_tokens'] ?? null,
+                'total_tokens' => $result['usage']['total_tokens'] ?? null,
+            ],
+            'raw' => $result,
+        ];
+    }
+
+    /**
+     * 调用 chat/completions 接口（流式 SSE）
+     * @param array $payload 请求参数
+     * @param array $config 配置信息
+     * @param callable $onChunk 回调函数 function(string $deltaContent, array $chunk)
+     * @return array 返回结构：['content' => string, 'usage' => array]
+     */
+    public function chatCompletionsStream(array $payload, array $config, callable $onChunk): array
+    {
+        $baseUrl = $config['endpoint'] ?? $config['baseUrl'] ?? $this->defaultBaseUrl;
+        $apiKey = $config['apiKey'] ?? '';
+
+        if (empty($baseUrl)) {
+            throw new RuntimeException('未配置 API baseUrl');
+        }
+        if (empty($apiKey)) {
+            throw new RuntimeException('未配置 API Key');
+        }
+
+        // 移除 baseUrl 末尾可能已包含的 /chat/completions
+        $baseUrl = rtrim($baseUrl, '/');
+        $baseUrl = preg_replace('#/chat/completions$#', '', $baseUrl);
+        $url = $baseUrl . '/chat/completions';
+
+        // 强制开启 stream
+        $payload['stream'] = true;
+
+        $jsonBody = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+        Log::debug('AI 流式请求', ['url' => $url, 'payload' => $payload]);
+
+        $fullContent = '';
+        $usage = ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null];
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $jsonBody,
+            CURLOPT_RETURNTRANSFER => false,
+            CURLOPT_TIMEOUT => 300,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $apiKey,
+                'Accept: text/event-stream',
+            ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$fullContent, &$usage, $onChunk) {
+                // 解析 SSE 数据
+                $lines = explode("\n", $data);
+                foreach ($lines as $line) {
+                    $line = trim($line);
+                    if (empty($line)) {
+                        continue;
+                    }
+                    // 跳过注释行
+                    if (str_starts_with($line, ':')) {
+                        continue;
+                    }
+                    // 解析 data: 前缀
+                    if (str_starts_with($line, 'data:')) {
+                        $jsonStr = trim(substr($line, 5));
+                        if ($jsonStr === '[DONE]') {
+                            // 流结束
+                            continue;
+                        }
+                        $chunk = json_decode($jsonStr, true);
+                        if ($chunk && isset($chunk['choices'][0]['delta']['content'])) {
+                            $deltaContent = $chunk['choices'][0]['delta']['content'];
+                            $fullContent .= $deltaContent;
+                            // 回调通知前端
+                            $onChunk($deltaContent, $chunk);
+                        }
+                        // 部分模型在最后一个 chunk 中返回 usage
+                        if ($chunk && isset($chunk['usage'])) {
+                            $usage = [
+                                'prompt_tokens' => $chunk['usage']['prompt_tokens'] ?? null,
+                                'completion_tokens' => $chunk['usage']['completion_tokens'] ?? null,
+                                'total_tokens' => $chunk['usage']['total_tokens'] ?? null,
+                            ];
+                        }
+                    }
+                }
+                return strlen($data);
+            },
+        ]);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($result === false) {
+            throw new RuntimeException('请求失败: ' . $curlError);
+        }
+
+        if ($httpCode >= 400) {
+            throw new RuntimeException('API 错误 [' . $httpCode . ']');
+        }
+
+        Log::debug('AI 流式响应完成', ['content_length' => strlen($fullContent)]);
+
+        return [
+            'content' => $fullContent,
+            'usage' => $usage,
+        ];
+    }
+}
