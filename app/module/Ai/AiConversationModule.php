@@ -89,7 +89,7 @@ class AiConversationModule extends BaseModule
             'is_del' => CommonEnum::NO,
         ];
 
-        $id = $this->dep->create($data);
+        $id = $this->dep->add($data);
         return self::success(['id' => $id]);
     }
 
@@ -123,7 +123,7 @@ class AiConversationModule extends BaseModule
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
         $userId = $request->userId;
 
-        $affected = $this->dep->softDelete($ids, $userId);
+        $affected = $this->dep->del($ids, $userId);
         return self::success(['affected' => $affected]);
     }
 }

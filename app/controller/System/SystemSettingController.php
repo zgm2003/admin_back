@@ -1,4 +1,5 @@
 <?php
+
 namespace app\controller\System;
 
 use app\controller\Controller;
@@ -19,10 +20,29 @@ class SystemSettingController extends Controller
         return $this->response();
     }
 
-    public function add(Request $request) { $this->run([SystemSettingModule::class, 'add'], $request); return $this->response(); }
-    public function edit(Request $request) { $this->run([SystemSettingModule::class, 'edit'], $request); return $this->response(); }
-    public function del(Request $request) { $this->run([SystemSettingModule::class, 'del'], $request); return $this->response(); }
-    public function status(Request $request) { $this->run([SystemSettingModule::class, 'status'], $request); return $this->response(); }
+    public function add(Request $request)
+    {
+        $this->run([SystemSettingModule::class, 'add'], $request);
+        return $this->response();
+    }
+
+    public function edit(Request $request)
+    {
+        $this->run([SystemSettingModule::class, 'edit'], $request);
+        return $this->response();
+    }
+
+    public function del(Request $request)
+    {
+        $this->run([SystemSettingModule::class, 'del'], $request);
+        return $this->response();
+    }
+
+    public function status(Request $request)
+    {
+        $this->run([SystemSettingModule::class, 'status'], $request);
+        return $this->response();
+    }
 
     public function clearCache(Request $request)
     {

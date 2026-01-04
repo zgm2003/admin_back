@@ -48,39 +48,21 @@ class AiModelsDep
             ->first();
     }
 
-    /**
-     * 创建记录
-     */
-    public function create(array $data): int
+    public function add($data)
     {
         return $this->model->insertGetId($data);
     }
 
-    /**
-     * 根据 ID 更新
-     */
-    public function updateById(int $id, array $data): bool
+    public function edit($id, $data)
     {
-        $row = $this->getById($id);
-        if (!$row) {
-            return false;
-        }
-
-        $this->model->where('id', $id)->update($data);
-        return true;
+        if (!is_array($id)) $id = [$id];
+        return $this->model->whereIn('id', $id)->update($data);
     }
 
-    /**
-     * 软删除（支持单个或数组）
-     */
-    public function softDelete($ids): int
+    public function del($id, $data)
     {
-        $ids = is_array($ids) ? $ids : [$ids];
-
-        return $this->model
-            ->whereIn('id', $ids)
-            ->where('is_del', CommonEnum::NO)
-            ->update(['is_del' => CommonEnum::YES]);
+        if (!is_array($id)) $id = [$id];
+        return $this->model->whereIn('id', $id)->update($data);
     }
 
     /**

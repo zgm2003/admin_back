@@ -118,7 +118,7 @@ class AiModelModule extends BaseModule
             }
         }
 
-        $id = $this->dep->create($data);
+        $this->dep->add($data);
 
         return self::success();
     }
@@ -189,11 +189,7 @@ class AiModelModule extends BaseModule
             return self::success();
         }
 
-        $ok = $this->dep->updateById($id, $data);
-        if (!$ok) {
-            return self::error('更新失败');
-        }
-
+        $this->dep->edit($id, $data);
         return self::success();
     }
 
@@ -209,7 +205,7 @@ class AiModelModule extends BaseModule
         }
 
         $ids = $param['id'];
-        $affected = $this->dep->softDelete($ids);
+        $affected = $this->dep->del($ids, ['is_del' => CommonEnum::YES]);
 
         return self::success(['affected' => $affected]);
     }

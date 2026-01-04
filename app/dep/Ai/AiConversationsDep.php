@@ -51,10 +51,7 @@ class AiConversationsDep
         return $query->first();
     }
 
-    /**
-     * 创建会话
-     */
-    public function create(array $data): int
+    public function add($data)
     {
         return $this->model->insertGetId($data);
     }
@@ -72,10 +69,7 @@ class AiConversationsDep
             ->update(['title' => $title]);
     }
 
-    /**
-     * 软删除（支持单个或批量，需校验 user_id）
-     */
-    public function softDelete($ids, int $userId): int
+    public function del($ids, int $userId)
     {
         $ids = is_array($ids) ? $ids : [$ids];
         return $this->model

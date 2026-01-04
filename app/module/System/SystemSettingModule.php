@@ -59,22 +59,34 @@ class SystemSettingModule extends BaseModule
 
     public function add($request)
     {
-        try { $param = $this->validate($request, SystemSettingValidate::add()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        try {
+            $param = $this->validate($request, SystemSettingValidate::add());
+        } catch (\RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
         if ((int)$param['type'] === 2 && !is_numeric($param['value'])) return self::error('数值类型需为数字');
-        if ((int)$param['type'] === 3 && !in_array(strtolower((string)$param['value']), ['0','1','true','false'], true)) return self::error('布尔类型需为 true/false 或 0/1');
-        if ((int)$param['type'] === 4) { $j = json_decode((string)$param['value'], true); if (!is_array($j)) return self::error('JSON 类型需为合法 JSON'); }
+        if ((int)$param['type'] === 3 && !in_array(strtolower((string)$param['value']), ['0', '1', 'true', 'false'], true)) return self::error('布尔类型需为 true/false 或 0/1');
+        if ((int)$param['type'] === 4) {
+            $j = json_decode((string)$param['value'], true);
+            if (!is_array($j)) return self::error('JSON 类型需为合法 JSON');
+        }
         $this->dep->setValue($param['key'], $param['value'], (int)$param['type'], $param['remark'] ?? '');
         return self::success();
     }
 
     public function edit($request)
     {
-        try { $param = $this->validate($request, SystemSettingValidate::edit()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        try {
+            $param = $this->validate($request, SystemSettingValidate::edit());
+        } catch (\RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
         if ((int)$param['type'] === 2 && !is_numeric($param['value'])) return self::error('数值类型需为数字');
-        if ((int)$param['type'] === 3 && !in_array(strtolower((string)$param['value']), ['0','1','true','false'], true)) return self::error('布尔类型需为 true/false 或 0/1');
-        if ((int)$param['type'] === 4) { $j = json_decode((string)$param['value'], true); if (!is_array($j)) return self::error('JSON 类型需为合法 JSON'); }
+        if ((int)$param['type'] === 3 && !in_array(strtolower((string)$param['value']), ['0', '1', 'true', 'false'], true)) return self::error('布尔类型需为 true/false 或 0/1');
+        if ((int)$param['type'] === 4) {
+            $j = json_decode((string)$param['value'], true);
+            if (!is_array($j)) return self::error('JSON 类型需为合法 JSON');
+        }
         $ok = $this->dep->editById((int)$param['id'], [
             'setting_value' => (int)$param['type'] === 4 ? (is_string($param['value']) ? $param['value'] : json_encode($param['value'])) : (string)$param['value'],
             'value_type' => (int)$param['type'],
@@ -86,16 +98,22 @@ class SystemSettingModule extends BaseModule
 
     public function del($request)
     {
-        try { $param = $this->validate($request, SystemSettingValidate::del()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        try {
+            $param = $this->validate($request, SystemSettingValidate::del());
+        } catch (\RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
         $this->dep->delById($param['id']);
         return self::success();
     }
 
     public function status($request)
     {
-        try { $param = $this->validate($request, SystemSettingValidate::status()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        try {
+            $param = $this->validate($request, SystemSettingValidate::status());
+        } catch (\RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
         $ok = $this->dep->setStatusById((int)$param['id'], (int)$param['status']);
         if (!$ok) return self::error('配置不存在');
         return self::success();
