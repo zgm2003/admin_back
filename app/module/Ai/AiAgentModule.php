@@ -110,12 +110,10 @@ class AiAgentModule extends BaseModule
             return self::error('关联的模型已禁用');
         }
 
-        // 处理 extra_params
+        // extra_params
         $extraParams = null;
-        if (isset($param['extra_params'])) {
-            $extraParams = is_string($param['extra_params'])
-                ? json_decode($param['extra_params'], true)
-                : $param['extra_params'];
+        if (!empty($param['extra_params'])) {
+            $extraParams = $param['extra_params'];
         }
 
         $data = [
@@ -149,52 +147,30 @@ class AiAgentModule extends BaseModule
             return self::error('记录不存在');
         }
 
-        // 如果修改了 model_id，校验新模型
-        if (isset($param['model_id'])) {
-            $model = $this->modelsDep->getById((int)$param['model_id']);
-            if (!$model) {
-                return self::error('关联的模型不存在');
-            }
-            if ($model->status !== CommonEnum::YES) {
-                return self::error('关联的模型已禁用');
-            }
+        // 校验 model_id
+        $model = $this->modelsDep->getById((int)$param['model_id']);
+        if (!$model) {
+            return self::error('关联的模型不存在');
+        }
+        if ($model->status !== CommonEnum::YES) {
+            return self::error('关联的模型已禁用');
         }
 
-        $data = [];
+        // 构建更新数据
+        $data = [
+            'name' => $param['name'],
+            'model_id' => (int)$param['model_id'],
+            'avatar' => $param['avatar'] ?? null,
+            'system_prompt' => $param['system_prompt'] ?? null,
+            'mode' => $param['mode'],
+            'temperature' => $param['temperature'],
+            'max_tokens' => $param['max_tokens'] ?? null,
+            'status' => (int)$param['status'],
+        ];
 
-        if (isset($param['name'])) {
-            $data['name'] = $param['name'];
-        }
-        if (isset($param['model_id'])) {
-            $data['model_id'] = (int)$param['model_id'];
-        }
-        if (array_key_exists('avatar', $param)) {
-            $data['avatar'] = $param['avatar'];
-        }
-        if (array_key_exists('system_prompt', $param)) {
-            $data['system_prompt'] = $param['system_prompt'];
-        }
-        if (isset($param['mode'])) {
-            $data['mode'] = $param['mode'];
-        }
-        if (isset($param['temperature'])) {
-            $data['temperature'] = $param['temperature'];
-        }
-        if (array_key_exists('max_tokens', $param)) {
-            $data['max_tokens'] = $param['max_tokens'];
-        }
-        if (isset($param['extra_params'])) {
-            $extraParams = is_string($param['extra_params'])
-                ? json_decode($param['extra_params'], true)
-                : $param['extra_params'];
-            $data['extra_params'] = $extraParams ? json_encode($extraParams) : null;
-        }
-        if (isset($param['status'])) {
-            $data['status'] = (int)$param['status'];
-        }
-
-        if (empty($data)) {
-            return self::success();
+        // extra_params
+        if (!empty($param['extra_params'])) {
+            $data['extra_params'] = json_encode($param['extra_params']);
         }
 
         $this->dep->edit($id, $data);

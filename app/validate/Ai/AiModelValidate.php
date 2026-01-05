@@ -3,6 +3,7 @@
 namespace app\validate\Ai;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class AiModelValidate
 {
@@ -17,15 +18,8 @@ class AiModelValidate
             'model_code'     => v::stringType()->length(1, 80)->setName('模型标识'),
             'endpoint'       => v::optional(v::stringType()->length(0, 255))->setName('接口地址'),
             'api_key'        => v::optional(v::stringType())->setName('API Key'),
-            'default_params' => v::optional(v::callback(function ($val) {
-                if (is_array($val)) return true;
-                if (is_string($val)) {
-                    $decoded = json_decode($val, true);
-                    return is_array($decoded);
-                }
-                return false;
-            }))->setName('默认参数'),
-            'status'         => v::optional(v::intVal()->in([1, 2]))->setName('状态'),
+            'default_params' => v::optional(v::arrayType())->setName('默认参数'),
+            'status'         => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
         ];
     }
 
@@ -41,15 +35,8 @@ class AiModelValidate
             'model_code'     => v::optional(v::stringType()->length(1, 80))->setName('模型标识'),
             'endpoint'       => v::optional(v::stringType()->length(0, 255))->setName('接口地址'),
             'api_key'        => v::optional(v::stringType())->setName('API Key'),
-            'default_params' => v::optional(v::callback(function ($val) {
-                if (is_array($val)) return true;
-                if (is_string($val)) {
-                    $decoded = json_decode($val, true);
-                    return is_array($decoded);
-                }
-                return false;
-            }))->setName('默认参数'),
-            'status'         => v::optional(v::intVal()->in([1, 2]))->setName('状态'),
+            'default_params' => v::optional(v::arrayType())->setName('默认参数'),
+            'status'         => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
         ];
     }
 
@@ -72,7 +59,7 @@ class AiModelValidate
             'page_size'    => v::optional(v::intVal()->positive()),
             'current_page' => v::optional(v::intVal()->positive()),
             'driver'       => v::optional(v::stringType()),
-            'status'       => v::optional(v::intVal()->in([1, 2])),
+            'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr))),
             'name'         => v::optional(v::stringType()),
         ];
     }
@@ -84,7 +71,7 @@ class AiModelValidate
     {
         return [
             'id'     => v::oneOf(v::intVal()->positive(), v::arrayType())->setName('ID'),
-            'status' => v::intVal()->in([1, 2])->setName('状态'),
+            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('状态'),
         ];
     }
 }

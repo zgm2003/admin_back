@@ -91,10 +91,8 @@ class AiModelModule extends BaseModule
 
         // 处理 default_params
         $defaultParams = null;
-        if (isset($param['default_params'])) {
-            $defaultParams = is_string($param['default_params'])
-                ? json_decode($param['default_params'], true)
-                : $param['default_params'];
+        if (!empty($param['default_params'])) {
+            $defaultParams = $param['default_params'];
         }
 
         // 构建数据
@@ -140,53 +138,29 @@ class AiModelModule extends BaseModule
             return self::error('记录不存在');
         }
 
-        // 如果修改了 driver 或 name，检查唯一性
-        $newDriver = $param['driver'] ?? $row->driver;
-        $newName = $param['name'] ?? $row->name;
-        if (($newDriver !== $row->driver || $newName !== $row->name) &&
-            $this->dep->existsByDriverAndName($newDriver, $newName, $id)) {
+        // 唯一性校验
+        if ($this->dep->existsByDriverAndName($param['driver'], $param['name'], $id)) {
             return self::error('该驱动下已存在同名模型');
         }
 
         // 构建更新数据
-        $data = [];
+        $data = [
+            'name' => $param['name'],
+            'driver' => $param['driver'],
+            'model_code' => $param['model_code'],
+            'endpoint' => $param['endpoint'] ?? null,
+            'status' => (int)$param['status'],
+        ];
 
-        if (isset($param['name'])) {
-            $data['name'] = $param['name'];
-        }
-        if (isset($param['driver'])) {
-            $data['driver'] = $param['driver'];
-        }
-        if (isset($param['model_code'])) {
-            $data['model_code'] = $param['model_code'];
-        }
-        if (array_key_exists('endpoint', $param)) {
-            $data['endpoint'] = $param['endpoint'];
-        }
-        if (isset($param['status'])) {
-            $data['status'] = (int)$param['status'];
+        // default_params
+        if (!empty($param['default_params'])) {
+            $data['default_params'] = json_encode($param['default_params']);
         }
 
-        // 处理 default_params
-        if (isset($param['default_params'])) {
-            $defaultParams = is_string($param['default_params'])
-                ? json_decode($param['default_params'], true)
-                : $param['default_params'];
-            $data['default_params'] = $defaultParams ? json_encode($defaultParams) : null;
-        }
-
-        // 处理 API Key（只有传了才更新）
+        // API Key（留空不改）
         if (!empty($param['api_key'])) {
-            try {
-                $data['api_key_enc'] = KeyVault::encrypt($param['api_key']);
-                $data['api_key_hint'] = KeyVault::hint($param['api_key']);
-            } catch (RuntimeException $e) {
-                return self::error($e->getMessage());
-            }
-        }
-
-        if (empty($data)) {
-            return self::success();
+            $data['api_key_enc'] = KeyVault::encrypt($param['api_key']);
+            $data['api_key_hint'] = KeyVault::hint($param['api_key']);
         }
 
         $this->dep->edit($id, $data);

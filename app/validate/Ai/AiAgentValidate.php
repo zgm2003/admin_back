@@ -3,6 +3,7 @@
 namespace app\validate\Ai;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class AiAgentValidate
 {
@@ -16,15 +17,8 @@ class AiAgentValidate
             'mode'         => v::optional(v::stringType()->in(['chat', 'rag', 'tool', 'workflow']))->setName('模式'),
             'temperature'  => v::optional(v::floatVal()->between(0, 2))->setName('温度'),
             'max_tokens'   => v::optional(v::intVal()->positive())->setName('最大输出长度'),
-            'extra_params' => v::optional(v::callback(function ($val) {
-                if (is_array($val)) return true;
-                if (is_string($val)) {
-                    $decoded = json_decode($val, true);
-                    return is_array($decoded);
-                }
-                return false;
-            }))->setName('额外参数'),
-            'status'       => v::optional(v::intVal()->in([1, 2]))->setName('状态'),
+            'extra_params' => v::optional(v::arrayType())->setName('额外参数'),
+            'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
         ];
     }
 
@@ -39,15 +33,8 @@ class AiAgentValidate
             'mode'         => v::optional(v::stringType()->in(['chat', 'rag', 'tool', 'workflow']))->setName('模式'),
             'temperature'  => v::optional(v::floatVal()->between(0, 2))->setName('温度'),
             'max_tokens'   => v::optional(v::intVal()->positive())->setName('最大输出长度'),
-            'extra_params' => v::optional(v::callback(function ($val) {
-                if (is_array($val)) return true;
-                if (is_string($val)) {
-                    $decoded = json_decode($val, true);
-                    return is_array($decoded);
-                }
-                return false;
-            }))->setName('额外参数'),
-            'status'       => v::optional(v::intVal()->in([1, 2]))->setName('状态'),
+            'extra_params' => v::optional(v::arrayType())->setName('额外参数'),
+            'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
         ];
     }
 
@@ -64,7 +51,7 @@ class AiAgentValidate
             'page_size'    => v::optional(v::intVal()->positive()),
             'current_page' => v::optional(v::intVal()->positive()),
             'model_id'     => v::optional(v::intVal()->positive()),
-            'status'       => v::optional(v::intVal()->in([1, 2])),
+            'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr))),
             'mode'         => v::optional(v::stringType()->in(['chat', 'rag', 'tool', 'workflow'])),
             'name'         => v::optional(v::stringType()),
         ];
@@ -74,7 +61,7 @@ class AiAgentValidate
     {
         return [
             'id'     => v::oneOf(v::intVal()->positive(), v::arrayType())->setName('ID'),
-            'status' => v::intVal()->in([1, 2])->setName('状态'),
+            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('状态'),
         ];
     }
 }

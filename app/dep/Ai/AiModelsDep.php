@@ -61,8 +61,7 @@ class AiModelsDep
 
     public function del($id, $data)
     {
-        if (!is_array($id)) $id = [$id];
-        return $this->model->whereIn('id', $id)->update($data);
+        return $this->edit($id, $data);
     }
 
     /**
