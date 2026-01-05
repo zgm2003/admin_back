@@ -29,7 +29,7 @@ class AiMessagesDep
             ->when(isset($param['role']) && $param['role'] !== '', function ($q) use ($param) {
                 $q->where('role', (int)$param['role']);
             })
-            ->orderBy('id', 'asc')
+            ->orderBy('id', 'desc')  // 最新消息在前，前端需要 reverse
             ->paginate($pageSize, ['*'], 'page', $currentPage);
     }
 
