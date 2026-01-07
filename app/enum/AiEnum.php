@@ -48,4 +48,17 @@ class AiEnum
         self::MODE_TOOL => '工具',
         self::MODE_WORKFLOW => '工作流',
     ];
+
+    // AI 运行状态 (ai_runs.run_status)
+    const RUN_STATUS_RUNNING = 1;   // 运行中
+    const RUN_STATUS_SUCCESS = 2;   // 成功
+    const RUN_STATUS_FAIL = 3;      // 失败
+    const RUN_STATUS_CANCELED = 4;  // 已取消
+
+    public static $runStatusArr = [
+        self::RUN_STATUS_RUNNING => '运行中',
+        self::RUN_STATUS_SUCCESS => '成功',
+        self::RUN_STATUS_FAIL => '失败',
+        self::RUN_STATUS_CANCELED => '已取消',
+    ];
 }

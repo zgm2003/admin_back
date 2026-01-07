@@ -6,6 +6,7 @@ use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiMessagesDep;
 use app\dep\Ai\AiModelsDep;
+use app\dep\Ai\AiRunsDep;
 use app\enum\CommonEnum;
 use app\enum\AiEnum;
 use app\lib\Ai\Crypto\KeyVault;
@@ -14,6 +15,7 @@ use app\lib\Ai\AiClientInterface;
 use app\module\BaseModule;
 use app\validate\Ai\AiChatValidate;
 use RuntimeException;
+use support\Log;
 
 /**
  * AI 对话模块
@@ -25,6 +27,7 @@ class AiChatModule extends BaseModule
     protected AiMessagesDep $messagesDep;
     protected AiAgentsDep $agentsDep;
     protected AiModelsDep $modelsDep;
+    protected AiRunsDep $runsDep;
 
     public function __construct()
     {
@@ -32,6 +35,7 @@ class AiChatModule extends BaseModule
         $this->messagesDep = new AiMessagesDep();
         $this->agentsDep = new AiAgentsDep();
         $this->modelsDep = new AiModelsDep();
+        $this->runsDep = new AiRunsDep();
     }
 
     // ========== 公开方法 ==========
@@ -83,6 +87,8 @@ class AiChatModule extends BaseModule
      */
     public function sendStream(array $param, int $userId, callable $onChunk): array
     {
+        $startTime = microtime(true);
+
         // 1. 准备对话上下文
         $prepared = $this->prepareChat($param, $userId, $onChunk);
         if ($prepared[1] !== 0) {
@@ -90,27 +96,67 @@ class AiChatModule extends BaseModule
         }
         $ctx = $prepared[0];
 
-        // 2. 调用 AI API（流式）
+        // 2. 创建 run 记录（状态=running）
+        $requestId = $this->generateRequestId();
+        $runId = $this->runsDep->add([
+            'request_id' => $requestId,
+            'user_id' => $userId,
+            'agent_id' => $ctx['agentId'],
+            'conversation_id' => $ctx['conversationId'],
+            'user_message_id' => $ctx['userMessageId'],
+            'run_status' => AiEnum::RUN_STATUS_RUNNING,
+            'model_snapshot' => $ctx['modelCode'],
+            'status' => CommonEnum::YES,
+            'is_del' => CommonEnum::NO,
+        ]);
+
+        // 通知前端 run_id
+        $onChunk('run', ['run_id' => $runId, 'request_id' => $requestId]);
+
+        // 3. 调用 AI API（流式）+ 保存结果，用 try/finally 保证 run 收尾
+        $result = null;
+        $errorMsg = null;
         try {
             $result = $ctx['client']->chatCompletionsStream(
                 $ctx['payload'],
                 $ctx['config'],
                 fn($delta, $chunk) => $onChunk('content', ['delta' => $delta])
             );
-        } catch (RuntimeException $e) {
-            return self::error('AI 调用失败: ' . $e->getMessage());
+
+            // 4. 保存 AI 回复（带双 request_id）
+            $assistantMessageId = $this->saveAssistantMessage(
+                $ctx['conversationId'],
+                $result['content'],
+                $result['usage'],
+                $ctx['modelCode'],
+                $requestId,
+                $result['request_id'] ?? null
+            );
+
+            // 5. 更新 run 状态为成功
+            $latencyMs = (int)((microtime(true) - $startTime) * 1000);
+            $this->runsDep->markSuccess($runId, [
+                'assistant_message_id' => $assistantMessageId,
+                'prompt_tokens' => $result['usage']['prompt_tokens'] ?? null,
+                'completion_tokens' => $result['usage']['completion_tokens'] ?? null,
+                'total_tokens' => $result['usage']['total_tokens'] ?? null,
+                'latency_ms' => $latencyMs,
+            ]);
+        } catch (\Throwable $e) {
+            $errorMsg = $e->getMessage();
+        } finally {
+            // 任何异常都要收尾 run 状态
+            if ($errorMsg !== null) {
+                $this->runsDep->markFailed($runId, $errorMsg);
+            }
         }
 
-        // 3. 保存 AI 回复
-        $this->saveAssistantMessage(
-            $ctx['conversationId'],
-            $result['content'],
-            $result['usage'],
-            $ctx['modelCode'],
-            $result['request_id'] ?? null
-        );
+        // 如果有错误，返回失败
+        if ($errorMsg !== null) {
+            return self::error('AI 调用失败: ' . $errorMsg);
+        }
 
-        // 4. 新会话自动生成标题
+        // 6. 新会话自动生成标题
         if ($ctx['isNew']) {
             $this->generateTitle(
                 $ctx['conversationId'],
@@ -122,10 +168,21 @@ class AiChatModule extends BaseModule
             );
         }
 
-        // 5. 通知前端流结束
-        $onChunk('done', ['conversation_id' => $ctx['conversationId']]);
+        // 7. 通知前端流结束
+        $onChunk('done', [
+            'conversation_id' => $ctx['conversationId'],
+            'run_id' => $runId,
+        ]);
 
-        return self::success(['conversation_id' => $ctx['conversationId']]);
+        return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId]);
+    }
+
+    /**
+     * 生成唯一的 request_id
+     */
+    private function generateRequestId(): string
+    {
+        return sprintf('%s-%s', date('YmdHis'), bin2hex(random_bytes(8)));
     }
 
     // ========== 私有方法：公共逻辑抽取 ==========
@@ -203,7 +260,7 @@ class AiChatModule extends BaseModule
         $client = AiClientFactory::create($model->driver);
 
         // 6. 写入用户消息
-        $this->messagesDep->add([
+        $userMessageId = $this->messagesDep->add([
             'conversation_id' => $conversationId,
             'role' => AiEnum::ROLE_USER,
             'content' => $content,
@@ -220,6 +277,8 @@ class AiChatModule extends BaseModule
         // 9. 返回上下文
         return self::success([
             'conversationId' => $conversationId,
+            'agentId' => (int)$agentId,
+            'userMessageId' => $userMessageId,
             'isNew' => $isNew,
             'client' => $client,
             'payload' => $payload,
@@ -281,15 +340,36 @@ class AiChatModule extends BaseModule
 
     /**
      * 保存 AI 回复消息
+     * @param int $conversationId 会话 ID
+     * @param string $content 消息内容
+     * @param array $usage token 用量
+     * @param string $modelCode 模型代码
+     * @param string|null $runRequestId 我们生成的 request_id（用于追踪 run）
+     * @param string|null $providerRequestId AI 供应商返回的 request_id
+     * @return int 消息 ID
      */
     private function saveAssistantMessage(
         int $conversationId,
         string $content,
         array $usage,
         string $modelCode,
-        ?string $requestId
-    ): void {
-        $this->messagesDep->add([
+        ?string $runRequestId = null,
+        ?string $providerRequestId = null
+    ): int {
+        // 构建 meta_json：同时存储我们的 request_id 和供应商的 request_id
+        $metaJson = null;
+        if ($runRequestId || $providerRequestId) {
+            $meta = [];
+            if ($runRequestId) {
+                $meta['run_request_id'] = $runRequestId;
+            }
+            if ($providerRequestId) {
+                $meta['provider_request_id'] = $providerRequestId;
+            }
+            $metaJson = json_encode($meta, JSON_UNESCAPED_UNICODE);
+        }
+
+        $messageId = $this->messagesDep->add([
             'conversation_id' => $conversationId,
             'role' => AiEnum::ROLE_ASSISTANT,
             'content' => $content,
@@ -297,13 +377,15 @@ class AiChatModule extends BaseModule
             'completion_tokens' => $usage['completion_tokens'] ?? null,
             'total_tokens' => $usage['total_tokens'] ?? null,
             'model_snapshot' => $modelCode,
-            'meta_json' => $requestId ? json_encode(['request_id' => $requestId], JSON_UNESCAPED_UNICODE) : null,
+            'meta_json' => $metaJson,
             'status' => CommonEnum::YES,
             'is_del' => CommonEnum::NO,
         ]);
 
         // 更新会话的 last_message_at
         $this->conversationsDep->updateLastMessageAt($conversationId);
+
+        return $messageId;
     }
 
     /**

@@ -51,6 +51,17 @@ class AiConversationsDep
         return $query->first();
     }
 
+    /**
+     * 根据 ID 获取单条（不检查 user_id，用于管理后台）
+     */
+    public function getByIdWithoutUser(int $id)
+    {
+        return $this->model
+            ->where('id', $id)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
+    }
+
     public function add($data)
     {
         return $this->model->insertGetId($data);

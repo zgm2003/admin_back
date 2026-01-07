@@ -125,6 +125,11 @@ Route::group('/api/admin', function () {
     // AI 对话（发送消息并获取回复）
     Route::post('/AiChat/send', [controller\Ai\AiChatController::class, 'send']);
     Route::post('/AiChat/stream', [controller\Ai\AiChatController::class, 'stream']);
+
+    // AI 运行监控
+    Route::post('/AiRun/init', [controller\Ai\AiRunController::class, 'init']);
+    Route::post('/AiRun/list', [controller\Ai\AiRunController::class, 'list']);
+    Route::post('/AiRun/detail', [controller\Ai\AiRunController::class, 'detail']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

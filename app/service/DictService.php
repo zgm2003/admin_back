@@ -213,6 +213,11 @@ class DictService
         return $this;
     }
 
+    public function setRunStatusArr(){
+        $this->dict['run_status_arr'] = $this->enumToDict(AiEnum::$runStatusArr);
+        return $this;
+    }
+
     public function enumToDict($enum)
     {
         $res = [];
