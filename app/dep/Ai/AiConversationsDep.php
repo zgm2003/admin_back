@@ -62,6 +62,14 @@ class AiConversationsDep
             ->first();
     }
 
+    /**
+     * 根据 ID 获取单条（不检查 is_del）
+     */
+    public function first(int $id)
+    {
+        return $this->model->where('id', $id)->first();
+    }
+
     public function add($data)
     {
         return $this->model->insertGetId($data);
@@ -110,6 +118,18 @@ class AiConversationsDep
         return $this->model
             ->whereIn('id', array_unique($ids))
             ->where('is_del', CommonEnum::NO)
+            ->get()
+            ->keyBy('id');
+    }
+
+    /**
+     * 批量查询（包含已删除，用于审计）
+     */
+    public function getMapByIdsIncludeDeleted(array $ids)
+    {
+        if (empty($ids)) return collect();
+        return $this->model
+            ->whereIn('id', array_unique($ids))
             ->get()
             ->keyBy('id');
     }

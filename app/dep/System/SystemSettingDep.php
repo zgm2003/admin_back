@@ -80,7 +80,7 @@ class SystemSettingDep
         return $this->model
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['key']), function ($q) use ($param) {
-                $q->where('setting_key', 'like', '%' . $param['key'] . '%');
+                $q->where('setting_key', 'like', $param['key'] . '%');
             })
             ->when(isset($param['status']) && $param['status'] !== '', function ($q) use ($param) {
                 $q->where('status', (int)$param['status']);

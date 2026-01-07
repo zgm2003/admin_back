@@ -35,7 +35,7 @@ class AiRunsDep
                 $q->where('user_id', (int)$param['user_id']);
             })
             ->when(!empty($param['request_id']), function ($q) use ($param) {
-                $q->where('request_id', 'like', '%' . $param['request_id'] . '%');
+                $q->where('request_id', 'like', $param['request_id'] . '%');
             })
             ->when(!empty($param['date_start']), function ($q) use ($param) {
                 $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');

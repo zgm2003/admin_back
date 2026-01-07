@@ -44,6 +44,14 @@ class AiMessagesDep
             ->first();
     }
 
+    /**
+     * 根据 ID 获取单条（不检查 is_del）
+     */
+    public function first(int $id)
+    {
+        return $this->model->where('id', $id)->first();
+    }
+
     public function add($data)
     {
         return $this->model->insertGetId($data);

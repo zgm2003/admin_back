@@ -6,8 +6,8 @@ use app\dep\Ai\AiRunsDep;
 use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiMessagesDep;
+use app\dep\User\UsersDep;
 use app\enum\AiEnum;
-use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\Ai\AiRunValidate;
@@ -22,6 +22,7 @@ class AiRunModule extends BaseModule
     protected AiAgentsDep $agentsDep;
     protected AiConversationsDep $conversationsDep;
     protected AiMessagesDep $messagesDep;
+    protected UsersDep $usersDep;
 
     public function __construct()
     {
@@ -29,6 +30,7 @@ class AiRunModule extends BaseModule
         $this->agentsDep = new AiAgentsDep();
         $this->conversationsDep = new AiConversationsDep();
         $this->messagesDep = new AiMessagesDep();
+        $this->usersDep = new UsersDep();
     }
 
     /**
@@ -60,12 +62,12 @@ class AiRunModule extends BaseModule
 
         $res = $this->runsDep->list($param);
 
-        // 批量查询关联数据
+        // 批量查询关联数据（包含已删除，用于审计）
         $agentIds = $res->pluck('agent_id')->unique()->filter()->toArray();
         $conversationIds = $res->pluck('conversation_id')->unique()->filter()->toArray();
         
-        $agentMap = $this->agentsDep->getMapByIds($agentIds);
-        $conversationMap = $this->conversationsDep->getMapByIds($conversationIds);
+        $agentMap = $this->agentsDep->getMapByIdsIncludeDeleted($agentIds);
+        $conversationMap = $this->conversationsDep->getMapByIdsIncludeDeleted($conversationIds);
 
         $list = $res->map(function ($item) use ($agentMap, $conversationMap) {
             $agent = $agentMap->get($item->agent_id);
@@ -118,18 +120,20 @@ class AiRunModule extends BaseModule
             return self::error('记录不存在');
         }
 
-        // 查询关联数据
-        $agent = $this->agentsDep->getById($run->agent_id);
-        $conversation = $this->conversationsDep->getByIdWithoutUser($run->conversation_id);
+        // 查询关联数据（包含已删除，用于审计）
+        $agent = $this->agentsDep->first($run->agent_id);
+        $conversation = $this->conversationsDep->first($run->conversation_id);
+        $user = $this->usersDep->first($run->user_id);
         
-        // 查询关联消息
-        $userMessage = $run->user_message_id ? $this->messagesDep->getById($run->user_message_id) : null;
-        $assistantMessage = $run->assistant_message_id ? $this->messagesDep->getById($run->assistant_message_id) : null;
+        // 查询关联消息（包含已删除）
+        $userMessage = $run->user_message_id ? $this->messagesDep->first($run->user_message_id) : null;
+        $assistantMessage = $run->assistant_message_id ? $this->messagesDep->first($run->assistant_message_id) : null;
 
         return self::success([
             'id' => $run->id,
             'request_id' => $run->request_id,
             'user_id' => $run->user_id,
+            'username' => $user?->username ?? '-',
             'agent_id' => $run->agent_id,
             'agent_name' => $agent?->name ?? '-',
             'conversation_id' => $run->conversation_id,
