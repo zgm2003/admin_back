@@ -31,4 +31,10 @@ class AiConversationController extends Controller
         $this->run([AiConversationModule::class, 'del'], $request);
         return $this->response();
     }
+
+    public function status(Request $request)
+    {
+        $this->run([AiConversationModule::class, 'status'], $request);
+        return $this->response();
+    }
 }

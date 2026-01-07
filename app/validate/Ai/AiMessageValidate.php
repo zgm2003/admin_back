@@ -40,4 +40,12 @@ class AiMessageValidate
             'id' => v::oneOf(v::intVal()->positive(), v::arrayType())->setName('ID'),
         ];
     }
+
+    public static function feedback(): array
+    {
+        return [
+            'id'       => v::intVal()->positive()->setName('ID'),
+            'feedback' => v::optional(v::intVal()->in([1, 2]))->setName('反馈'),  // 1=点赞 2=点踩 null=取消
+        ];
+    }
 }

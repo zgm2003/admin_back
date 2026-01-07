@@ -19,4 +19,10 @@ class AiMessageController extends Controller
         $this->run([AiMessageModule::class, 'del'], $request);
         return $this->response();
     }
+
+    public function feedback(Request $request)
+    {
+        $this->run([AiMessageModule::class, 'feedback'], $request);
+        return $this->response();
+    }
 }

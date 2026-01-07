@@ -86,4 +86,34 @@ class AiMessageModule extends BaseModule
         $this->dep->del($ids, ['is_del' => CommonEnum::YES]);
         return self::success();
     }
+
+    /**
+     * 消息反馈（点赞/点踩）
+     */
+    public function feedback($request): array
+    {
+        try {
+            $param = $this->validate($request, AiMessageValidate::feedback());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        // 校验消息存在
+        $message = $this->dep->getById((int)$param['id']);
+        if (!$message) {
+            return self::error('消息不存在');
+        }
+
+        // 校验消息属于当前用户的会话
+        $conversation = $this->conversationsDep->getById($message->conversation_id, $request->userId);
+        if (!$conversation) {
+            return self::error('无权操作');
+        }
+
+        // feedback: 1=点赞 2=点踩 null=取消
+        $feedback = isset($param['feedback']) ? (int)$param['feedback'] : null;
+        $this->dep->updateFeedback((int)$param['id'], $feedback);
+
+        return self::success();
+    }
 }

@@ -22,6 +22,7 @@ class AiClientFactory
         AiEnum::DRIVER_MOONSHOT => OpenAiCompatClient::class,
         AiEnum::DRIVER_ZHIPU => OpenAiCompatClient::class,
         AiEnum::DRIVER_OPENAI => OpenAiCompatClient::class,
+        AiEnum::DRIVER_HUNYUAN => OpenAiCompatClient::class,
         // 以后可扩展：
         // AiEnum::DRIVER_WENXIN => WenxinClient::class,
         // AiEnum::DRIVER_HUNYUAN => HunyuanClient::class,

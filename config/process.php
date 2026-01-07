@@ -19,10 +19,28 @@ use app\process\Http;
 global $argv;
 
 return [
+    // 主服务（普通接口）
     'webman' => [
         'handler' => Http::class,
         'listen' => 'http://0.0.0.0:8787',
         'count' => cpu_count() * 4,
+        'User' => '',
+        'group' => '',
+        'reusePort' => false,
+        'eventLoop' => '',
+        'context' => [],
+        'constructor' => [
+            'requestClass' => Request::class,
+            'logger' => Log::channel('default'),
+            'appPath' => app_path(),
+            'publicPath' => public_path()
+        ]
+    ],
+    // SSE 服务（AI 聊天等长连接）- 独立端口避免阻塞主服务
+    'sse' => [
+        'handler' => Http::class,
+        'listen' => 'http://0.0.0.0:8788',
+        'count' => cpu_count() * 2,  // SSE 连接数，根据并发用户数调整
         'User' => '',
         'group' => '',
         'reusePort' => false,

@@ -31,6 +31,10 @@ class AiConversationModule extends BaseModule
         $param['user_id'] = $request->userId;
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
+        // 默认查询正常状态（status=1），前端可传 status=2 查归档
+        if (!isset($param['status'])) {
+            $param['status'] = CommonEnum::YES;
+        }
 
         $res = $this->dep->list($param);
 
@@ -124,6 +128,22 @@ class AiConversationModule extends BaseModule
         $userId = $request->userId;
 
         $this->dep->del($ids, $userId);
+        return self::success();
+    }
+
+    /**
+     * 更新会话状态（归档/取消归档）
+     * status=1 正常，status=2 归档
+     */
+    public function status($request): array
+    {
+        try {
+            $param = $this->validate($request, AiConversationValidate::status());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        $this->dep->updateStatus($param['id'], (int)$param['status'], $request->userId);
         return self::success();
     }
 }

@@ -26,6 +26,9 @@ class AiConversationsDep
         return $this->model
             ->where('is_del', CommonEnum::NO)
             ->where('user_id', $param['user_id'])
+            ->when(isset($param['status']), function ($q) use ($param) {
+                $q->where('status', (int)$param['status']);
+            })
             ->when(!empty($param['agent_id']), function ($q) use ($param) {
                 $q->where('agent_id', (int)$param['agent_id']);
             })
@@ -96,6 +99,19 @@ class AiConversationsDep
             ->where('user_id', $userId)
             ->where('is_del', CommonEnum::NO)
             ->update(['is_del' => CommonEnum::YES]);
+    }
+
+    /**
+     * 更新会话状态（归档/取消归档）
+     */
+    public function updateStatus($ids, int $status, int $userId): int
+    {
+        $ids = is_array($ids) ? $ids : [$ids];
+        return $this->model
+            ->whereIn('id', $ids)
+            ->where('user_id', $userId)
+            ->where('is_del', CommonEnum::NO)
+            ->update(['status' => $status]);
     }
 
     /**

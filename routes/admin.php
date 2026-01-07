@@ -117,10 +117,12 @@ Route::group('/api/admin', function () {
     Route::post('/AiConversation/add', [controller\Ai\AiConversationController::class, 'add']);
     Route::post('/AiConversation/edit', [controller\Ai\AiConversationController::class, 'edit']);
     Route::post('/AiConversation/del', [controller\Ai\AiConversationController::class, 'del']);
+    Route::post('/AiConversation/status', [controller\Ai\AiConversationController::class, 'status']);
 
     // AI 消息管理
     Route::post('/AiMessage/list', [controller\Ai\AiMessageController::class, 'list']);
     Route::post('/AiMessage/del', [controller\Ai\AiMessageController::class, 'del']);
+    Route::post('/AiMessage/feedback', [controller\Ai\AiMessageController::class, 'feedback']);
 
     // AI 对话（发送消息并获取回复）
     Route::post('/AiChat/send', [controller\Ai\AiChatController::class, 'send']);

@@ -88,4 +88,24 @@ class AiMessagesDep
             ->get()
             ->keyBy('id');
     }
+
+    /**
+     * 更新消息反馈（点赞/点踩）
+     */
+    public function updateFeedback(int $id, ?int $feedback): int
+    {
+        $message = $this->getById($id);
+        if (!$message) return 0;
+
+        $metaJson = $message->meta_json ?? [];
+        if ($feedback === null) {
+            unset($metaJson['feedback']);
+        } else {
+            $metaJson['feedback'] = $feedback;
+        }
+
+        return $this->model
+            ->where('id', $id)
+            ->update(['meta_json' => $metaJson ?: null]);
+    }
 }

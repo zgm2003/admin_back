@@ -3,6 +3,7 @@
 namespace app\validate\Ai;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class AiConversationValidate
 {
@@ -12,6 +13,7 @@ class AiConversationValidate
             'page_size'    => v::optional(v::intVal()->positive()),
             'current_page' => v::optional(v::intVal()->positive()),
             'agent_id'     => v::optional(v::intVal()->positive()),
+            'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr))),
         ];
     }
 
@@ -35,6 +37,14 @@ class AiConversationValidate
     {
         return [
             'id' => v::oneOf(v::intVal()->positive(), v::arrayType())->setName('ID'),
+        ];
+    }
+
+    public static function status(): array
+    {
+        return [
+            'id'     => v::oneOf(v::intVal()->positive(), v::arrayType())->setName('ID'),
+            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('状态'),
         ];
     }
 }
