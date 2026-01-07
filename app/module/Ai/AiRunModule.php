@@ -66,8 +66,8 @@ class AiRunModule extends BaseModule
         $agentIds = $res->pluck('agent_id')->unique()->filter()->toArray();
         $conversationIds = $res->pluck('conversation_id')->unique()->filter()->toArray();
         
-        $agentMap = $this->agentsDep->getMapByIdsIncludeDeleted($agentIds);
-        $conversationMap = $this->conversationsDep->getMapByIdsIncludeDeleted($conversationIds);
+        $agentMap = $this->agentsDep->getMapByIds($agentIds);
+        $conversationMap = $this->conversationsDep->getMapByIds($conversationIds);
 
         $list = $res->map(function ($item) use ($agentMap, $conversationMap) {
             $agent = $agentMap->get($item->agent_id);

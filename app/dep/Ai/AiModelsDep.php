@@ -102,7 +102,6 @@ class AiModelsDep
         if (empty($ids)) return collect();
         return $this->model
             ->whereIn('id', array_unique($ids))
-            ->where('is_del', CommonEnum::NO)
             ->get()
             ->keyBy('id');
     }

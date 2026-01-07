@@ -88,22 +88,9 @@ class AiAgentsDep
     }
 
     /**
-     * 批量查询，返回 id => model 的 Collection
+     * 批量查询，返回 id => model 的 Collection（不检查 is_del）
      */
     public function getMapByIds(array $ids)
-    {
-        if (empty($ids)) return collect();
-        return $this->model
-            ->whereIn('id', array_unique($ids))
-            ->where('is_del', CommonEnum::NO)
-            ->get()
-            ->keyBy('id');
-    }
-
-    /**
-     * 批量查询（包含已删除，用于审计）
-     */
-    public function getMapByIdsIncludeDeleted(array $ids)
     {
         if (empty($ids)) return collect();
         return $this->model
