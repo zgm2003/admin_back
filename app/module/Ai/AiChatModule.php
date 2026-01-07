@@ -7,6 +7,7 @@ use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiMessagesDep;
 use app\dep\Ai\AiModelsDep;
 use app\dep\Ai\AiRunsDep;
+use app\dep\Ai\AiRunStepsDep;
 use app\enum\CommonEnum;
 use app\enum\AiEnum;
 use app\lib\Ai\Crypto\KeyVault;
@@ -28,6 +29,7 @@ class AiChatModule extends BaseModule
     protected AiAgentsDep $agentsDep;
     protected AiModelsDep $modelsDep;
     protected AiRunsDep $runsDep;
+    protected AiRunStepsDep $stepsDep;
 
     public function __construct()
     {
@@ -36,6 +38,7 @@ class AiChatModule extends BaseModule
         $this->agentsDep = new AiAgentsDep();
         $this->modelsDep = new AiModelsDep();
         $this->runsDep = new AiRunsDep();
+        $this->stepsDep = new AiRunStepsDep();
     }
 
     // ========== 公开方法 ==========
@@ -88,6 +91,7 @@ class AiChatModule extends BaseModule
     public function sendStream(array $param, int $userId, callable $onChunk): array
     {
         $startTime = microtime(true);
+        $stepNo = 0;
 
         // 1. 准备对话上下文
         $prepared = $this->prepareChat($param, $userId, $onChunk);
@@ -106,22 +110,55 @@ class AiChatModule extends BaseModule
             'user_message_id' => $ctx['userMessageId'],
             'run_status' => AiEnum::RUN_STATUS_RUNNING,
             'model_snapshot' => $ctx['modelCode'],
-            'status' => CommonEnum::YES,
             'is_del' => CommonEnum::NO,
         ]);
 
         // 通知前端 run_id
         $onChunk('run', ['run_id' => $runId, 'request_id' => $requestId]);
 
+        // === Step 1: 提示词构建 ===
+        $promptStart = microtime(true);
+        $this->stepsDep->add([
+            'run_id' => $runId,
+            'step_no' => ++$stepNo,
+            'step_type' => AiEnum::STEP_TYPE_PROMPT,
+            'status' => AiEnum::STEP_STATUS_SUCCESS,
+            'latency_ms' => (int)((microtime(true) - $promptStart) * 1000),
+            'payload_json' => json_encode([
+                'messages_count' => count($ctx['payload']['messages']),
+                'model' => $ctx['modelCode'],
+            ], JSON_UNESCAPED_UNICODE),
+            'is_del' => CommonEnum::NO,
+        ]);
+
         // 3. 调用 AI API（流式）+ 保存结果，用 try/finally 保证 run 收尾
         $result = null;
         $errorMsg = null;
+        $llmStepId = null;
         try {
+            // === Step 2: LLM 调用 ===
+            $llmStart = microtime(true);
+            $llmStepId = $this->stepsDep->add([
+                'run_id' => $runId,
+                'step_no' => ++$stepNo,
+                'step_type' => AiEnum::STEP_TYPE_LLM,
+                'status' => AiEnum::STEP_STATUS_SUCCESS, // 默认成功，失败时更新
+                'payload_json' => json_encode([
+                    'model' => $ctx['modelCode'],
+                    'stream' => true,
+                ], JSON_UNESCAPED_UNICODE),
+                'is_del' => CommonEnum::NO,
+            ]);
+
             $result = $ctx['client']->chatCompletionsStream(
                 $ctx['payload'],
                 $ctx['config'],
                 fn($delta, $chunk) => $onChunk('content', ['delta' => $delta])
             );
+
+            // LLM 步骤完成，更新耗时和 payload
+            $llmLatency = (int)((microtime(true) - $llmStart) * 1000);
+            $this->stepsDep->updateStatus($llmStepId, AiEnum::STEP_STATUS_SUCCESS, null, $llmLatency);
 
             // 4. 保存 AI 回复（带双 request_id）
             $assistantMessageId = $this->saveAssistantMessage(
@@ -132,6 +169,22 @@ class AiChatModule extends BaseModule
                 $requestId,
                 $result['request_id'] ?? null
             );
+
+            // === Step 3: 最终化 ===
+            $this->stepsDep->add([
+                'run_id' => $runId,
+                'step_no' => ++$stepNo,
+                'step_type' => AiEnum::STEP_TYPE_FINALIZE,
+                'status' => AiEnum::STEP_STATUS_SUCCESS,
+                'latency_ms' => 0,
+                'payload_json' => json_encode([
+                    'assistant_message_id' => $assistantMessageId,
+                    'prompt_tokens' => $result['usage']['prompt_tokens'] ?? null,
+                    'completion_tokens' => $result['usage']['completion_tokens'] ?? null,
+                    'total_tokens' => $result['usage']['total_tokens'] ?? null,
+                ], JSON_UNESCAPED_UNICODE),
+                'is_del' => CommonEnum::NO,
+            ]);
 
             // 5. 更新 run 状态为成功
             $latencyMs = (int)((microtime(true) - $startTime) * 1000);
@@ -144,6 +197,11 @@ class AiChatModule extends BaseModule
             ]);
         } catch (\Throwable $e) {
             $errorMsg = $e->getMessage();
+            // LLM 步骤失败，更新状态
+            if ($llmStepId) {
+                $llmLatency = (int)((microtime(true) - $llmStart) * 1000);
+                $this->stepsDep->updateStatus($llmStepId, AiEnum::STEP_STATUS_FAIL, $errorMsg, $llmLatency);
+            }
         } finally {
             // 任何异常都要收尾 run 状态
             if ($errorMsg !== null) {
@@ -264,7 +322,6 @@ class AiChatModule extends BaseModule
             'conversation_id' => $conversationId,
             'role' => AiEnum::ROLE_USER,
             'content' => $content,
-            'status' => CommonEnum::YES,
             'is_del' => CommonEnum::NO,
         ]);
 
@@ -378,7 +435,6 @@ class AiChatModule extends BaseModule
             'total_tokens' => $usage['total_tokens'] ?? null,
             'model_snapshot' => $modelCode,
             'meta_json' => $metaJson,
-            'status' => CommonEnum::YES,
             'is_del' => CommonEnum::NO,
         ]);
 

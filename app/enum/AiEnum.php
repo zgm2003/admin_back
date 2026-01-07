@@ -61,4 +61,30 @@ class AiEnum
         self::RUN_STATUS_FAIL => '失败',
         self::RUN_STATUS_CANCELED => '已取消',
     ];
+
+    // AI 运行步骤类型 (ai_run_steps.step_type)
+    const STEP_TYPE_PROMPT = 1;      // 提示词构建
+    const STEP_TYPE_RAG = 2;         // RAG 检索
+    const STEP_TYPE_LLM = 3;         // LLM 调用
+    const STEP_TYPE_TOOL_CALL = 4;   // 工具调用
+    const STEP_TYPE_TOOL_RESULT = 5; // 工具返回
+    const STEP_TYPE_FINALIZE = 6;    // 最终化
+
+    public static $stepTypeArr = [
+        self::STEP_TYPE_PROMPT => '提示词构建',
+        self::STEP_TYPE_RAG => 'RAG检索',
+        self::STEP_TYPE_LLM => 'LLM调用',
+        self::STEP_TYPE_TOOL_CALL => '工具调用',
+        self::STEP_TYPE_TOOL_RESULT => '工具返回',
+        self::STEP_TYPE_FINALIZE => '最终化',
+    ];
+
+    // 步骤状态 (ai_run_steps.status)
+    const STEP_STATUS_SUCCESS = 1;
+    const STEP_STATUS_FAIL = 2;
+
+    public static $stepStatusArr = [
+        self::STEP_STATUS_SUCCESS => '成功',
+        self::STEP_STATUS_FAIL => '失败',
+    ];
 }

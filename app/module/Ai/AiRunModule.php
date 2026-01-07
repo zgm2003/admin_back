@@ -3,6 +3,7 @@
 namespace app\module\Ai;
 
 use app\dep\Ai\AiRunsDep;
+use app\dep\Ai\AiRunStepsDep;
 use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiMessagesDep;
@@ -19,6 +20,7 @@ use RuntimeException;
 class AiRunModule extends BaseModule
 {
     protected AiRunsDep $runsDep;
+    protected AiRunStepsDep $stepsDep;
     protected AiAgentsDep $agentsDep;
     protected AiConversationsDep $conversationsDep;
     protected AiMessagesDep $messagesDep;
@@ -27,6 +29,7 @@ class AiRunModule extends BaseModule
     public function __construct()
     {
         $this->runsDep = new AiRunsDep();
+        $this->stepsDep = new AiRunStepsDep();
         $this->agentsDep = new AiAgentsDep();
         $this->conversationsDep = new AiConversationsDep();
         $this->messagesDep = new AiMessagesDep();
@@ -161,6 +164,31 @@ class AiRunModule extends BaseModule
             ] : null,
             'created_at' => $run->created_at?->toDateTimeString(),
             'updated_at' => $run->updated_at?->toDateTimeString(),
+            // 步骤列表
+            'steps' => $this->getStepsList($run->id),
         ]);
+    }
+
+    /**
+     * 获取步骤列表
+     */
+    private function getStepsList(int $runId): array
+    {
+        $steps = $this->stepsDep->getByRunId($runId);
+        return $steps->map(function ($step) {
+            return [
+                'id' => $step->id,
+                'step_no' => $step->step_no,
+                'step_type' => $step->step_type,
+                'step_type_name' => AiEnum::$stepTypeArr[$step->step_type] ?? '-',
+                'status' => $step->status,
+                'status_name' => AiEnum::$stepStatusArr[$step->status] ?? '-',
+                'error_msg' => $step->error_msg,
+                'latency_ms' => $step->latency_ms,
+                'latency_str' => $step->latency_ms !== null ? $step->latency_ms . 'ms' : '-',
+                'payload_json' => $step->payload_json,
+                'created_at' => $step->created_at?->toDateTimeString(),
+            ];
+        })->toArray();
     }
 }

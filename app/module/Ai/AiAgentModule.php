@@ -61,11 +61,13 @@ class AiAgentModule extends BaseModule
 
         $list = $res->map(function ($item) use ($modelMap) {
             $model = $modelMap->get($item->model_id);
+            $modelDeleted = $model && $model->is_del == CommonEnum::YES;
             return [
                 'id' => $item->id,
                 'name' => $item->name,
                 'model_id' => $item->model_id,
                 'model_name' => $model?->name ?? '',
+                'model_deleted' => $modelDeleted,
                 'driver' => $model?->driver ?? '',
                 'driver_name' => $model ? (AiEnum::$driverArr[$model->driver] ?? $model->driver) : '',
                 'model_code' => $model?->model_code ?? '',

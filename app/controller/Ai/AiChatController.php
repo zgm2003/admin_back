@@ -69,10 +69,10 @@ class AiChatController extends Controller
         });
 
         // 4. 如果返回错误，发送 error 事件
-        if ($result['code'] !== 0) {
+        if ($result[1] !== 0) {
             $connection->send(new ServerSentEvents([
                 'event' => 'error',
-                'data' => json_encode(['msg' => $result['msg']], JSON_UNESCAPED_UNICODE),
+                'data' => json_encode(['msg' => $result[2]], JSON_UNESCAPED_UNICODE),
             ]));
         }
 
