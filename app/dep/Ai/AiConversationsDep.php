@@ -23,7 +23,11 @@ class AiConversationsDep
         $pageSize = $param['page_size'] ?? 20;
         $currentPage = $param['current_page'] ?? 1;
 
+        // 只查列表需要的字段
+        $columns = ['id', 'agent_id', 'title', 'status', 'last_message_at', 'created_at'];
+
         return $this->model
+            ->select($columns)
             ->where('is_del', CommonEnum::NO)
             ->where('user_id', $param['user_id'])
             ->when(isset($param['status']), function ($q) use ($param) {

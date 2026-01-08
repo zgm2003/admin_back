@@ -132,6 +132,7 @@ Route::group('/api/admin', function () {
     Route::post('/AiRun/init', [controller\Ai\AiRunController::class, 'init']);
     Route::post('/AiRun/list', [controller\Ai\AiRunController::class, 'list']);
     Route::post('/AiRun/detail', [controller\Ai\AiRunController::class, 'detail']);
+    Route::post('/AiRun/stats', [controller\Ai\AiRunController::class, 'stats']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

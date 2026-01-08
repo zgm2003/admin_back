@@ -37,4 +37,13 @@ class AiRunController extends Controller
         $this->run([AiRunModule::class, 'detail'], $request);
         return $this->response();
     }
+
+    /**
+     * Token 统计
+     */
+    public function stats(Request $request)
+    {
+        $this->run([AiRunModule::class, 'stats'], $request);
+        return $this->response();
+    }
 }

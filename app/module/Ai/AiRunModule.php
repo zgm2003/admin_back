@@ -191,4 +191,58 @@ class AiRunModule extends BaseModule
             ];
         })->toArray();
     }
+
+    /**
+     * Token 统计
+     */
+    public function stats($request): array
+    {
+        try {
+            $param = $this->validate($request, AiRunValidate::stats());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        // 默认查询最近 30 天
+        if (empty($param['date_start']) && empty($param['date_end'])) {
+            $param['date_start'] = date('Y-m-d', strtotime('-29 days'));
+            $param['date_end'] = date('Y-m-d');
+        }
+
+        // 汇总统计
+        $summary = $this->runsDep->getStats($param);
+        $summary['avg_latency_str'] = $summary['avg_latency_ms'] ? round($summary['avg_latency_ms'] / 1000, 2) . 's' : '-';
+
+        // 按日期统计
+        $byDate = $this->runsDep->getStatsByDate($param);
+
+        // 按智能体统计（并关联名称）
+        $byAgent = $this->runsDep->getStatsByAgent($param);
+        $agentIds = array_column($byAgent, 'agent_id');
+        $agentMap = $this->agentsDep->getMapByIds($agentIds);
+        foreach ($byAgent as &$item) {
+            $agent = $agentMap->get($item['agent_id']);
+            $item['agent_name'] = $agent?->name ?? '未知智能体';
+        }
+
+        // 按用户统计（并关联名称）
+        $byUser = $this->runsDep->getStatsByUser($param);
+        $userIds = array_column($byUser, 'user_id');
+        $userMap = $this->usersDep->getMapByIds($userIds);
+        foreach ($byUser as &$item) {
+            $user = $userMap->get($item['user_id']);
+            $item['username'] = $user?->username ?? '未知用户';
+        }
+
+        return self::success([
+            'date_range' => [
+                'start' => $param['date_start'] ?? null,
+                'end' => $param['date_end'] ?? null,
+            ],
+            'summary' => $summary,
+            'by_date' => $byDate,
+            'by_agent' => $byAgent,
+            'by_user' => $byUser,
+        ]);
+    }
 }

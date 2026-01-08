@@ -33,4 +33,15 @@ class AiRunValidate
             'id' => v::intVal()->positive()->setName('ID'),
         ];
     }
+
+    /**
+     * 统计验证规则
+     */
+    public static function stats(): array
+    {
+        return [
+            'date_start' => v::optional(v::date('Y-m-d')),
+            'date_end'   => v::optional(v::date('Y-m-d')),
+        ];
+    }
 }

@@ -23,7 +23,15 @@ class AiRunsDep
         $pageSize = $param['page_size'] ?? 20;
         $currentPage = $param['current_page'] ?? 1;
 
+        // 只查列表需要的字段，减少数据传输
+        $columns = [
+            'id', 'request_id', 'user_id', 'agent_id', 'conversation_id',
+            'run_status', 'model_snapshot', 'prompt_tokens', 'completion_tokens',
+            'total_tokens', 'latency_ms', 'error_msg', 'created_at'
+        ];
+
         return $this->model
+            ->select($columns)
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['run_status']), function ($q) use ($param) {
                 $q->where('run_status', (int)$param['run_status']);
@@ -146,5 +154,105 @@ class AiRunsDep
             ->whereIn('id', array_unique($ids))
             ->get()
             ->keyBy('id');
+    }
+
+    /**
+     * 统计汇总（合并为1次查询）
+     */
+    public function getStats(array $param): array
+    {
+        $result = $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
+            ->when(!empty($param['date_start']), function ($q) use ($param) {
+                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
+            })
+            ->when(!empty($param['date_end']), function ($q) use ($param) {
+                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
+            })
+            ->selectRaw('
+                COUNT(*) as total_runs,
+                COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
+                COALESCE(SUM(completion_tokens), 0) as total_completion_tokens,
+                COALESCE(SUM(total_tokens), 0) as total_tokens,
+                COALESCE(SUM(cost), 0) as total_cost,
+                COALESCE(AVG(latency_ms), 0) as avg_latency_ms
+            ')
+            ->first();
+
+        return [
+            'total_runs' => (int)$result->total_runs,
+            'total_prompt_tokens' => (int)$result->total_prompt_tokens,
+            'total_completion_tokens' => (int)$result->total_completion_tokens,
+            'total_tokens' => (int)$result->total_tokens,
+            'total_cost' => (float)$result->total_cost,
+            'avg_latency_ms' => (int)$result->avg_latency_ms,
+        ];
+    }
+
+    /**
+     * 按日期统计
+     */
+    public function getStatsByDate(array $param): array
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
+            ->when(!empty($param['date_start']), function ($q) use ($param) {
+                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
+            })
+            ->when(!empty($param['date_end']), function ($q) use ($param) {
+                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
+            })
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
+            ->groupBy('date')
+            ->orderBy('date', 'desc')
+            ->limit(30)
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * 按智能体统计
+     */
+    public function getStatsByAgent(array $param): array
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
+            ->when(!empty($param['date_start']), function ($q) use ($param) {
+                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
+            })
+            ->when(!empty($param['date_end']), function ($q) use ($param) {
+                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
+            })
+            ->selectRaw('agent_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
+            ->groupBy('agent_id')
+            ->orderByDesc('total_tokens')
+            ->limit(10)
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * 按用户统计
+     */
+    public function getStatsByUser(array $param): array
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
+            ->when(!empty($param['date_start']), function ($q) use ($param) {
+                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
+            })
+            ->when(!empty($param['date_end']), function ($q) use ($param) {
+                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
+            })
+            ->selectRaw('user_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
+            ->groupBy('user_id')
+            ->orderByDesc('total_tokens')
+            ->limit(10)
+            ->get()
+            ->toArray();
     }
 }

@@ -23,7 +23,11 @@ class AiMessagesDep
         $pageSize = $param['page_size'] ?? 20;
         $currentPage = $param['current_page'] ?? 1;
 
+        // 只查列表需要的字段
+        $columns = ['id', 'conversation_id', 'role', 'content', 'meta_json', 'created_at'];
+
         return $this->model
+            ->select($columns)
             ->where('is_del', CommonEnum::NO)
             ->where('conversation_id', $param['conversation_id'])
             ->when(isset($param['role']) && $param['role'] !== '', function ($q) use ($param) {
@@ -68,7 +72,11 @@ class AiMessagesDep
      */
     public function getRecentByConversationId(int $conversationId, int $limit)
     {
+        // 只查必要字段
+        $columns = ['id', 'role', 'content'];
+
         return $this->model
+            ->select($columns)
             ->where('conversation_id', $conversationId)
             ->where('is_del', CommonEnum::NO)
             ->whereIn('role', [1, 2]) // 只取 user 和 assistant
