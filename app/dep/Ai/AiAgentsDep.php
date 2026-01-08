@@ -98,4 +98,17 @@ class AiAgentsDep
             ->get()
             ->keyBy('id');
     }
+
+    /**
+     * 获取所有启用的智能体（字典用）
+     */
+    public function allActive()
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->select(['id', 'name'])
+            ->orderBy('id', 'desc')
+            ->get();
+    }
 }

@@ -8,6 +8,7 @@ use app\dep\System\UploadRuleDep;
 use app\dep\User\RoleDep;
 use app\dep\User\PermissionDep;
 use app\dep\User\UsersDep;
+use app\dep\Ai\AiAgentsDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\enum\SexEnum;
@@ -189,6 +190,7 @@ class DictService
                 'label' => $item->username,
             ];
         });
+        $this->dict['userArr'] = $this->dict['usernameArr']; // 别名
         $this->dict['emailArr'] = $res->map(function ($item) {
             return [
                 'value' => $item->id,
@@ -215,6 +217,18 @@ class DictService
 
     public function setRunStatusArr(){
         $this->dict['run_status_arr'] = $this->enumToDict(AiEnum::$runStatusArr);
+        return $this;
+    }
+
+    public function setAgentArr(){
+        $dep = new AiAgentsDep();
+        $res = $dep->allActive();
+        $this->dict['agentArr'] = $res->map(function ($item) {
+            return [
+                'value' => $item->id,
+                'label' => $item->name,
+            ];
+        });
         return $this;
     }
 

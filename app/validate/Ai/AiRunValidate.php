@@ -42,6 +42,32 @@ class AiRunValidate
         return [
             'date_start' => v::optional(v::date('Y-m-d')),
             'date_end'   => v::optional(v::date('Y-m-d')),
+            'date_page'  => v::optional(v::intVal()->positive()),
+            'date_size'  => v::optional(v::intVal()->between(1, 50)),
+        ];
+    }
+
+    /**
+     * 统计筛选条件（概览用）
+     */
+    public static function statsFilter(): array
+    {
+        return [
+            'date_start' => v::optional(v::date('Y-m-d')),
+            'date_end'   => v::optional(v::date('Y-m-d')),
+        ];
+    }
+
+    /**
+     * 统计列表（带分页）
+     */
+    public static function statsList(): array
+    {
+        return [
+            'date_start'   => v::optional(v::date('Y-m-d')),
+            'date_end'     => v::optional(v::date('Y-m-d')),
+            'page_size'    => v::optional(v::intVal()->between(1, 50)),
+            'current_page' => v::optional(v::intVal()->positive()),
         ];
     }
 }

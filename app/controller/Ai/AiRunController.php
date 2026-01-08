@@ -39,11 +39,38 @@ class AiRunController extends Controller
     }
 
     /**
-     * Token 统计
+     * Token 统计概览
      */
     public function stats(Request $request)
     {
-        $this->run([AiRunModule::class, 'stats'], $request);
+        $this->run([AiRunModule::class, 'statsSummary'], $request);
+        return $this->response();
+    }
+
+    /**
+     * 按日期统计
+     */
+    public function statsByDate(Request $request)
+    {
+        $this->run([AiRunModule::class, 'statsByDate'], $request);
+        return $this->response();
+    }
+
+    /**
+     * 按智能体统计
+     */
+    public function statsByAgent(Request $request)
+    {
+        $this->run([AiRunModule::class, 'statsByAgent'], $request);
+        return $this->response();
+    }
+
+    /**
+     * 按用户统计
+     */
+    public function statsByUser(Request $request)
+    {
+        $this->run([AiRunModule::class, 'statsByUser'], $request);
         return $this->response();
     }
 }

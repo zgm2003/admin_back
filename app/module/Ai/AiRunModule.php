@@ -45,6 +45,7 @@ class AiRunModule extends BaseModule
         $data['dict'] = $dictService
             ->setRunStatusArr()
             ->setUserArr()
+            ->setAgentArr()
             ->getDict();
         return self::success($data);
     }
@@ -193,12 +194,12 @@ class AiRunModule extends BaseModule
     }
 
     /**
-     * Token 统计
+     * 统计概览
      */
-    public function stats($request): array
+    public function statsSummary($request): array
     {
         try {
-            $param = $this->validate($request, AiRunValidate::stats());
+            $param = $this->validate($request, AiRunValidate::statsFilter());
         } catch (RuntimeException $e) {
             return self::error($e->getMessage());
         }
@@ -209,30 +210,8 @@ class AiRunModule extends BaseModule
             $param['date_end'] = date('Y-m-d');
         }
 
-        // 汇总统计
         $summary = $this->runsDep->getStats($param);
         $summary['avg_latency_str'] = $summary['avg_latency_ms'] ? round($summary['avg_latency_ms'] / 1000, 2) . 's' : '-';
-
-        // 按日期统计
-        $byDate = $this->runsDep->getStatsByDate($param);
-
-        // 按智能体统计（并关联名称）
-        $byAgent = $this->runsDep->getStatsByAgent($param);
-        $agentIds = array_column($byAgent, 'agent_id');
-        $agentMap = $this->agentsDep->getMapByIds($agentIds);
-        foreach ($byAgent as &$item) {
-            $agent = $agentMap->get($item['agent_id']);
-            $item['agent_name'] = $agent?->name ?? '未知智能体';
-        }
-
-        // 按用户统计（并关联名称）
-        $byUser = $this->runsDep->getStatsByUser($param);
-        $userIds = array_column($byUser, 'user_id');
-        $userMap = $this->usersDep->getMapByIds($userIds);
-        foreach ($byUser as &$item) {
-            $user = $userMap->get($item['user_id']);
-            $item['username'] = $user?->username ?? '未知用户';
-        }
 
         return self::success([
             'date_range' => [
@@ -240,9 +219,122 @@ class AiRunModule extends BaseModule
                 'end' => $param['date_end'] ?? null,
             ],
             'summary' => $summary,
-            'by_date' => $byDate,
-            'by_agent' => $byAgent,
-            'by_user' => $byUser,
+        ]);
+    }
+
+    /**
+     * 按日期统计（加载更多）
+     */
+    public function statsByDate($request): array
+    {
+        try {
+            $param = $this->validate($request, AiRunValidate::statsList());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        if (empty($param['date_start']) && empty($param['date_end'])) {
+            $param['date_start'] = date('Y-m-d', strtotime('-29 days'));
+            $param['date_end'] = date('Y-m-d');
+        }
+
+        $param['page_size'] = $param['page_size'] ?? 10;
+        $param['current_page'] = $param['current_page'] ?? 1;
+
+        $result = $this->runsDep->getStatsByDate($param);
+
+        return self::success([
+            'list' => $result['list'],
+            'has_more' => $result['has_more'],
+            'current_page' => $result['current_page'],
+        ]);
+    }
+
+    /**
+     * 按智能体统计（加载更多）
+     */
+    public function statsByAgent($request): array
+    {
+        try {
+            $param = $this->validate($request, AiRunValidate::statsList());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        if (empty($param['date_start']) && empty($param['date_end'])) {
+            $param['date_start'] = date('Y-m-d', strtotime('-29 days'));
+            $param['date_end'] = date('Y-m-d');
+        }
+
+        $param['page_size'] = $param['page_size'] ?? 10;
+        $param['current_page'] = $param['current_page'] ?? 1;
+
+        $result = $this->runsDep->getStatsByAgent($param);
+
+        // 关联智能体名称
+        $agentIds = $result['list']->pluck('agent_id')->toArray();
+        $agentMap = $this->agentsDep->getMapByIds($agentIds);
+        $list = $result['list']->map(function ($item) use ($agentMap) {
+            $agent = $agentMap->get($item->agent_id);
+            return [
+                'agent_id' => $item->agent_id,
+                'agent_name' => $agent?->name ?? '未知智能体',
+                'total_runs' => $item->total_runs,
+                'total_tokens' => $item->total_tokens,
+                'total_prompt_tokens' => $item->total_prompt_tokens,
+                'total_completion_tokens' => $item->total_completion_tokens,
+                'avg_latency_ms' => $item->avg_latency_ms,
+            ];
+        });
+
+        return self::success([
+            'list' => $list,
+            'has_more' => $result['has_more'],
+            'current_page' => $result['current_page'],
+        ]);
+    }
+
+    /**
+     * 按用户统计（加载更多）
+     */
+    public function statsByUser($request): array
+    {
+        try {
+            $param = $this->validate($request, AiRunValidate::statsList());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        if (empty($param['date_start']) && empty($param['date_end'])) {
+            $param['date_start'] = date('Y-m-d', strtotime('-29 days'));
+            $param['date_end'] = date('Y-m-d');
+        }
+
+        $param['page_size'] = $param['page_size'] ?? 10;
+        $param['current_page'] = $param['current_page'] ?? 1;
+
+        $result = $this->runsDep->getStatsByUser($param);
+
+        // 关联用户名称
+        $userIds = $result['list']->pluck('user_id')->toArray();
+        $userMap = $this->usersDep->getMapByIds($userIds);
+        $list = $result['list']->map(function ($item) use ($userMap) {
+            $user = $userMap->get($item->user_id);
+            return [
+                'user_id' => $item->user_id,
+                'username' => $user?->username ?? '未知用户',
+                'total_runs' => $item->total_runs,
+                'total_tokens' => $item->total_tokens,
+                'total_prompt_tokens' => $item->total_prompt_tokens,
+                'total_completion_tokens' => $item->total_completion_tokens,
+                'avg_latency_ms' => $item->avg_latency_ms,
+            ];
+        });
+
+        return self::success([
+            'list' => $list,
+            'has_more' => $result['has_more'],
+            'current_page' => $result['current_page'],
         ]);
     }
 }

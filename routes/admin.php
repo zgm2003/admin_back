@@ -133,6 +133,9 @@ Route::group('/api/admin', function () {
     Route::post('/AiRun/list', [controller\Ai\AiRunController::class, 'list']);
     Route::post('/AiRun/detail', [controller\Ai\AiRunController::class, 'detail']);
     Route::post('/AiRun/stats', [controller\Ai\AiRunController::class, 'stats']);
+    Route::post('/AiRun/statsByDate', [controller\Ai\AiRunController::class, 'statsByDate']);
+    Route::post('/AiRun/statsByAgent', [controller\Ai\AiRunController::class, 'statsByAgent']);
+    Route::post('/AiRun/statsByUser', [controller\Ai\AiRunController::class, 'statsByUser']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

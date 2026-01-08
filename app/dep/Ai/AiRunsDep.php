@@ -170,6 +170,12 @@ class AiRunsDep
             ->when(!empty($param['date_end']), function ($q) use ($param) {
                 $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
             })
+            ->when(!empty($param['agent_id']), function ($q) use ($param) {
+                $q->where('agent_id', (int)$param['agent_id']);
+            })
+            ->when(!empty($param['user_id']), function ($q) use ($param) {
+                $q->where('user_id', (int)$param['user_id']);
+            })
             ->selectRaw('
                 COUNT(*) as total_runs,
                 COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
@@ -191,11 +197,14 @@ class AiRunsDep
     }
 
     /**
-     * 按日期统计
+     * 按日期统计（加载更多模式）
      */
-    public function getStatsByDate(array $param): array
+    public function getStatsByDate(array $param)
     {
-        return $this->model
+        $pageSize = $param['page_size'] ?? 10;
+        $currentPage = $param['current_page'] ?? 1;
+
+        $list = $this->model
             ->where('is_del', CommonEnum::NO)
             ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
             ->when(!empty($param['date_start']), function ($q) use ($param) {
@@ -203,21 +212,42 @@ class AiRunsDep
             })
             ->when(!empty($param['date_end']), function ($q) use ($param) {
                 $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
+            })
+            ->when(!empty($param['agent_id']), function ($q) use ($param) {
+                $q->where('agent_id', (int)$param['agent_id']);
+            })
+            ->when(!empty($param['user_id']), function ($q) use ($param) {
+                $q->where('user_id', (int)$param['user_id']);
             })
             ->selectRaw('DATE(created_at) as date, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
             ->groupBy('date')
             ->orderBy('date', 'desc')
-            ->limit(30)
-            ->get()
-            ->toArray();
+            ->offset(($currentPage - 1) * $pageSize)
+            ->limit($pageSize + 1)  // 多查一条判断是否有下一页
+            ->get();
+
+        $hasMore = $list->count() > $pageSize;
+        if ($hasMore) {
+            $list = $list->slice(0, $pageSize);
+        }
+
+        return [
+            'list' => $list->values(),
+            'has_more' => $hasMore,
+            'page_size' => $pageSize,
+            'current_page' => $currentPage,
+        ];
     }
 
     /**
-     * 按智能体统计
+     * 按智能体统计（加载更多模式）
      */
-    public function getStatsByAgent(array $param): array
+    public function getStatsByAgent(array $param)
     {
-        return $this->model
+        $pageSize = $param['page_size'] ?? 10;
+        $currentPage = $param['current_page'] ?? 1;
+
+        $list = $this->model
             ->where('is_del', CommonEnum::NO)
             ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
             ->when(!empty($param['date_start']), function ($q) use ($param) {
@@ -225,21 +255,42 @@ class AiRunsDep
             })
             ->when(!empty($param['date_end']), function ($q) use ($param) {
                 $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
+            })
+            ->when(!empty($param['agent_id']), function ($q) use ($param) {
+                $q->where('agent_id', (int)$param['agent_id']);
+            })
+            ->when(!empty($param['user_id']), function ($q) use ($param) {
+                $q->where('user_id', (int)$param['user_id']);
             })
             ->selectRaw('agent_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
             ->groupBy('agent_id')
             ->orderByDesc('total_tokens')
-            ->limit(10)
-            ->get()
-            ->toArray();
+            ->offset(($currentPage - 1) * $pageSize)
+            ->limit($pageSize + 1)
+            ->get();
+
+        $hasMore = $list->count() > $pageSize;
+        if ($hasMore) {
+            $list = $list->slice(0, $pageSize);
+        }
+
+        return [
+            'list' => $list->values(),
+            'has_more' => $hasMore,
+            'page_size' => $pageSize,
+            'current_page' => $currentPage,
+        ];
     }
 
     /**
-     * 按用户统计
+     * 按用户统计（加载更多模式）
      */
-    public function getStatsByUser(array $param): array
+    public function getStatsByUser(array $param)
     {
-        return $this->model
+        $pageSize = $param['page_size'] ?? 10;
+        $currentPage = $param['current_page'] ?? 1;
+
+        $list = $this->model
             ->where('is_del', CommonEnum::NO)
             ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
             ->when(!empty($param['date_start']), function ($q) use ($param) {
@@ -248,11 +299,29 @@ class AiRunsDep
             ->when(!empty($param['date_end']), function ($q) use ($param) {
                 $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
             })
+            ->when(!empty($param['agent_id']), function ($q) use ($param) {
+                $q->where('agent_id', (int)$param['agent_id']);
+            })
+            ->when(!empty($param['user_id']), function ($q) use ($param) {
+                $q->where('user_id', (int)$param['user_id']);
+            })
             ->selectRaw('user_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
             ->groupBy('user_id')
             ->orderByDesc('total_tokens')
-            ->limit(10)
-            ->get()
-            ->toArray();
+            ->offset(($currentPage - 1) * $pageSize)
+            ->limit($pageSize + 1)
+            ->get();
+
+        $hasMore = $list->count() > $pageSize;
+        if ($hasMore) {
+            $list = $list->slice(0, $pageSize);
+        }
+
+        return [
+            'list' => $list->values(),
+            'has_more' => $hasMore,
+            'page_size' => $pageSize,
+            'current_page' => $currentPage,
+        ];
     }
 }
