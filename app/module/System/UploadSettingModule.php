@@ -143,6 +143,7 @@ class UploadSettingModule extends BaseModule
                 'driver_name' => $item['driver'] . ' - ' . $item['bucket'],
                 'rule_name' => $item['rule_title'],
                 'status' => $item['status'],
+                'status_name' => CommonEnum::$statusArr[$item->status] ?? '',
                 'remark' => $item['remark'],
                 'created_at' => $item['created_at']->toDateTimeString(),
                 'updated_at' => $item['updated_at']->toDateTimeString(),
