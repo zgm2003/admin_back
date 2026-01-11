@@ -12,13 +12,13 @@ use app\validate\System\OperationLogValidate;
 
 class OperationLogModule extends BaseModule
 {
-    public $operationLogDep;
-    public $userDep;
+    protected OperationLogDep $operationLogDep;
+    protected UsersDep $usersDep;
 
     public function __construct()
     {
         $this->operationLogDep = new OperationLogDep();
-        $this->userDep = new UsersDep();
+        $this->usersDep = new UsersDep();
     }
 
 
@@ -42,25 +42,21 @@ class OperationLogModule extends BaseModule
         try { $param = $this->validate($request, OperationLogValidate::del()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
 
-        $dep = $this->operationLogDep;
-
-        $dep->delete($param['id']);
+        $this->operationLogDep->delete($param['id']);
 
         return self::success();
     }
     public function list($request)
     {
         $param = $request->all();
-        $dep = $this->operationLogDep;
-        $userDep = $this->userDep;
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
 
-        $resList = $dep->list($param);
+        $resList = $this->operationLogDep->list($param);
         
         // === 优化：批量预加载用户数据 ===
         $userIds = $resList->pluck('user_id')->unique()->toArray();
-        $userMap = $userDep->getMap($userIds);
+        $userMap = $this->usersDep->getMap($userIds);
 
         $data['list'] = $resList->map(function ($item) use ($userMap){
             $resUser = $userMap->get($item['user_id']);

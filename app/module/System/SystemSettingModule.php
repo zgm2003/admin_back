@@ -11,11 +11,11 @@ use app\validate\System\SystemSettingValidate;
 
 class SystemSettingModule extends BaseModule
 {
-    public $dep;
+    protected SystemSettingDep $systemSettingDep;
 
     public function __construct()
     {
-        $this->dep = new SystemSettingDep();
+        $this->systemSettingDep = new SystemSettingDep();
     }
 
     public function init($request)
@@ -32,7 +32,7 @@ class SystemSettingModule extends BaseModule
         $param = $request->all();
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
-        $res = $this->dep->list($param);
+        $res = $this->systemSettingDep->list($param);
         $list = $res->map(function ($it) {
             return [
                 'id' => $it['id'],
@@ -70,7 +70,7 @@ class SystemSettingModule extends BaseModule
             $j = json_decode((string)$param['value'], true);
             if (!is_array($j)) return self::error('JSON 类型需为合法 JSON');
         }
-        $this->dep->setValue($param['key'], $param['value'], (int)$param['type'], $param['remark'] ?? '');
+        $this->systemSettingDep->setValue($param['key'], $param['value'], (int)$param['type'], $param['remark'] ?? '');
         return self::success();
     }
 
@@ -87,7 +87,7 @@ class SystemSettingModule extends BaseModule
             $j = json_decode((string)$param['value'], true);
             if (!is_array($j)) return self::error('JSON 类型需为合法 JSON');
         }
-        $ok = $this->dep->updateById((int)$param['id'], [
+        $ok = $this->systemSettingDep->updateById((int)$param['id'], [
             'setting_value' => (int)$param['type'] === 4 ? (is_string($param['value']) ? $param['value'] : json_encode($param['value'])) : (string)$param['value'],
             'value_type' => (int)$param['type'],
             'remark' => $param['remark'] ?? '',
@@ -103,7 +103,7 @@ class SystemSettingModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $this->dep->deleteById($param['id']);
+        $this->systemSettingDep->deleteById($param['id']);
         return self::success();
     }
 
@@ -114,7 +114,7 @@ class SystemSettingModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $ok = $this->dep->setStatusById((int)$param['id'], (int)$param['status']);
+        $ok = $this->systemSettingDep->setStatusById((int)$param['id'], (int)$param['status']);
         if (!$ok) return self::error('配置不存在');
         return self::success();
     }

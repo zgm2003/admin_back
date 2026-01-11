@@ -201,29 +201,29 @@ class AuthModule extends BaseModule
     public function refresh($request): array
     {
         $refreshToken = $request->post('refresh_token');
-        if (!$refreshToken) {
-            return self::error('缺少刷新令牌', 401);
-        }
+        self::throwIf(!$refreshToken, '缺少刷新令牌', 401);
 
         try {
             $hash = TokenService::hashToken($refreshToken);
         } catch (\Exception $e) {
-            return self::error('令牌格式错误', 401);
+            self::throw('令牌格式错误', 401);
         }
 
         $session = $this->userSessionsDep->findValidByRefreshHash($hash);
-        if (!$session) {
-            return self::error('刷新令牌无效或已过期', 401);
-        }
+        self::throwIf(!$session, '刷新令牌无效或已过期', 401);
 
-        if (Carbon::parse($session['refresh_expires_at'])->isPast()) {
-            return self::error('刷新令牌已过期，请重新登录', 401);
-        }
+        self::throwIf(
+            Carbon::parse($session['refresh_expires_at'])->isPast(),
+            '刷新令牌已过期，请重新登录',
+            401
+        );
 
         $platform = $session['platform'];
-        if (!$this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id'])) {
-            return self::error('账号已在其他设备登录，请重新登录', 401);
-        }
+        self::throwIf(
+            !$this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id']),
+            '账号已在其他设备登录，请重新登录',
+            401
+        );
 
         $tokens = TokenService::generateTokenPair();
 
@@ -243,7 +243,7 @@ class AuthModule extends BaseModule
 
         $this->updateSessionPointer($session['user_id'], $platform, $session['id']);
 
-        return self::response([
+        return self::success([
             'access_token' => $tokens['access_token'],
             'refresh_token' => $tokens['refresh_token'],
             'expires_in' => $tokens['access_ttl']
@@ -300,16 +300,16 @@ class AuthModule extends BaseModule
                 'code' => $code,
             ]);
             Cache::set('email_code_' . md5($account), $code, 300);
-            return self::response([], '验证码发送成功');
+            return self::success([], '验证码发送成功');
         }
 
         if (is_valid_phone_number($account)) {
             $code = 123456; // TODO: 接入真实短信服务
             Cache::set('phone_code_' . md5($account), $code, 300);
-            return self::response([], '验证码发送成功(测试:123456)');
+            return self::success([], '验证码发送成功(测试:123456)');
         }
 
-        return self::error('请输入正确的邮箱或手机号');
+        self::throw('请输入正确的邮箱或手机号');
     }
 
     /**
@@ -325,21 +325,17 @@ class AuthModule extends BaseModule
 
         $cacheKey = 'email_code_' . md5($param['email']);
         $code = Cache::get($cacheKey);
-        if ($code != $param['code']) {
-            return self::error('验证码错误');
-        }
+        self::throwIf($code != $param['code'], '验证码错误');
 
         $user = $this->usersDep->findByEmail($param['email']);
-        if (!$user) {
-            return self::error('用户不存在');
-        }
+        self::throwUnless($user, '用户不存在');
 
         $this->usersDep->update($user->id, [
             'password' => password_hash($param['newpassword'], PASSWORD_DEFAULT),
         ]);
         Cache::delete($cacheKey);
 
-        return self::response([], '密码重置成功');
+        return self::success([], '密码重置成功');
     }
 
     // ==================== 私有方法 ====================

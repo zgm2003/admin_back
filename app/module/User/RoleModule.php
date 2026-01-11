@@ -12,7 +12,7 @@ use support\Cache;
 
 class RoleModule extends BaseModule
 {
-    public $roleDep;
+    protected RoleDep $roleDep;
 
     public function __construct()
     {

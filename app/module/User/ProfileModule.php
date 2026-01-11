@@ -41,9 +41,7 @@ class ProfileModule extends BaseModule
     public function init($request): array
     {
         $user = $this->usersDep->find($request->userId);
-        if (!$user) {
-            return self::error('用户不存在');
-        }
+        self::throwUnless($user, '用户不存在');
 
         $profile = $this->userProfileDep->findByUserId($user->id);
 
@@ -69,9 +67,7 @@ class ProfileModule extends BaseModule
         $dictService = new DictService();
 
         $user = $this->usersDep->find($param['user_id']);
-        if (!$user) {
-            return self::error('用户不存在');
-        }
+        self::throwUnless($user, '用户不存在');
 
         $profile = $this->userProfileDep->findByUserId($user->id);
         $resRole = $this->roleDep->find($user->role_id);
@@ -98,7 +94,7 @@ class ProfileModule extends BaseModule
             ->setVerifyTypeArr()
             ->getDict();
 
-        return self::response($data);
+        return self::success($data);
     }
 
     /**
@@ -113,13 +109,12 @@ class ProfileModule extends BaseModule
         }
 
         $user = $this->usersDep->find($request->userId);
-        if (!$user) {
-            return self::error('用户不存在');
-        }
+        self::throwUnless($user, '用户不存在');
 
-        if (isset($param['phone']) && trim((string)$param['phone']) !== '' && !is_valid_phone_number($param['phone'])) {
-            return self::error('无效的手机号码');
-        }
+        self::throwIf(
+            isset($param['phone']) && trim((string)$param['phone']) !== '' && !is_valid_phone_number($param['phone']),
+            '无效的手机号码'
+        );
 
         $userData = [
             'username' => $param['username'],
@@ -138,7 +133,7 @@ class ProfileModule extends BaseModule
         $this->usersDep->update($user->id, $userData);
         $this->userProfileDep->updateByUserId($user->id, $profileData);
 
-        return self::response();
+        return self::success();
     }
 
     /**
@@ -153,26 +148,19 @@ class ProfileModule extends BaseModule
         }
 
         $phone = $param['phone'];
-
-        if (!is_valid_phone_number($phone)) {
-            return self::error('手机号格式不正确');
-        }
+        self::throwIf(!is_valid_phone_number($phone), '手机号格式不正确');
 
         $cacheKey = 'phone_code_' . md5($phone);
         $code = Cache::get($cacheKey);
-        if (!$code || $code != $param['code']) {
-            return self::error('验证码错误或已失效');
-        }
+        self::throwIf(!$code || $code != $param['code'], '验证码错误或已失效');
 
         $exists = $this->usersDep->findByPhone($phone);
-        if ($exists && $exists['id'] != $request->userId) {
-            return self::error('该手机号已被其他账号绑定');
-        }
+        self::throwIf($exists && $exists['id'] != $request->userId, '该手机号已被其他账号绑定');
 
         $this->usersDep->update($request->userId, ['phone' => $phone]);
         Cache::delete($cacheKey);
 
-        return self::response([], '手机号绑定成功');
+        return self::success([], '手机号绑定成功');
     }
 
     /**
@@ -190,19 +178,15 @@ class ProfileModule extends BaseModule
 
         $cacheKey = 'email_code_' . md5($email);
         $code = Cache::get($cacheKey);
-        if (!$code || $code != $param['code']) {
-            return self::error('验证码错误或已失效');
-        }
+        self::throwIf(!$code || $code != $param['code'], '验证码错误或已失效');
 
         $exists = $this->usersDep->findByEmail($email);
-        if ($exists && $exists['id'] != $request->userId) {
-            return self::error('该邮箱已被其他账号绑定');
-        }
+        self::throwIf($exists && $exists['id'] != $request->userId, '该邮箱已被其他账号绑定');
 
         $this->usersDep->update($request->userId, ['email' => $email]);
         Cache::delete($cacheKey);
 
-        return self::response([], '邮箱绑定成功');
+        return self::success([], '邮箱绑定成功');
     }
 
     /**
@@ -218,58 +202,43 @@ class ProfileModule extends BaseModule
         }
 
         $user = $this->usersDep->find($request->userId);
-        if (!$user) {
-            return self::error('用户不存在');
-        }
+        self::throwUnless($user, '用户不存在');
 
         $verifyType = $param['verify_type'];
 
-        if ($param['new_password'] !== $param['confirm_password']) {
-            return self::error('两次输入的密码不一致');
-        }
+        self::throwIf($param['new_password'] !== $param['confirm_password'], '两次输入的密码不一致');
 
         // 验证身份
         if ($verifyType === SystemEnum::VERIFY_TYPE_PASSWORD) {
-            if (empty($param['old_password'])) {
-                return self::error('请输入原密码');
-            }
-            if (empty($user->password)) {
-                return self::error('您尚未设置密码，请使用验证码方式');
-            }
-            if (!password_verify($param['old_password'], $user->password)) {
-                return self::error('原密码错误');
-            }
+            self::throwIf(empty($param['old_password']), '请输入原密码');
+            self::throwIf(empty($user->password), '您尚未设置密码，请使用验证码方式');
+            self::throwIf(!password_verify($param['old_password'], $user->password), '原密码错误');
         } else {
-            if (empty($param['code'])) {
-                return self::error('请输入验证码');
-            }
+            self::throwIf(empty($param['code']), '请输入验证码');
 
             $account = $user->email ?: $user->phone;
-            if (!$account) {
-                return self::error('请先绑定邮箱或手机号');
-            }
+            self::throwUnless($account, '请先绑定邮箱或手机号');
 
             $cacheKey = isValidEmail($account)
                 ? 'email_code_' . md5($account)
                 : 'phone_code_' . md5($account);
 
             $code = Cache::get($cacheKey);
-            if (!$code || $code != $param['code']) {
-                return self::error('验证码错误或已失效');
-            }
+            self::throwIf(!$code || $code != $param['code'], '验证码错误或已失效');
             Cache::delete($cacheKey);
         }
 
         // 防止新密码与原密码相同
-        if (!empty($user->password) && password_verify($param['new_password'], $user->password)) {
-            return self::error('新密码不能与原密码相同');
-        }
+        self::throwIf(
+            !empty($user->password) && password_verify($param['new_password'], $user->password),
+            '新密码不能与原密码相同'
+        );
 
         $this->usersDep->update($user->id, [
             'password' => password_hash($param['new_password'], PASSWORD_DEFAULT)
         ]);
 
-        return self::response([], '密码设置成功');
+        return self::success([], '密码设置成功');
     }
 
     /**
@@ -285,26 +254,15 @@ class ProfileModule extends BaseModule
         }
 
         $user = $this->usersDep->find($request->userId);
-        if (!$user) {
-            return self::error('用户不存在');
-        }
-
-        if (!password_verify($param['password'], $user->password)) {
-            return self::error('原密码不正确');
-        }
-
-        if ($param['newpassword'] !== $param['respassword']) {
-            return self::error('新密码不一致');
-        }
-
-        if (password_verify($param['newpassword'], $user->password)) {
-            return self::error('新密码不能与原密码一致');
-        }
+        self::throwUnless($user, '用户不存在');
+        self::throwIf(!password_verify($param['password'], $user->password), '原密码不正确');
+        self::throwIf($param['newpassword'] !== $param['respassword'], '新密码不一致');
+        self::throwIf(password_verify($param['newpassword'], $user->password), '新密码不能与原密码一致');
 
         $this->usersDep->update($user->id, [
             'password' => password_hash($param['newpassword'], PASSWORD_DEFAULT),
         ]);
 
-        return self::response([], '密码修改成功');
+        return self::success([], '密码修改成功');
     }
 }

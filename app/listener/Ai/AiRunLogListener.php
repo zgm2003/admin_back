@@ -2,10 +2,9 @@
 
 namespace app\listener\Ai;
 
-use support\Log;
-
 /**
  * AI Run 日志监听器
+ * 事件数据已写入 ai_runs 表，这里仅做扩展预留
  */
 class AiRunLogListener
 {
@@ -14,7 +13,7 @@ class AiRunLogListener
      */
     public function onStarted(array $data): void
     {
-        Log::info('AI Run started', $data);
+        // 数据已写入 ai_runs 表，无需重复记录日志
     }
 
     /**
@@ -22,7 +21,7 @@ class AiRunLogListener
      */
     public function onCompleted(array $data): void
     {
-        Log::info('AI Run completed', $data);
+        // 数据已写入 ai_runs 表，无需重复记录日志
     }
 
     /**
@@ -30,6 +29,7 @@ class AiRunLogListener
      */
     public function onFailed(array $data): void
     {
-        Log::warning('AI Run failed', $data);
+        // 数据已写入 ai_runs 表，无需重复记录日志
+        // 如需告警可在此接入钉钉/企微通知
     }
 }

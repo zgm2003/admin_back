@@ -10,11 +10,11 @@ use app\validate\System\UploadRuleValidate;
 
 class UploadRuleModule extends BaseModule
 {
-    public $dep;
+    protected UploadRuleDep $uploadRuleDep;
 
     public function __construct()
     {
-        $this->dep = new UploadRuleDep();
+        $this->uploadRuleDep = new UploadRuleDep();
     }
 
     public function init($request){
@@ -30,8 +30,7 @@ class UploadRuleModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadRuleValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $dep = $this->dep;
-        $resDep = $dep->findByTitle($param['title']);
+        $resDep = $this->uploadRuleDep->findByTitle($param['title']);
         if ($resDep){
             return self::error('规则标题已存在');
         }
@@ -41,7 +40,7 @@ class UploadRuleModule extends BaseModule
             'image_exts'  => json_encode($param['image_exts']),
             'file_exts'   => json_encode($param['file_exts']),
         ];
-        $dep->add($data);
+        $this->uploadRuleDep->add($data);
         return self::success();
     }
 
@@ -49,8 +48,7 @@ class UploadRuleModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadRuleValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $dep = $this->dep;
-        $resDep = $dep->findByTitle($param['title']);
+        $resDep = $this->uploadRuleDep->findByTitle($param['title']);
         if ($resDep && $resDep['id'] != $param['id']){
             return self::error('规则标题已存在');
         }
@@ -60,7 +58,7 @@ class UploadRuleModule extends BaseModule
             'image_exts'  => json_encode($param['image_exts']),
             'file_exts'   => json_encode($param['file_exts']),
         ];
-        $dep->update($param['id'], $data);
+        $this->uploadRuleDep->update($param['id'], $data);
         return self::success();
     }
 
@@ -68,7 +66,7 @@ class UploadRuleModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadRuleValidate::del()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $this->dep->delete($param['id']);
+        $this->uploadRuleDep->delete($param['id']);
         return self::success();
     }
 
@@ -77,7 +75,7 @@ class UploadRuleModule extends BaseModule
         $param = $request->all();
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
-        $res = $this->dep->list($param);
+        $res = $this->uploadRuleDep->list($param);
         $list = $res->map(function ($item) {
             return [
                 'id' => $item['id'],

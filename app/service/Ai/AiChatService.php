@@ -175,7 +175,7 @@ class AiChatService
 
             return !empty($title) ? $title : null;
         } catch (\Throwable $e) {
-            \support\Log::warning('AI 生成标题失败', ['error' => $e->getMessage()]);
+            // 标题生成失败不影响主流程，静默处理
             return null;
         }
     }

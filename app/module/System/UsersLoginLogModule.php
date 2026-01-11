@@ -10,13 +10,13 @@ use app\enum\SystemEnum;
 
 class UsersLoginLogModule extends BaseModule
 {
-    public $usersLoginLogDep;
-    public $userDep;
+    protected UsersLoginLogDep $usersLoginLogDep;
+    protected UsersDep $usersDep;
 
     public function __construct()
     {
         $this->usersLoginLogDep = new UsersLoginLogDep();
-        $this->userDep = new UsersDep();
+        $this->usersDep = new UsersDep();
     }
 
     public function init()
@@ -37,16 +37,14 @@ class UsersLoginLogModule extends BaseModule
     public function list($request)
     {
         $param = $request->all();
-        $dep = $this->usersLoginLogDep;
-        $userDep = $this->userDep;
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
 
-        $resList = $dep->list($param);
+        $resList = $this->usersLoginLogDep->list($param);
         
         // === 优化：批量预加载用户数据 ===
         $userIds = $resList->pluck('user_id')->filter()->unique()->toArray();
-        $userMap = $userDep->getMap($userIds);
+        $userMap = $this->usersDep->getMap($userIds);
 
         $data['list'] = $resList->map(function ($item) use ($userMap) {
             // 使用预加载的Map获取用户

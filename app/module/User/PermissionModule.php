@@ -3,21 +3,18 @@
 namespace app\module\User;
 
 use app\dep\User\PermissionDep;
-use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use Respect\Validation\Validator as v;
-use Respect\Validation\Exceptions\ValidationException;
 use app\validate\User\PermissionValidate;
 
 class PermissionModule extends BaseModule
 {
-    public $PermissionDep;
+    protected PermissionDep $permissionDep;
 
     public function __construct()
     {
-        $this->PermissionDep = new PermissionDep();
+        $this->permissionDep = new PermissionDep();
     }
 
     public function init($request)
@@ -27,7 +24,6 @@ class PermissionModule extends BaseModule
             ->setPermissionTree()
             ->setPermissionTypeArr()
             ->getDict();
-
 
         return self::success($data);
     }
@@ -46,63 +42,34 @@ class PermissionModule extends BaseModule
             if (empty($param['show_menu'])) {
                 return self::error('show_menu 不能为空');
             }
-            if (empty($param['parent_id'])) {
-                $data = [
-                    'name' => $param['name'],
-                    'parent_id' => -1,
-                    'icon' => $param['icon'],
-                    'type' => $param['type'],
-                    'i18n_key' => $param['i18n_key'],
-                    'sort' => $param['sort'],
-                    'show_menu' => $param['show_menu'],
-                ];
-                $this->PermissionDep->add($data);
-            } else {
-                $data = [
-                    'name' => $param['name'],
-                    'parent_id' => $param['parent_id'],
-                    'icon' => $param['icon'],
-                    'type' => $param['type'],
-                    'i18n_key' => $param['i18n_key'],
-                    'sort' => $param['sort'],
-                    'show_menu' => $param['show_menu'],
-                ];
-                $this->PermissionDep->add($data);
-            }
+            $data = [
+                'name' => $param['name'],
+                'parent_id' => empty($param['parent_id']) ? -1 : $param['parent_id'],
+                'icon' => $param['icon'],
+                'type' => $param['type'],
+                'i18n_key' => $param['i18n_key'],
+                'sort' => $param['sort'],
+                'show_menu' => $param['show_menu'],
+            ];
+            $this->permissionDep->add($data);
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
             foreach (['path','component','i18n_key', 'show_menu'] as $f) {
                 if (empty($param[$f])) {
                     return self::error("{$f} 不能为空");
                 }
             }
-            // 判断是否是顶级菜单
-            if (empty($param['parent_id'])) {
-                $data = [
-                    'name' => $param['name'],
-                    'parent_id' => -1,
-                    'path' => $param['path'],
-                    'component' => $param['component'],
-                    'type' => $param['type'],
-                    'icon' => $param['icon'],
-                    'i18n_key' => $param['i18n_key'],
-                    'sort' => $param['sort'],
-                    'show_menu' => $param['show_menu'],
-                ];
-                $this->PermissionDep->add($data);
-            } else {
-                $data = [
-                    'name' => $param['name'],
-                    'parent_id' => $param['parent_id'],
-                    'path' => $param['path'],
-                    'component' => $param['component'],
-                    'type' => $param['type'],
-                    'icon' => $param['icon'],
-                    'i18n_key' => $param['i18n_key'],
-                    'sort' => $param['sort'],
-                    'show_menu' => $param['show_menu'],
-                ];
-                $this->PermissionDep->add($data);
-            }
+            $data = [
+                'name' => $param['name'],
+                'parent_id' => empty($param['parent_id']) ? -1 : $param['parent_id'],
+                'path' => $param['path'],
+                'component' => $param['component'],
+                'type' => $param['type'],
+                'icon' => $param['icon'],
+                'i18n_key' => $param['i18n_key'],
+                'sort' => $param['sort'],
+                'show_menu' => $param['show_menu'],
+            ];
+            $this->permissionDep->add($data);
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             foreach (['parent_id','code'] as $f) {
                 if (empty($param[$f])) {
@@ -116,10 +83,9 @@ class PermissionModule extends BaseModule
                 'type' => $param['type'],
                 'sort' => $param['sort'],
             ];
-            $this->PermissionDep->add($data);
+            $this->permissionDep->add($data);
         }
 
-        // 清除权限缓存
         PermissionDep::clearCache();
         DictService::clearPermissionCache();
         
@@ -140,63 +106,34 @@ class PermissionModule extends BaseModule
             if (empty($param['show_menu'])) {
                 return self::error('show_menu 不能为空');
             }
-            if (empty($param['parent_id'])) {
-                $data = [
-                    'name' => $param['name'],
-                    'parent_id' => -1,
-                    'icon' => $param['icon'],
-                    'type' => $param['type'],
-                    'i18n_key' => $param['i18n_key'],
-                    'sort' => $param['sort'],
-                    'show_menu' => $param['show_menu'],
-                ];
-                $this->PermissionDep->update($param['id'],$data);
-            } else {
-                $data = [
-                    'name' => $param['name'],
-                    'parent_id' => $param['parent_id'],
-                    'icon' => $param['icon'],
-                    'type' => $param['type'],
-                    'i18n_key' => $param['i18n_key'],
-                    'sort' => $param['sort'],
-                    'show_menu' => $param['show_menu'],
-                ];
-                $this->PermissionDep->update($param['id'],$data);
-            }
+            $data = [
+                'name' => $param['name'],
+                'parent_id' => empty($param['parent_id']) ? -1 : $param['parent_id'],
+                'icon' => $param['icon'],
+                'type' => $param['type'],
+                'i18n_key' => $param['i18n_key'],
+                'sort' => $param['sort'],
+                'show_menu' => $param['show_menu'],
+            ];
+            $this->permissionDep->update($param['id'], $data);
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
             foreach (['path','component','i18n_key', 'show_menu'] as $f) {
                 if (empty($param[$f])) {
                     return self::error("{$f} 不能为空");
                 }
             }
-            // 判断是否是顶级菜单
-            if (empty($param['parent_id'])) {
-                $data = [
-                    'name' => $param['name'],
-                    'parent_id' => -1,
-                    'path' => $param['path'],
-                    'component' => $param['component'],
-                    'type' => $param['type'],
-                    'icon' => $param['icon'],
-                    'i18n_key' => $param['i18n_key'],
-                    'sort' => $param['sort'],
-                    'show_menu' => $param['show_menu'],
-                ];
-                $this->PermissionDep->update($param['id'],$data);
-            } else {
-                $data = [
-                    'name' => $param['name'],
-                    'parent_id' => $param['parent_id'],
-                    'path' => $param['path'],
-                    'component' => $param['component'],
-                    'type' => $param['type'],
-                    'icon' => $param['icon'],
-                    'i18n_key' => $param['i18n_key'],
-                    'sort' => $param['sort'],
-                    'show_menu' => $param['show_menu'],
-                ];
-                $this->PermissionDep->update($param['id'],$data);
-            }
+            $data = [
+                'name' => $param['name'],
+                'parent_id' => empty($param['parent_id']) ? -1 : $param['parent_id'],
+                'path' => $param['path'],
+                'component' => $param['component'],
+                'type' => $param['type'],
+                'icon' => $param['icon'],
+                'i18n_key' => $param['i18n_key'],
+                'sort' => $param['sort'],
+                'show_menu' => $param['show_menu'],
+            ];
+            $this->permissionDep->update($param['id'], $data);
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             foreach (['parent_id','code'] as $f) {
                 if (empty($param[$f])) {
@@ -209,10 +146,9 @@ class PermissionModule extends BaseModule
                 'code' => $param['code'],
                 'type' => $param['type'],
             ];
-            $this->PermissionDep->update($param['id'],$data);
+            $this->permissionDep->update($param['id'], $data);
         }
 
-        // 清除权限缓存
         PermissionDep::clearCache();
         DictService::clearPermissionCache();
         
@@ -227,11 +163,8 @@ class PermissionModule extends BaseModule
             return self::error($e->getMessage());
         }
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
-        $dep = $this->PermissionDep;
-
-        $dep->delete($ids);
+        $this->permissionDep->delete($ids);
         
-        // 清除权限缓存
         PermissionDep::clearCache();
         DictService::clearPermissionCache();
         
@@ -246,26 +179,19 @@ class PermissionModule extends BaseModule
             return self::error($e->getMessage());
         }
         $ids = is_array($param['ids']) ? $param['ids'] : [$param['ids']];
-        $dep = $this->PermissionDep;
 
         if ($param['field'] == 'description') {
-            $data = [
-                'description' => $param['description'],
-            ];
-            $dep->update($ids, $data);
+            $data = ['description' => $param['description']];
+            $this->permissionDep->update($ids, $data);
         }
 
-
         return self::success();
-
     }
 
     public function list($request)
     {
         $param = $request->all();
-
-        $PermissionDep = $this->PermissionDep;
-        $resList = $PermissionDep->list($param);
+        $resList = $this->permissionDep->list($param);
 
         $data['list'] = $resList->map(function ($item) {
             return [
@@ -297,18 +223,11 @@ class PermissionModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $data = [
-            'status' => $param['status'],
-        ];
-        $this->PermissionDep->update($param['id'], $data);
+        $this->permissionDep->update($param['id'], ['status' => $param['status']]);
         
-        // 清除权限缓存
         PermissionDep::clearCache();
         DictService::clearPermissionCache();
         
         return self::success();
     }
-
-
 }
-

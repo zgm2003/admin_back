@@ -11,11 +11,11 @@ use app\validate\System\UploadDriverValidate;
 
 class UploadDriverModule extends BaseModule
 {
-    public $dep;
+    protected UploadDriverDep $uploadDriverDep;
 
     public function __construct()
     {
-        $this->dep = new UploadDriverDep();
+        $this->uploadDriverDep = new UploadDriverDep();
     }
 
     public function init($request){
@@ -30,7 +30,7 @@ class UploadDriverModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadDriverValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $exists = $this->dep->findByDriverBucket($param['driver'], $param['bucket']);
+        $exists = $this->uploadDriverDep->findByDriverBucket($param['driver'], $param['bucket']);
         if ($exists) {
             return self::error('同一驱动下该桶已存在');
         }
@@ -45,7 +45,7 @@ class UploadDriverModule extends BaseModule
             'endpoint' => $param['endpoint'] ?? null,
             'bucket_domain' => $param['bucket_domain'] ?? null,
         ];
-        $id = $this->dep->add($data);
+        $id = $this->uploadDriverDep->add($data);
         return self::success(['id' => $id]);
     }
 
@@ -53,7 +53,7 @@ class UploadDriverModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadDriverValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $exists = $this->dep->findByDriverBucket($param['driver'], $param['bucket']);
+        $exists = $this->uploadDriverDep->findByDriverBucket($param['driver'], $param['bucket']);
         if ($exists && $exists['id'] != $param['id']) {
             return self::error('同一驱动下该桶已存在');
         }
@@ -68,7 +68,7 @@ class UploadDriverModule extends BaseModule
             'endpoint' => $param['endpoint'] ?? null,
             'bucket_domain' => $param['bucket_domain'] ?? null,
         ];
-        $this->dep->update($param['id'], $data);
+        $this->uploadDriverDep->update($param['id'], $data);
         return self::success();
     }
 
@@ -76,7 +76,7 @@ class UploadDriverModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadDriverValidate::del()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $this->dep->delete($param['id']);
+        $this->uploadDriverDep->delete($param['id']);
         return self::success();
     }
 
@@ -85,7 +85,7 @@ class UploadDriverModule extends BaseModule
         $param = $request->all();
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
-        $res = $this->dep->list($param);
+        $res = $this->uploadDriverDep->list($param);
         $list = $res->map(function ($item) {
             return [
                 'id' => $item['id'],

@@ -3,7 +3,6 @@
 namespace app\process;
 
 use app\dep\Ai\AiRunsDep;
-use support\Log;
 use Workerman\Crontab\Crontab;
 
 /**
@@ -24,8 +23,6 @@ class AiRunTimeoutTask
         new Crontab('0 * * * * *', function () {
             $this->checkTimeoutRuns();
         });
-
-        Log::info('AiRunTimeoutTask started, timeout: ' . $this->timeoutSeconds . 's');
     }
 
     /**
@@ -44,24 +41,15 @@ class AiRunTimeoutTask
                 return;
             }
 
-            $count = 0;
             foreach ($timeoutRuns as $run) {
                 try {
                     $runsDep->markFailed($run->id, '执行超时（超过 ' . ($this->timeoutSeconds / 60) . ' 分钟）');
-                    $count++;
                 } catch (\Throwable $e) {
-                    Log::warning('AiRunTimeoutTask: 标记超时失败', [
-                        'run_id' => $run->id,
-                        'error' => $e->getMessage(),
-                    ]);
+                    // 单条失败不影响其他处理
                 }
             }
-
-            if ($count > 0) {
-                Log::info('AiRunTimeoutTask: 已处理 ' . $count . ' 个超时 Run');
-            }
         } catch (\Throwable $e) {
-            Log::error('AiRunTimeoutTask error: ' . $e->getMessage());
+            // 静默处理，避免刷日志
         }
     }
 

@@ -4,7 +4,6 @@ namespace app\lib\Ai\Clients;
 
 use app\lib\Ai\AiClientInterface;
 use RuntimeException;
-use support\Log;
 
 /**
  * OpenAI 兼容接口客户端
@@ -53,8 +52,6 @@ class OpenAiCompatClient implements AiClientInterface
 
         $jsonBody = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
-        Log::debug('AI 请求', ['url' => $url, 'payload' => $payload]);
-
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $url,
@@ -75,8 +72,6 @@ class OpenAiCompatClient implements AiClientInterface
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
         curl_close($ch);
-
-        Log::debug('AI 响应', ['httpCode' => $httpCode, 'response' => $response]);
 
         if ($response === false) {
             throw new RuntimeException('请求失败: ' . $curlError);
@@ -134,8 +129,6 @@ class OpenAiCompatClient implements AiClientInterface
         $payload['stream_options'] = ['include_usage' => true];
 
         $jsonBody = json_encode($payload, JSON_UNESCAPED_UNICODE);
-
-        Log::debug('AI 流式请求', ['url' => $url, 'payload' => $payload]);
 
         $fullContent = '';
         $usage = ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null];
@@ -216,8 +209,6 @@ class OpenAiCompatClient implements AiClientInterface
         if ($httpCode >= 400) {
             throw new RuntimeException('API 错误 [' . $httpCode . ']');
         }
-
-        Log::debug('AI 流式响应完成', ['content_length' => strlen($fullContent), 'usage' => $usage, 'request_id' => $requestId]);
 
         return [
             'content' => $fullContent,

@@ -12,16 +12,15 @@ use app\validate\System\UploadSettingValidate;
 
 class UploadSettingModule extends BaseModule
 {
-    public $dep;
-    public $uploadDriverDep;
-    public $uploadRuleDep;
+    protected UploadSettingDep $uploadSettingDep;
+    protected UploadDriverDep $uploadDriverDep;
+    protected UploadRuleDep $uploadRuleDep;
 
     public function __construct()
     {
-        $this->dep = new UploadSettingDep();
-        $this->uploadDriverDep = new UploadDriverDep;
-        $this->uploadRuleDep = new UploadRuleDep;
-
+        $this->uploadSettingDep = new UploadSettingDep();
+        $this->uploadDriverDep = new UploadDriverDep();
+        $this->uploadRuleDep = new UploadRuleDep();
     }
 
     public function init($request){
@@ -39,7 +38,7 @@ class UploadSettingModule extends BaseModule
         try { $param = $this->validate($request, UploadSettingValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         
-        $exists = $this->dep->findByDriverRule($param['driver_id'], $param['rule_id']);
+        $exists = $this->uploadSettingDep->findByDriverRule($param['driver_id'], $param['rule_id']);
         if ($exists) {
             return self::error('该驱动与规则组合已存在');
         }
@@ -54,14 +53,14 @@ class UploadSettingModule extends BaseModule
         if ((int)$param['status'] === CommonEnum::YES) {
             try {
                 $this->withTransaction(function () use ($data) {
-                    $this->dep->clearStatus();
-                    $this->dep->add($data);
+                    $this->uploadSettingDep->clearStatus();
+                    $this->uploadSettingDep->add($data);
                 });
             } catch (\Throwable $e) {
                 return self::error('新增失败：' . $e->getMessage());
             }
         } else {
-            $this->dep->add($data);
+            $this->uploadSettingDep->add($data);
         }
         return self::success();
     }
@@ -71,7 +70,7 @@ class UploadSettingModule extends BaseModule
         try { $param = $this->validate($request, UploadSettingValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         
-        $exists = $this->dep->findByDriverRule($param['driver_id'], $param['rule_id']);
+        $exists = $this->uploadSettingDep->findByDriverRule($param['driver_id'], $param['rule_id']);
         if ($exists && $exists['id'] != $param['id']) {
             return self::error('该驱动与规则组合已存在');
         }
@@ -86,14 +85,14 @@ class UploadSettingModule extends BaseModule
         if ((int)$param['status'] === CommonEnum::YES) {
             try {
                 $this->withTransaction(function () use ($param, $data) {
-                    $this->dep->clearStatus();
-                    $this->dep->update($param['id'], $data);
+                    $this->uploadSettingDep->clearStatus();
+                    $this->uploadSettingDep->update($param['id'], $data);
                 });
             } catch (\Throwable $e) {
                 return self::error('编辑失败：' . $e->getMessage());
             }
         } else {
-            $this->dep->update($param['id'], $data);
+            $this->uploadSettingDep->update($param['id'], $data);
         }
         return self::success();
     }
@@ -103,10 +102,10 @@ class UploadSettingModule extends BaseModule
         try { $param = $this->validate($request, UploadSettingValidate::del()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [ (int)$param['id'] ];
-        if ($this->dep->hasEnabledIn($ids)) {
+        if ($this->uploadSettingDep->hasEnabledIn($ids)) {
             return self::error('包含启用的上传设置，无法删除');
         }
-        $this->dep->delete($ids);
+        $this->uploadSettingDep->delete($ids);
         return self::success();
     }
     
@@ -118,14 +117,14 @@ class UploadSettingModule extends BaseModule
         if ((int)$param['status'] === CommonEnum::YES) {
             try {
                 $this->withTransaction(function () use ($param) {
-                    $this->dep->clearStatus();
-                    $this->dep->update($param['id'], ['status' => $param['status']]);
+                    $this->uploadSettingDep->clearStatus();
+                    $this->uploadSettingDep->update($param['id'], ['status' => $param['status']]);
                 });
             } catch (\Throwable $e) {
                 return self::error('状态变更失败：' . $e->getMessage());
             }
         } else {
-            $this->dep->update($param['id'], ['status' => $param['status']]);
+            $this->uploadSettingDep->update($param['id'], ['status' => $param['status']]);
         }
         return self::success();
     }
@@ -135,7 +134,7 @@ class UploadSettingModule extends BaseModule
         $param = $request->all();
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
-        $res = $this->dep->list($param);
+        $res = $this->uploadSettingDep->list($param);
         $list = $res->map(function ($item) {
             return [
                 'id' => $item['id'],
