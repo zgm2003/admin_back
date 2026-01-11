@@ -51,15 +51,5 @@ class UsersListController extends Controller
         $this->run([UsersListModule::class, 'export'], $request);
         return $this->response();
     }
-
-    /**
-     * @OperationLog("用户踢下线")
-     * @Permission("user.kick")
-     */
-    public function kick(Request $request)
-    {
-        $this->run([UsersListModule::class, 'kick'], $request);
-        return $this->response();
-    }
 }
 

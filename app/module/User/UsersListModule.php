@@ -224,35 +224,5 @@ class UsersListModule extends BaseModule
         $url = $exportService->export($headers, $data, 'users_export');
         return self::response(['url' => $url]);
     }
-
-    public function kick($request)
-    {
-        $id = $request->post('id');
-        $platform = $request->post('platform');
-        
-        if (!$id) return self::error('用户ID不能为空');
-        if (!$platform) return self::error('平台不能为空');
-        
-        // 1. 获取该用户在该平台下的最新有效会话
-        $session = $this->userSessionsDep->findLatestActiveByUserPlatform($id, $platform);
-        
-        if (!$session) {
-            return self::error('该用户当前未在线或无有效会话');
-        }
-
-        // 2. 移除 Redis 指针
-        $curSessKey = "cur_sess:" . strtolower(trim($platform)) . ":{$id}";
-        Redis::connection('token')->del($curSessKey);
-
-        // 3. 移除 Access Token 缓存 (让其立即失效)
-        if (!empty($session->access_token_hash)) {
-            Redis::connection('token')->del($session->access_token_hash);
-        }
-
-        // 4. 数据库标记为已撤销
-        $this->userSessionsDep->revoke($session->id);
-
-        return self::response([], '用户已踢下线');
-    }
 }
 

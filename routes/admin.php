@@ -54,7 +54,12 @@ Route::group('/api/admin', function () {
     Route::post('/UsersList/list', [controller\User\UsersListController::class, 'list']);
     Route::post('/UsersList/batchEdit', [controller\User\UsersListController::class, 'batchEdit']);
     Route::post('/UsersList/export', [controller\User\UsersListController::class, 'export']);
-    Route::post('/UsersList/kick', [controller\User\UsersListController::class, 'kick']);
+
+    //用户会话管理
+    Route::post('/UserSession/list', [controller\User\UserSessionController::class, 'list']);
+    Route::post('/UserSession/stats', [controller\User\UserSessionController::class, 'stats']);
+    Route::post('/UserSession/kick', [controller\User\UserSessionController::class, 'kick']);
+    Route::post('/UserSession/batchKick', [controller\User\UserSessionController::class, 'batchKick']);
 
     //操作日志管理
     Route::post('/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
