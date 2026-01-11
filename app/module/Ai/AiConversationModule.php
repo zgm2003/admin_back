@@ -146,4 +146,34 @@ class AiConversationModule extends BaseModule
         $this->dep->updateStatus($param['id'], (int)$param['status'], $request->userId);
         return self::success();
     }
+
+    /**
+     * 获取单个会话详情
+     */
+    public function detail($request): array
+    {
+        try {
+            $param = $this->validate($request, AiConversationValidate::detail());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        $item = $this->dep->getByUser((int)$param['id'], $request->userId);
+        if (!$item) {
+            return self::error('会话不存在');
+        }
+
+        $agent = $this->agentsDep->get((int)$item->agent_id);
+
+        return self::success([
+            'id' => $item->id,
+            'user_id' => $item->user_id,
+            'agent_id' => $item->agent_id,
+            'agent_name' => $agent?->name ?? '',
+            'title' => $item->title,
+            'last_message_at' => $item->last_message_at?->toDateTimeString(),
+            'status' => $item->status,
+            'created_at' => $item->created_at?->toDateTimeString(),
+        ]);
+    }
 }

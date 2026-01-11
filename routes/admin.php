@@ -114,6 +114,7 @@ Route::group('/api/admin', function () {
 
     // AI 会话管理
     Route::post('/AiConversation/list', [controller\Ai\AiConversationController::class, 'list']);
+    Route::post('/AiConversation/detail', [controller\Ai\AiConversationController::class, 'detail']);
     Route::post('/AiConversation/add', [controller\Ai\AiConversationController::class, 'add']);
     Route::post('/AiConversation/edit', [controller\Ai\AiConversationController::class, 'edit']);
     Route::post('/AiConversation/del', [controller\Ai\AiConversationController::class, 'del']);

@@ -47,4 +47,11 @@ class AiConversationValidate
             'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('状态'),
         ];
     }
+
+    public static function detail(): array
+    {
+        return [
+            'id' => v::intVal()->positive()->setName('ID'),
+        ];
+    }
 }
