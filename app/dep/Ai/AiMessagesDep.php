@@ -39,7 +39,7 @@ class AiMessagesDep extends BaseDep
     public function getRecentByConversationId(int $conversationId, int $limit)
     {
         return $this->model
-            ->select(['id', 'role', 'content'])
+            ->select(['id', 'role', 'content', 'meta_json'])
             ->where('conversation_id', $conversationId)
             ->where('is_del', CommonEnum::NO)
             ->whereIn('role', [1, 2]) // 只取 user 和 assistant

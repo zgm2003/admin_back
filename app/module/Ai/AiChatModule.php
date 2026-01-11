@@ -369,6 +369,7 @@ class AiChatModule extends BaseModule
         $agentId = $param['agent_id'] ?? null;
         $content = $param['content'];
         $maxHistory = (int)($param['max_history'] ?? 20);
+        $attachments = $param['attachments'] ?? [];
         $isNew = false;
 
         if (empty($conversationId)) {
@@ -410,14 +411,24 @@ class AiChatModule extends BaseModule
             return self::error($error);
         }
 
+        // 构建用户消息的 meta_json（包含附件）
+        $metaJson = null;
+        if (!empty($attachments)) {
+            $metaJson = json_encode(['attachments' => $attachments], JSON_UNESCAPED_UNICODE);
+        }
+
         $userMessageId = $this->messagesDep->add([
             'conversation_id' => $conversationId,
             'role' => AiEnum::ROLE_USER,
             'content' => $content,
+            'meta_json' => $metaJson,
             'is_del' => CommonEnum::NO,
         ]);
 
-        $messages = $this->chatService->buildMessages($agent, $conversationId, $maxHistory);
+        // 获取模型的多模态能力
+        $modalities = $model->modalities ?? null;
+
+        $messages = $this->chatService->buildMessages($agent, $conversationId, $maxHistory, $modalities);
         $payload = $this->chatService->buildPayload($agent, $model, $messages);
 
         return self::success([
@@ -429,6 +440,7 @@ class AiChatModule extends BaseModule
             'payload' => $payload,
             'config' => $config,
             'modelCode' => $model->model_code,
+            'modalities' => $modalities,
         ]);
     }
 

@@ -56,6 +56,7 @@ class AiModelModule extends BaseModule
                 'endpoint' => $item->endpoint,
                 'api_key_hint' => $item->api_key_hint,
                 'default_params' => $item->default_params,
+                'modalities' => $item->modalities,
                 'status' => $item->status,
                 'status_name' => CommonEnum::$statusArr[$item->status] ?? '',
                 'created_at' => $item->created_at?->toDateTimeString(),
@@ -95,6 +96,12 @@ class AiModelModule extends BaseModule
             $defaultParams = $param['default_params'];
         }
 
+        // 处理 modalities
+        $modalities = null;
+        if (!empty($param['modalities'])) {
+            $modalities = $param['modalities'];
+        }
+
         // 构建数据
         $data = [
             'name' => $param['name'],
@@ -102,6 +109,7 @@ class AiModelModule extends BaseModule
             'model_code' => $param['model_code'],
             'endpoint' => $param['endpoint'] ?? null,
             'default_params' => $defaultParams ? json_encode($defaultParams) : null,
+            'modalities' => $modalities ? json_encode($modalities) : null,
             'status' => $param['status'] ?? CommonEnum::YES,
             'is_del' => CommonEnum::NO,
         ];
@@ -155,6 +163,11 @@ class AiModelModule extends BaseModule
         // default_params
         if (!empty($param['default_params'])) {
             $data['default_params'] = json_encode($param['default_params']);
+        }
+
+        // modalities
+        if (isset($param['modalities'])) {
+            $data['modalities'] = json_encode($param['modalities']);
         }
 
         // API Key（留空不改）

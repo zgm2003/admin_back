@@ -71,6 +71,7 @@ class AiAgentModule extends BaseModule
                 'driver' => $model?->driver ?? '',
                 'driver_name' => $model ? (AiEnum::$driverArr[$model->driver] ?? $model->driver) : '',
                 'model_code' => $model?->model_code ?? '',
+                'modalities' => $model?->modalities ?? null,
                 'avatar' => $item->avatar,
                 'system_prompt' => $item->system_prompt,
                 'mode' => $item->mode,

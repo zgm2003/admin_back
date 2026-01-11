@@ -17,7 +17,8 @@ class UploadModule extends BaseModule
         'upload',
         'file',
         'image',
-        'article'
+        'article',
+        'ai_chat_images'
     ];
 
     public function getUploadToken($request)

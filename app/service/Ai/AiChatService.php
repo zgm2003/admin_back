@@ -51,8 +51,15 @@ class AiChatService
         }
 
         $client = AiClientFactory::create($model->driver);
+        
+        // 如果模型未配置 endpoint，使用驱动默认的 baseUrl
+        $endpoint = $model->endpoint ?? '';
+        if (empty($endpoint)) {
+            $endpoint = AiClientFactory::getDefaultBaseUrl($model->driver);
+        }
+        
         $config = [
-            'endpoint' => $model->endpoint ?? '',
+            'endpoint' => $endpoint,
             'apiKey' => $apiKey,
         ];
 
@@ -64,9 +71,10 @@ class AiChatService
      * @param object $agent 智能体对象
      * @param int $conversationId 会话 ID
      * @param int $maxHistory 最大历史消息数
+     * @param array|null $modalities 模型多模态能力 {"image": true, ...}
      * @return array messages 数组
      */
-    public function buildMessages(object $agent, int $conversationId, int $maxHistory): array
+    public function buildMessages(object $agent, int $conversationId, int $maxHistory, ?array $modalities = null): array
     {
         $messages = [];
 
@@ -79,9 +87,21 @@ class AiChatService
         $history = $this->messagesDep->getRecentByConversationId($conversationId, $maxHistory * 2);
         foreach (array_reverse($history->toArray()) as $msg) {
             $roleStr = AiEnum::$roleArr[$msg['role']] ?? null;
-            if ($roleStr) {
-                $messages[] = ['role' => $roleStr, 'content' => $msg['content']];
+            if (!$roleStr) {
+                continue;
             }
+
+            // 从 meta_json 提取附件
+            $attachments = [];
+            if (!empty($msg['meta_json'])) {
+                $metaJson = is_string($msg['meta_json']) ? json_decode($msg['meta_json'], true) : $msg['meta_json'];
+                $attachments = $metaJson['attachments'] ?? [];
+            }
+
+            // 构建消息内容（支持多模态）
+            $content = $this->buildMultimodalContent($msg['content'] ?? '', $attachments, $modalities);
+
+            $messages[] = ['role' => $roleStr, 'content' => $content];
         }
 
         return $messages;
@@ -113,6 +133,47 @@ class AiChatService
             'model' => $model->model_code,
             'messages' => $messages,
         ]);
+    }
+
+    /**
+     * 构建多模态消息内容
+     * @param string $text 文本内容
+     * @param array $attachments 附件列表
+     * @param array|null $modalities 模型多模态能力
+     * @return string|array 纯文本或多模态数组
+     */
+    public function buildMultimodalContent(string $text, array $attachments, ?array $modalities): string|array
+    {
+        $supportsImage = $modalities['image'] ?? false;
+
+        // 不支持图片或无图片：返回纯文本
+        if (!$supportsImage || empty($attachments)) {
+            return $text;
+        }
+
+        // 过滤出图片类型的附件
+        $imageAttachments = array_filter($attachments, fn($a) => ($a['type'] ?? '') === 'image');
+        if (empty($imageAttachments)) {
+            return $text;
+        }
+
+        // 支持图片：构建多模态格式
+        $content = [];
+
+        // 添加文本
+        if (!empty($text)) {
+            $content[] = ['type' => 'text', 'text' => $text];
+        }
+
+        // 添加图片
+        foreach ($imageAttachments as $attachment) {
+            $content[] = [
+                'type' => 'image_url',
+                'image_url' => ['url' => $attachment['url']]
+            ];
+        }
+
+        return $content;
     }
 
     /**

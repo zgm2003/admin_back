@@ -4,6 +4,7 @@ namespace app\module\Ai;
 
 use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiAgentsDep;
+use app\dep\Ai\AiModelsDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\validate\Ai\AiConversationValidate;
@@ -13,11 +14,13 @@ class AiConversationModule extends BaseModule
 {
     protected AiConversationsDep $dep;
     protected AiAgentsDep $agentsDep;
+    protected AiModelsDep $modelsDep;
 
     public function __construct()
     {
         $this->dep = new AiConversationsDep();
         $this->agentsDep = new AiAgentsDep();
+        $this->modelsDep = new AiModelsDep();
     }
 
     public function list($request): array
@@ -164,12 +167,14 @@ class AiConversationModule extends BaseModule
         }
 
         $agent = $this->agentsDep->get((int)$item->agent_id);
+        $model = $agent ? $this->modelsDep->get((int)$agent->model_id) : null;
 
         return self::success([
             'id' => $item->id,
             'user_id' => $item->user_id,
             'agent_id' => $item->agent_id,
             'agent_name' => $agent?->name ?? '',
+            'modalities' => $model?->modalities ?? null,
             'title' => $item->title,
             'last_message_at' => $item->last_message_at?->toDateTimeString(),
             'status' => $item->status,

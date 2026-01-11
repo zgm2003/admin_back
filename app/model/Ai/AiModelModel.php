@@ -16,6 +16,7 @@ class AiModelModel extends Model
      */
     protected $casts = [
         'default_params' => 'array',
+        'modalities' => 'array',
     ];
 
     /**

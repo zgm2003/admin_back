@@ -155,6 +155,7 @@ class AiRunModule extends BaseModule
             'user_message' => $userMessage ? [
                 'id' => $userMessage->id,
                 'content' => $userMessage->content,
+                'meta_json' => $userMessage->meta_json,
                 'created_at' => $userMessage->created_at?->toDateTimeString(),
             ] : null,
             'assistant_message' => $assistantMessage ? [
