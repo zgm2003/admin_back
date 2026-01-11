@@ -19,19 +19,19 @@ use app\validate\User\UsersListValidate;
 
 class UsersListModule extends BaseModule
 {
-    public $UserDep;
-    public $UserSessionsDep;
-    public $RoleDep;
-    public $AddressDep;
-    public $UserProfileDep;
+    protected UsersDep $usersDep;
+    protected UserSessionsDep $userSessionsDep;
+    protected RoleDep $roleDep;
+    protected AddressDep $addressDep;
+    protected UserProfileDep $userProfileDep;
 
     public function __construct()
     {
-        $this->UserDep = new UsersDep();
-        $this->UserSessionsDep = new UserSessionsDep();
-        $this->RoleDep = new RoleDep();
-        $this->AddressDep = new AddressDep();
-        $this->UserProfileDep = new UserProfileDep();
+        $this->usersDep = new UsersDep();
+        $this->userSessionsDep = new UserSessionsDep();
+        $this->roleDep = new RoleDep();
+        $this->addressDep = new AddressDep();
+        $this->userProfileDep = new UserProfileDep();
     }
 
     public function init($request)
@@ -54,8 +54,6 @@ class UsersListModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $userDep = $this->UserDep;
-        $profileDep = $this->UserProfileDep;
 
         $userData = [
             'username' => $param['username'],
@@ -68,8 +66,8 @@ class UsersListModule extends BaseModule
             'detail_address' => $param['detail_address'] ?? '',
             'bio' => $param['bio'] ?? '',
         ];
-        $userDep->update($param['id'], $userData);
-        $profileDep->updateByUserId($param['id'], $profileData);
+        $this->usersDep->update($param['id'], $userData);
+        $this->userProfileDep->updateByUserId($param['id'], $profileData);
         
         // Clear permission cache
         Cache::delete('auth_perm_uid_' . $param['id']);
@@ -84,41 +82,36 @@ class UsersListModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $this->UserDep->delete($param['id']);
+        $this->usersDep->delete($param['id']);
         return self::response();
     }
 
     public function list($request)
     {
-        $dep = $this->UserDep;
-        $RoleDep = $this->RoleDep;
-        $AddressDep = $this->AddressDep;
-        $UserSessionsDep = $this->UserSessionsDep;
-        $UserProfileDep = $this->UserProfileDep;
         $param = $request->all();
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
         $platform = $param['platform'] ?? 'admin';
 
-        $resList = $dep->list($param);
+        $resList = $this->usersDep->list($param);
         
         // === 优化：批量预加载所有关联数据 ===
         $userIds = $resList->pluck('id')->toArray();
         $roleIds = $resList->pluck('role_id')->unique()->toArray();
         
         // 批量查询，返回Map (key => model)
-        $roleMap = $RoleDep->getMap($roleIds);
-        $profileMap = $UserProfileDep->getMapByUserIds($userIds);
-        $sessionMap = $UserSessionsDep->getLatestActiveMapByUserIds($userIds, $platform);
+        $roleMap = $this->roleDep->getMap($roleIds);
+        $profileMap = $this->userProfileDep->getMapByUserIds($userIds);
+        $sessionMap = $this->userSessionsDep->getLatestActiveMapByUserIds($userIds, $platform);
         
-        $data['list'] = $resList->map(function ($item) use ($roleMap, $profileMap, $sessionMap, $AddressDep, $platform) {
+        $data['list'] = $resList->map(function ($item) use ($roleMap, $profileMap, $sessionMap, $platform) {
             $resRole = $roleMap->get($item->role_id);
             $profile = $profileMap->get($item->id);
             $resUserSession = $sessionMap->get($item->id);
             
             // 地址路径构建（使用内存缓存）
             $districtId = (int)($profile->address_id ?? 0);
-            $addressPath = $AddressDep->buildAddressPath($districtId);
+            $addressPath = $this->addressDep->buildAddressPath($districtId);
             $detail = $profile->detail_address ?? '';
             $address = $addressPath ? ($addressPath . '-' . $detail) : $detail;
 
@@ -168,25 +161,24 @@ class UsersListModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $profileDep = $this->UserProfileDep;
         $id = $param['ids'];
         if ($param['field'] == 'sex') {
             if (empty($param['sex'])) {
                 return self::error('性别不能为空');
             }
-            $profileDep->updateByUserId($id, ['sex' => (int)$param['sex']]);
+            $this->userProfileDep->updateByUserId($id, ['sex' => (int)$param['sex']]);
         }
         if ($param['field'] == 'address') {
             if (empty($param['address'])) {
                 return self::error('地址不能为空');
             }
-            $profileDep->updateByUserId($id, ['address_id' => (int)$param['address']]);
+            $this->userProfileDep->updateByUserId($id, ['address_id' => (int)$param['address']]);
         }
         if ($param['field'] == 'detail_address') {
             if (empty($param['detail_address'])) {
                 return self::error('详细地址不能为空');
             }
-            $profileDep->updateByUserId($id, ['detail_address' => $param['detail_address']]);
+            $this->userProfileDep->updateByUserId($id, ['detail_address' => $param['detail_address']]);
         }
         return self::response();
     }
@@ -198,15 +190,13 @@ class UsersListModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $users = $this->UserDep->getMap($param['ids'])->values();
-        $roleDep = $this->RoleDep;
-        $profileDep = $this->UserProfileDep;
+        $users = $this->usersDep->getMap($param['ids'])->values();
         
         // === 优化：批量预加载 ===
         $userIds = $users->pluck('id')->toArray();
         $roleIds = $users->pluck('role_id')->unique()->toArray();
-        $roleMap = $roleDep->getMap($roleIds);
-        $profileMap = $profileDep->getMapByUserIds($userIds);
+        $roleMap = $this->roleDep->getMap($roleIds);
+        $profileMap = $this->userProfileDep->getMapByUserIds($userIds);
         
         $headers = [
             'id' => '用户ID',
@@ -242,11 +232,9 @@ class UsersListModule extends BaseModule
         
         if (!$id) return self::error('用户ID不能为空');
         if (!$platform) return self::error('平台不能为空');
-
-        $sessionDep = $this->UserSessionsDep;
         
         // 1. 获取该用户在该平台下的最新有效会话
-        $session = $sessionDep->findLatestActiveByUserPlatform($id, $platform);
+        $session = $this->userSessionsDep->findLatestActiveByUserPlatform($id, $platform);
         
         if (!$session) {
             return self::error('该用户当前未在线或无有效会话');
@@ -262,7 +250,7 @@ class UsersListModule extends BaseModule
         }
 
         // 4. 数据库标记为已撤销
-        $sessionDep->revoke($session->id);
+        $this->userSessionsDep->revoke($session->id);
 
         return self::response([], '用户已踢下线');
     }

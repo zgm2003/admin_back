@@ -4,6 +4,7 @@ namespace app\module;
 use app\enum\ErrorCodeEnum;
 use Respect\Validation\Validator as v;
 use Respect\Validation\Exceptions\ValidationException;
+use support\Db;
 use support\Request;
 
 class BaseModule
@@ -81,6 +82,25 @@ class BaseModule
             $data['trace'] = $e->getTraceAsString();
         }
         return [$data, $code, $e->getMessage() ?: 'server error'];
+    }
+
+    /**
+     * 事务封装
+     * @param callable $callback 事务内执行的回调
+     * @return mixed 回调返回值
+     * @throws \Throwable
+     */
+    protected function withTransaction(callable $callback)
+    {
+        Db::beginTransaction();
+        try {
+            $result = $callback();
+            Db::commit();
+            return $result;
+        } catch (\Throwable $e) {
+            Db::rollBack();
+            throw $e;
+        }
     }
 
     protected function validate(Request $request, array $rules, ?array $input = null): array
