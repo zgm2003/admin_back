@@ -192,10 +192,10 @@ class UserSessionsDep extends BaseDep
             $now = date('Y-m-d H:i:s');
             if ($param['status'] === 'active') {
                 $query->whereNull('user_sessions.revoked_at')
-                    ->where('user_sessions.expires_at', '>', $now);
+                    ->where('user_sessions.refresh_expires_at', '>', $now);
             } elseif ($param['status'] === 'expired') {
                 $query->whereNull('user_sessions.revoked_at')
-                    ->where('user_sessions.expires_at', '<=', $now);
+                    ->where('user_sessions.refresh_expires_at', '<=', $now);
             } elseif ($param['status'] === 'revoked') {
                 $query->whereNotNull('user_sessions.revoked_at');
             }
@@ -219,11 +219,11 @@ class UserSessionsDep extends BaseDep
 
         $now = date('Y-m-d H:i:s');
 
-        // 一次查询拿到总数和平台分布
+        // 一次查询拿到总数和平台分布（基于 refresh_token 过期时间）
         $stats = $this->model
             ->where('is_del', CommonEnum::NO)
             ->whereNull('revoked_at')
-            ->where('expires_at', '>', $now)
+            ->where('refresh_expires_at', '>', $now)
             ->selectRaw('COUNT(*) as total, platform')
             ->groupBy('platform')
             ->pluck('total', 'platform')

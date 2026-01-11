@@ -26,10 +26,10 @@ class UserSessionModule extends BaseModule
         $param = $request->all();
         $paginator = $this->sessionsDep->listWithUser($param);
 
-        // 计算状态
+        // 计算状态（基于 refresh_token 过期时间）
         $now = date('Y-m-d H:i:s');
         $data = $paginator->getCollection()->map(function ($item) use ($now) {
-            $item->status = $item->revoked_at ? 'revoked' : ($item->expires_at <= $now ? 'expired' : 'active');
+            $item->status = $item->revoked_at ? 'revoked' : ($item->refresh_expires_at <= $now ? 'expired' : 'active');
             return $item;
         });
 
