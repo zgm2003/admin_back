@@ -9,8 +9,6 @@ use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\User\RoleValidate;
 use support\Cache;
-use support\Db;
-
 
 class RoleModule extends BaseModule
 {
@@ -148,15 +146,12 @@ class RoleModule extends BaseModule
         if (!$role || (isset($role['is_del']) && (int)$role['is_del'] !== CommonEnum::NO)) {
             return self::error('角色不存在');
         }
-        Db::beginTransaction();
         try {
-            // 取消当前默认角色（命中 idx_role_default）
-            $dep->clearDefault();
-            // 设置新的默认角色（命中主键）
-            $dep->update($id, ['is_default' => CommonEnum::YES]);
-            Db::commit();
+            $this->withTransaction(function () use ($id) {
+                $this->roleDep->clearDefault();
+                $this->roleDep->update($id, ['is_default' => CommonEnum::YES]);
+            });
         } catch (\Throwable $e) {
-            Db::rollBack();
             return self::error('设置默认角色失败');
         }
         return self::success();

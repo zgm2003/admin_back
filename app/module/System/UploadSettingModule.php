@@ -9,7 +9,6 @@ use app\module\BaseModule;
 use app\service\DictService;
 use app\enum\CommonEnum;
 use app\validate\System\UploadSettingValidate;
-use support\Db;
 
 class UploadSettingModule extends BaseModule
 {
@@ -53,13 +52,12 @@ class UploadSettingModule extends BaseModule
         ];
 
         if ((int)$param['status'] === CommonEnum::YES) {
-            Db::beginTransaction();
             try {
-                $this->dep->clearStatus();
-                $this->dep->add($data);
-                Db::commit();
+                $this->withTransaction(function () use ($data) {
+                    $this->dep->clearStatus();
+                    $this->dep->add($data);
+                });
             } catch (\Throwable $e) {
-                Db::rollBack();
                 return self::error('新增失败：' . $e->getMessage());
             }
         } else {
@@ -86,13 +84,12 @@ class UploadSettingModule extends BaseModule
         ];
 
         if ((int)$param['status'] === CommonEnum::YES) {
-            Db::beginTransaction();
             try {
-                $this->dep->clearStatus();
-                $this->dep->update($param['id'], $data);
-                Db::commit();
+                $this->withTransaction(function () use ($param, $data) {
+                    $this->dep->clearStatus();
+                    $this->dep->update($param['id'], $data);
+                });
             } catch (\Throwable $e) {
-                Db::rollBack();
                 return self::error('编辑失败：' . $e->getMessage());
             }
         } else {
@@ -119,13 +116,12 @@ class UploadSettingModule extends BaseModule
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         
         if ((int)$param['status'] === CommonEnum::YES) {
-            Db::beginTransaction();
             try {
-                $this->dep->clearStatus();
-                $this->dep->update($param['id'], ['status' => $param['status']]);
-                Db::commit();
+                $this->withTransaction(function () use ($param) {
+                    $this->dep->clearStatus();
+                    $this->dep->update($param['id'], ['status' => $param['status']]);
+                });
             } catch (\Throwable $e) {
-                Db::rollBack();
                 return self::error('状态变更失败：' . $e->getMessage());
             }
         } else {
