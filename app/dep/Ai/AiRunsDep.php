@@ -114,6 +114,21 @@ class AiRunsDep extends BaseDep
     }
 
     /**
+     * 获取超时的 running 任务列表（用于逐条处理）
+     * @param string $timeoutAt 超时时间点（created_at < 此时间的视为超时）
+     * @param int $limit 数量限制
+     */
+    public function getTimeoutRuns(string $timeoutAt, int $limit = 100)
+    {
+        return $this->model
+            ->where('run_status', AiEnum::RUN_STATUS_RUNNING)
+            ->where('is_del', CommonEnum::NO)
+            ->where('created_at', '<', $timeoutAt)
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
      * 统计概览
      */
     public function getStats(array $param): array

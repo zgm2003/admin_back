@@ -45,7 +45,8 @@
     "workerman/crontab": "^1.0",
     "workerman/validation": "^3.1",
     "webman/rate-limiter": "^1.1",
-    "ext-curl": "*"
+    "ext-curl": "*",
+    "webman/event": "^1.0"
   },
   "suggest": {
     "ext-event": "For better performance. "

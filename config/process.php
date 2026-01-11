@@ -81,4 +81,8 @@ return [
     'clean_export' => [
         'handler' => app\process\CleanExportTask::class,
     ],
+    // AI Run 超时检测
+    'ai_run_timeout' => [
+        'handler' => app\process\AiRunTimeoutTask::class,
+    ],
 ];

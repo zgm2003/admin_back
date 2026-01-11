@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b3a21e0ea84bc1ef564fb3f470001583",
+    "content-hash": "08a944082cde215648ce967a3d13ea10",
     "packages": [
         {
             "name": "adbario/php-dot-notation",
@@ -6531,6 +6531,37 @@
             "time": "2025-04-04T13:23:25+00:00"
         },
         {
+            "name": "webman/event",
+            "version": "v1.0.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/webman-php/event.git",
+                "reference": "b1c3f6b70fd290e48288703d59bead0e28f9fb84"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/webman-php/event/zipball/b1c3f6b70fd290e48288703d59bead0e28f9fb84",
+                "reference": "b1c3f6b70fd290e48288703d59bead0e28f9fb84",
+                "shasum": ""
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Webman\\Event\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Webman event plugin",
+            "support": {
+                "issues": "https://github.com/webman-php/event/issues",
+                "source": "https://github.com/webman-php/event/tree/v1.0.5"
+            },
+            "time": "2023-12-04T09:22:12+00:00"
+        },
+        {
             "name": "webman/gateway-worker",
             "version": "v1.0.8",
             "source": {
@@ -7154,7 +7185,8 @@
     "prefer-lowest": false,
     "platform": {
         "php": ">=8.1",
-        "ext-pdo": "*"
+        "ext-pdo": "*",
+        "ext-curl": "*"
     },
     "platform-dev": [],
     "plugin-api-version": "2.3.0"
