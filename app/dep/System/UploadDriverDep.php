@@ -2,35 +2,24 @@
 
 namespace app\dep\System;
 
+use app\dep\BaseDep;
 use app\model\System\UploadDriverModel;
 use app\enum\CommonEnum;
+use support\Model;
 
-class UploadDriverDep
+class UploadDriverDep extends BaseDep
 {
-    public $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new UploadDriverModel();
+        return new UploadDriverModel();
     }
 
-    public function first($id)
-    {
-        return $this->model->where('id', $id)->first();
-    }
+    // ==================== 查询方法 ====================
 
-    public function add($data)
-    {
-        return $this->model->insertGetId($data);
-    }
-
-    public function edit($id, $data)
-    {
-        if (!is_array($id)) $id = [$id];
-        return $this->model->whereIn('id', $id)->update($data);
-    }
-
-    public function firstByDriverBucket($driver, $bucket)
+    /**
+     * 根据 driver + bucket 查询
+     */
+    public function findByDriverBucket(string $driver, string $bucket)
     {
         return $this->model
             ->where('driver', $driver)
@@ -39,27 +28,28 @@ class UploadDriverDep
             ->first();
     }
 
-    public function setDict()
+    /**
+     * 获取字典列表
+     */
+    public function getDict()
     {
-        return $this->model->select(['id','driver','bucket'])->where('is_del', CommonEnum::NO)->get();
-    }
-
-    public function del($id, $data)
-    {
-        if (!is_array($id)) $id = [$id];
-        return $this->model->whereIn('id', $id)->update($data);
-    }
-
-    public function list($param)
-    {
-        $pageSize = $param['page_size'];
-        $currentPage = $param['current_page'];
         return $this->model
-            ->when(!empty($param['driver']), function ($query) use ($param) {
-                $query->where('driver', $param['driver']);
-            })
+            ->select(['id', 'driver', 'bucket'])
+            ->where('is_del', CommonEnum::NO)
+            ->get();
+    }
+
+    // ==================== 列表查询 ====================
+
+    /**
+     * 列表查询（分页 + 过滤）
+     */
+    public function list(array $param)
+    {
+        return $this->model
+            ->when(!empty($param['driver']), fn($q) => $q->where('driver', $param['driver']))
             ->where('is_del', CommonEnum::NO)
             ->orderBy('id', 'desc')
-            ->paginate($pageSize, ['*'], 'page', $currentPage);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 }

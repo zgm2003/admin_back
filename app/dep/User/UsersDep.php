@@ -2,87 +2,86 @@
 
 namespace app\dep\User;
 
+use app\dep\BaseDep;
 use app\enum\CommonEnum;
 use app\model\User\UsersModel;
+use support\Model;
 
-class UsersDep
+class UsersDep extends BaseDep
 {
-    public $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new UsersModel();
+        return new UsersModel();
     }
 
-    public function first($id)
+    // ==================== 查询方法 ====================
+
+    /**
+     * 根据邮箱查询
+     */
+    public function findByEmail(string $email)
     {
-        $res = $this->model->where('id', $id)->first();
-        return $res;
+        return $this->model->where('email', $email)->first();
     }
 
-    public function firstByEmail($email){
-        $res = $this->model->where('email',$email)->first();
-        return $res;
-    }
-
-    public function firstByPhone($phone){
-        $res = $this->model->where('phone',$phone)->first();
-        return $res;
-    }
-
-    public function firstByUsername($username){
-        $res = $this->model->where('username',$username)->first();
-        return $res;
-    }
-
-    public function firstByAccount($account)
+    /**
+     * 根据手机号查询
+     */
+    public function findByPhone(string $phone)
     {
-        return $this->model->where('email', $account)
+        return $this->model->where('phone', $phone)->first();
+    }
+
+    /**
+     * 根据用户名查询
+     */
+    public function findByUsername(string $username)
+    {
+        return $this->model->where('username', $username)->first();
+    }
+
+    /**
+     * 根据账号查询（邮箱/用户名/手机号）
+     */
+    public function findByAccount(string $account)
+    {
+        return $this->model
+            ->where('email', $account)
             ->orWhere('username', $account)
             ->orWhere('phone', $account)
             ->first();
     }
 
-    public function add($data)
+    /**
+     * 根据角色ID获取用户ID列表
+     */
+    public function getIdsByRoleIds(array $roleIds)
     {
-        $res = $this->model->insertGetId($data);
-        return $res;
+        return $this->model->whereIn('role_id', $roleIds)->pluck('id');
     }
 
-    public function edit($id, $data)
+    /**
+     * 获取所有用户（字典用）
+     */
+    public function all()
     {
-        if(!is_array($id)){
-            $id = [$id];
-        }
-        $res = $this->model->whereIn('id', $id)->update($data);
-        return $res;
+        return $this->model->select(['id', 'username', 'email'])->get();
     }
 
-    public function del($id, $data)
-    {
-        if(!is_array($id)){
-            $id = [$id];
-        }
-        $res = $this->model->whereIn('id', $id)->update($data);
-        return $res;
-    }
+    // ==================== 列表查询 ====================
 
-    public function list($param)
+    /**
+     * 列表查询（分页 + 过滤，关联 profile）
+     */
+    public function list(array $param)
     {
         return $this->model
             ->from('users as u')
             ->leftJoin('user_profiles as up', 'u.id', '=', 'up.user_id')
             ->where('u.is_del', CommonEnum::NO)
-
-            ->when(isset($param['username']) && $param['username'] !== '', function ($q) use ($param) {
-                $q->where('u.username', 'like', '%' . $param['username'] . '%');
-            })
-            ->when(isset($param['email']) && $param['email'] !== '', function ($q) use ($param) {
-                $q->where('u.email', 'like', '%' . $param['email'] . '%');
-            })
-            ->when(isset($param['detail_address']) && $param['detail_address'] !== '', function ($q) use ($param) {
-                $q->where('up.detail_address', 'like', '%' . $param['detail_address'] . '%');
-            })
+            ->when(isset($param['username']) && $param['username'] !== '', fn($q) => $q->where('u.username', 'like', '%' . $param['username'] . '%'))
+            ->when(isset($param['email']) && $param['email'] !== '', fn($q) => $q->where('u.email', 'like', '%' . $param['email'] . '%'))
+            ->when(isset($param['detail_address']) && $param['detail_address'] !== '', fn($q) => $q->where('up.detail_address', 'like', '%' . $param['detail_address'] . '%'))
             ->when(!empty($param['address_id'] ?? $param['address'] ?? null), function ($q) use ($param) {
                 $ids = $param['address_id'] ?? $param['address'];
                 if (is_array($ids)) {
@@ -91,60 +90,13 @@ class UsersDep
                     $q->where('up.address_id', (int)$ids);
                 }
             })
-            ->when(isset($param['role_id']) && $param['role_id'] !== '', function ($q) use ($param) {
-                $q->where('u.role_id', (int)$param['role_id']);
-            })
-            ->when(isset($param['sex']) && $param['sex'] !== '', function ($q) use ($param) {
-                $q->where('up.sex', (int)$param['sex']);
-            })
-            ->when(!empty($param['date']) && is_array($param['date']) && count($param['date']) === 2, function ($q) use ($param) {
-                $q->whereBetween('u.created_at', [$param['date'][0], $param['date'][1]]);
-            })
-
+            ->when(isset($param['role_id']) && $param['role_id'] !== '', fn($q) => $q->where('u.role_id', (int)$param['role_id']))
+            ->when(isset($param['sex']) && $param['sex'] !== '', fn($q) => $q->where('up.sex', (int)$param['sex']))
+            ->when(!empty($param['date']) && is_array($param['date']) && count($param['date']) === 2, fn($q) => $q->whereBetween('u.created_at', [$param['date'][0], $param['date'][1]]))
             ->select([
-                'u.id','u.username','u.email','u.phone','u.role_id','u.status','u.created_at','u.updated_at',
-                'up.avatar','up.sex','up.address_id','up.detail_address',
+                'u.id', 'u.username', 'u.email', 'u.phone', 'u.role_id', 'u.status', 'u.created_at', 'u.updated_at',
+                'up.avatar', 'up.sex', 'up.address_id', 'up.detail_address',
             ])
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
-
-
-    public function getByUsername($username)
-    {
-        $res = $this->model->where('username','like', "%{$username}%")->get();
-        return $res;
-    }
-
-    public function all()
-    {
-        $res = $this->model->select(['id','username','email'])->get();
-        return $res;
-
-    }
-
-    public function getUsersByIds(array $ids)
-    {
-        $res = $this->model->whereIn('id', $ids)->get();
-        return $res;
-    }
-
-    public function getUserIdsByRoleIds(array $roleIds)
-    {
-        return $this->model->whereIn('role_id', $roleIds)->pluck('id');
-    }
-
-    /**
-     * 批量获取用户(按ID列表)
-     * @param array $ids
-     * @return \Illuminate\Support\Collection  id => UserModel
-     */
-    public function getMapByIds(array $ids)
-    {
-        if (empty($ids)) return collect();
-        return $this->model
-            ->whereIn('id', array_unique($ids))
-            ->get()
-            ->keyBy('id');
-    }
-
 }

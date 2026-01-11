@@ -31,7 +31,7 @@ class UploadRuleModule extends BaseModule
         try { $param = $this->validate($request, UploadRuleValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $dep = $this->dep;
-        $resDep = $dep->firstByTitle($param['title']);
+        $resDep = $dep->findByTitle($param['title']);
         if ($resDep){
             return self::error('规则标题已存在');
         }
@@ -50,7 +50,7 @@ class UploadRuleModule extends BaseModule
         try { $param = $this->validate($request, UploadRuleValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $dep = $this->dep;
-        $resDep = $dep->firstByTitle($param['title']);
+        $resDep = $dep->findByTitle($param['title']);
         if ($resDep && $resDep['id'] != $param['id']){
             return self::error('规则标题已存在');
         }
@@ -60,7 +60,7 @@ class UploadRuleModule extends BaseModule
             'image_exts'  => json_encode($param['image_exts']),
             'file_exts'   => json_encode($param['file_exts']),
         ];
-        $dep->edit($param['id'], $data);
+        $dep->update($param['id'], $data);
         return self::success();
     }
 
@@ -68,7 +68,7 @@ class UploadRuleModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadRuleValidate::del()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $this->dep->del($param['id'], ['is_del' => CommonEnum::YES]);
+        $this->dep->delete($param['id']);
         return self::success();
     }
 

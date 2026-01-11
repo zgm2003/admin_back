@@ -2,44 +2,70 @@
 
 namespace app\dep\User;
 
+use app\dep\BaseDep;
 use app\model\User\UserProfileModel;
+use support\Model;
 
-class UserProfileDep
+/**
+ * 用户资料 Dep
+ * 注意：user_profiles 表没有 is_del 字段，不使用软删除
+ */
+class UserProfileDep extends BaseDep
 {
-    public $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new UserProfileModel();
+        return new UserProfileModel();
     }
 
-    public function firstByUserId(int $userId)
+    // ==================== 查询方法 ====================
+
+    /**
+     * 根据用户ID查询
+     */
+    public function findByUserId(int $userId)
     {
         return $this->model->where('user_id', $userId)->first();
     }
 
-    public function editByUserId(int $userId, array $data)
-    {
-        return $this->model->where('user_id', $userId)->update($data);
-    }
-
-    public function add(array $data)
-    {
-        return $this->model->insertGetId($data);
-    }
-
     /**
-     * 批量获取用户Profile(按user_id列表)
-     * @param array $userIds
-     * @return \Illuminate\Support\Collection  user_id => ProfileModel
+     * 批量获取用户 Profile
+     * @return \Illuminate\Support\Collection user_id => ProfileModel
      */
     public function getMapByUserIds(array $userIds)
     {
-        if (empty($userIds)) return collect();
+        if (empty($userIds)) {
+            return collect();
+        }
         return $this->model
             ->whereIn('user_id', array_unique($userIds))
             ->get()
             ->keyBy('user_id');
     }
-}
 
+    // ==================== 写入方法 ====================
+
+    /**
+     * 根据用户ID更新
+     */
+    public function updateByUserId(int $userId, array $data): int
+    {
+        return $this->model->where('user_id', $userId)->update($data);
+    }
+
+    /**
+     * 覆盖父类方法：此表不支持软删除
+     */
+    public function get(int $id)
+    {
+        return $this->find($id);
+    }
+
+    /**
+     * 覆盖父类方法：此表不支持软删除
+     */
+    public function delete($ids): int
+    {
+        $ids = is_array($ids) ? $ids : [$ids];
+        return $this->model->whereIn('id', $ids)->delete();
+    }
+}

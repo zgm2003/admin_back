@@ -2,52 +2,48 @@
 
 namespace app\dep\System;
 
+use app\dep\BaseDep;
 use app\model\System\UsersLoginLogModel;
+use support\Model;
 
-class UsersLoginLogDep
+/**
+ * 用户登录日志 Dep
+ * 注意：此表没有 is_del 字段，只做记录不删除
+ */
+class UsersLoginLogDep extends BaseDep
 {
-    public $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new UsersLoginLogModel();
+        return new UsersLoginLogModel();
     }
 
-    public function add(array $data): int
-    {
-        return (int) $this->model->insertGetId($data);
-    }
+    // ==================== 列表查询 ====================
 
-    public function list($param)
+    /**
+     * 列表查询（分页 + 过滤）
+     */
+    public function list(array $param)
     {
         return $this->model
-            ->when(!empty($param['user_id']), function ($query) use ($param) {
-                $query->where('user_id', $param['user_id']);
-            })
-            ->when(!empty($param['login_account']), function ($query) use ($param) {
-                $query->where('login_account', 'like', "%{$param['login_account']}%");
-            })
-            ->when(!empty($param['login_type']), function ($query) use ($param) {
-                $query->where('login_type', $param['login_type']);
-            })
-            ->when(!empty($param['ip']), function ($query) use ($param) {
-                $query->where('ip', 'like', "%{$param['ip']}%");
-            })
-            ->when(!empty($param['platform']), function ($query) use ($param) {
-                $query->where('platform', 'like', "%{$param['platform']}%");
-            })
-            ->when(!empty($param['is_success']), function ($query) use ($param) {
-                $query->where('is_success', $param['is_success']);
-            })
-            ->when(!empty($param['date']), function ($query) use ($param) {
-                if (is_array($param['date']) && count($param['date']) === 2) {
-                    $query->whereBetween('created_at', [
-                        $param['date'][0] . ' 00:00:00',
-                        $param['date'][1] . ' 23:59:59'
-                    ]);
-                }
-            })
+            ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', $param['user_id']))
+            ->when(!empty($param['login_account']), fn($q) => $q->where('login_account', 'like', "%{$param['login_account']}%"))
+            ->when(!empty($param['login_type']), fn($q) => $q->where('login_type', $param['login_type']))
+            ->when(!empty($param['ip']), fn($q) => $q->where('ip', 'like', "%{$param['ip']}%"))
+            ->when(!empty($param['platform']), fn($q) => $q->where('platform', 'like', "%{$param['platform']}%"))
+            ->when(!empty($param['is_success']), fn($q) => $q->where('is_success', $param['is_success']))
+            ->when(!empty($param['date']) && is_array($param['date']) && count($param['date']) === 2, fn($q) => $q->whereBetween('created_at', [
+                $param['date'][0] . ' 00:00:00',
+                $param['date'][1] . ' 23:59:59'
+            ]))
             ->orderBy('id', 'desc')
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
+    }
+
+    /**
+     * 覆盖父类方法：此表没有 is_del 字段
+     */
+    public function get(int $id)
+    {
+        return $this->find($id);
     }
 }

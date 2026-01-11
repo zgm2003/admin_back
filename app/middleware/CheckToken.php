@@ -67,7 +67,7 @@ class CheckToken
         if (!$session) {
             // 2.2 缓存未命中，查库
             $sessionDep = new UserSessionsDep();
-            $row = $sessionDep->firstValidByAccessHash($tokenHash);
+            $row = $sessionDep->findValidByAccessHash($tokenHash);
             
             if (!$row) {
                  return json([
@@ -145,7 +145,7 @@ class CheckToken
 
             // 6.2.2 如果指针不存在，从 DB 重建
             if (!$allowedSessionId) {
-                $latest = (new UserSessionsDep())->firstLatestActiveByUserPlatform($session['user_id'], $session['platform']);
+                $latest = (new UserSessionsDep())->findLatestActiveByUserPlatform($session['user_id'], $session['platform']);
                 if ($latest) {
                     $allowedSessionId = $latest->id;
                     // 写回 Redis（持久化，TTL 30 天）
@@ -162,7 +162,7 @@ class CheckToken
                      
                      // 查 DB 确认 allowedSessionId 的状态
                      // 简便做法：直接重新计算一次最新会话，看看是不是我
-                     $latest = (new UserSessionsDep())->firstLatestActiveByUserPlatform($session['user_id'], $session['platform']);
+                     $latest = (new UserSessionsDep())->findLatestActiveByUserPlatform($session['user_id'], $session['platform']);
                      if ($latest) {
                          $realLatestId = $latest->id;
                          // 如果真正的最新会话 ID 变了（比如原来的 allowedSessionId 过期了），更新指针

@@ -2,123 +2,71 @@
 
 namespace app\dep\User;
 
-
+use app\dep\BaseDep;
 use app\enum\CommonEnum;
 use app\model\User\RoleModel;
+use support\Model;
 
-class RoleDep
+class RoleDep extends BaseDep
 {
-    public $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new RoleModel();
+        return new RoleModel();
     }
 
-    public function first($id)
+    // ==================== 查询方法 ====================
+
+    /**
+     * 根据名称查询
+     */
+    public function findByName(string $name)
     {
-        $res = $this->model->where('id', $id)->first();
-        return $res;
-    }
-    public function firstBySuperAdmin()
-    {
-        $res = $this->model->where('name', '超级管理员')->where('is_del', CommonEnum::NO)->first();
-        return $res;
-    }
-    public function firstByAdmin()
-    {
-        $res = $this->model->where('name', '管理员')->where('is_del', CommonEnum::NO)->first();
-        return $res;
-    }
-     public function firstByName($name)
-    {
-        $res = $this->model->where('name', $name)->where('is_del', CommonEnum::NO)->first();
-        return $res;
+        return $this->model
+            ->where('name', $name)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
     }
 
-    public function getUserByToken($token)
+    /**
+     * 获取超级管理员角色
+     */
+    public function getSuperAdmin()
     {
-        $res = $this->model->where('token', $token)->first();
-        return $res;
-    }
-    public function firstByEmail($email){
-        $res = $this->model->where('email',$email)->first();
-        return $res;
-    }
-    public function firstByToken($token){
-        $res = $this->model->where('token',$token)->first();
-        return $res;
+        return $this->findByName('超级管理员');
     }
 
-    public function all()
+    /**
+     * 获取管理员角色
+     */
+    public function getAdmin()
     {
-
-        $res = $this->model->all();
-
-        return $res;
+        return $this->findByName('管理员');
     }
-    public function allOK()
-    {
 
-        $res = $this->model->where('is_del', CommonEnum::NO)->get();
-
-        return $res;
-    }
-    public function firstByDefault()
+    /**
+     * 获取默认角色
+     */
+    public function getDefault()
     {
-        $res = $this->model
+        return $this->model
             ->where('is_del', CommonEnum::NO)
             ->where('is_default', CommonEnum::YES)
             ->first();
-        return $res;
     }
-    public function clearDefault()
+
+    /**
+     * 获取所有有效角色
+     */
+    public function allActive()
     {
         return $this->model
-            ->where('is_default', CommonEnum::YES)
             ->where('is_del', CommonEnum::NO)
-            ->update(['is_default' => CommonEnum::NO]);
+            ->get();
     }
 
-    public function add($data)
-    {
-        $res = $this->model->insertGetId($data);
-        return $res;
-    }
-
-    public function edit($id, $data)
-    {
-        if(!is_array($id)){
-            $id = [$id];
-        }
-        $res = $this->model->whereIn('id', $id)->update($data);
-        return $res;
-    }
-
-    public function batchEdit($ids, $data)
-    {
-        $res = $this->model->whereIn('id', $ids)->update($data);
-        return $res;
-    }
-
-    public function del($id, $data)
-    {
-        if(!is_array($id)){
-            $id = [$id];
-        }
-        $res = $this->model->whereIn('id', $id)->update($data);
-        return $res;
-    }
-
-    public function getByIds(array $ids, bool $onlyActive = false)
-    {
-        $query = $this->model->whereIn('id', $ids);
-        if ($onlyActive) {
-            $query->where('is_del', CommonEnum::NO);
-        }
-        return $query->get();
-    }
-
+    /**
+     * 检查指定 ID 中是否包含默认角色
+     */
     public function hasDefaultIn(array $ids): bool
     {
         return $this->model
@@ -128,30 +76,30 @@ class RoleDep
             ->exists();
     }
 
-    public function list($param){
-        $res = $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->when(!empty($param['name']), function ($query) use ($param) {
-                $query->where('name','like' ,"%{$param['name']}%");
-            })
-            ->orderBy('id','asc')
-            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
-
-        return $res;
-    }
+    // ==================== 写入方法 ====================
 
     /**
-     * 批量获取角色(按ID列表)
-     * @param array $ids
-     * @return \Illuminate\Support\Collection  id => RoleModel
+     * 清除所有默认角色标记
      */
-    public function getMapByIds(array $ids)
+    public function clearDefault(): int
     {
-        if (empty($ids)) return collect();
         return $this->model
-            ->whereIn('id', array_unique($ids))
-            ->get()
-            ->keyBy('id');
+            ->where('is_default', CommonEnum::YES)
+            ->where('is_del', CommonEnum::NO)
+            ->update(['is_default' => CommonEnum::NO]);
     }
 
+    // ==================== 列表查询 ====================
+
+    /**
+     * 列表查询（分页 + 过滤）
+     */
+    public function list(array $param)
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', "%{$param['name']}%"))
+            ->orderBy('id', 'asc')
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
+    }
 }

@@ -133,7 +133,7 @@ class AiModelModule extends BaseModule
         }
 
         $id = (int)$param['id'];
-        $row = $this->dep->getById($id);
+        $row = $this->dep->get($id);
         if (!$row) {
             return self::error('记录不存在');
         }
@@ -163,7 +163,7 @@ class AiModelModule extends BaseModule
             $data['api_key_hint'] = KeyVault::hint($param['api_key']);
         }
 
-        $this->dep->edit($id, $data);
+        $this->dep->update($id, $data);
         return self::success();
     }
 
@@ -179,7 +179,7 @@ class AiModelModule extends BaseModule
         }
 
         $ids = $param['id'];
-        $affected = $this->dep->del($ids, ['is_del' => CommonEnum::YES]);
+        $affected = $this->dep->delete($ids);
 
         return self::success(['affected' => $affected]);
     }

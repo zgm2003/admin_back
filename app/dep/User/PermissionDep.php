@@ -2,173 +2,152 @@
 
 namespace app\dep\User;
 
+use app\dep\BaseDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\model\User\PermissionModel;
 use support\Cache;
+use support\Model;
 
-class PermissionDep
+class PermissionDep extends BaseDep
 {
-    public $model;
-    
-    // Redis 缓存Key
     const CACHE_KEY_ALL = 'perm_all_permissions';
     const CACHE_TTL = 300; // 5分钟
 
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new PermissionModel();
+        return new PermissionModel();
     }
 
-    public function firstByParentCategory($ParentCategory)
+    // ==================== 查询方法 ====================
+
+    /**
+     * 根据名称查询
+     */
+    public function findByName(string $name)
     {
-        $res = $this->model->where('name', $ParentCategory)->where('is_del', CommonEnum::NO)->first();
-        return $res;
+        return $this->model
+            ->where('name', $name)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
     }
 
-    public function firstByChildCategory($parent_id, $name)
+    /**
+     * 根据路径查询
+     */
+    public function findByPath(string $path)
     {
-        $res = $this->model->where('name', $name)->where('parent_id', $parent_id)->where('is_del', CommonEnum::NO)->first();
-        return $res;
+        return $this->model
+            ->where('path', $path)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
     }
 
-    public function firstByPath($path)
+    /**
+     * 根据父分类名称查询
+     */
+    public function findByParentCategory(string $name)
     {
-        $res = $this->model->where('path', $path)->where('is_del', CommonEnum::NO)->first();
-        return $res;
+        return $this->model
+            ->where('name', $name)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
     }
 
+    /**
+     * 根据父ID和名称查询子分类
+     */
+    public function findByChildCategory(int $parentId, string $name)
+    {
+        return $this->model
+            ->where('name', $name)
+            ->where('parent_id', $parentId)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
+    }
+
+    /**
+     * 获取所有顶级权限
+     */
     public function allParent()
     {
-
-        $res = $this->model->where('parent_id', PermissionEnum::ParentCategory)->where('is_del', CommonEnum::NO)->get();
-
-        return $res;
+        return $this->model
+            ->where('parent_id', PermissionEnum::ParentCategory)
+            ->where('is_del', CommonEnum::NO)
+            ->get();
     }
 
-    public function first($id)
+    /**
+     * 获取所有有效权限
+     */
+    public function allActive()
     {
-        $res = $this->model->where('id', $id)->first();
-        return $res;
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->get();
     }
 
-    public function firstOK($id)
+    /**
+     * 根据 ID 列表获取路由权限
+     */
+    public function getRouterByIds(array $ids)
     {
-        $res = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->first();
-        return $res;
-    }
-
-    public function getByRouter($ids)
-    {
-        $res = $this->model
+        return $this->model
             ->whereIn('id', $ids)
             ->whereNotNull('path')
             ->whereNotNull('component')
             ->where('is_del', CommonEnum::NO)
             ->where('status', CommonEnum::YES)
             ->get();
-        return $res;
     }
 
-    public function firstByName($name)
+    /**
+     * 获取所有权限（带缓存）
+     */
+    public function getAllPermissions(): array
     {
-        $res = $this->model->where('name', $name)->where('is_del', CommonEnum::NO)->first();
-        return $res;
-    }
-
-    public function all()
-    {
-
-        $res = $this->model->all();
-
-        return $res;
-    }
-
-    public function allOK()
-    {
-
-        $res = $this->model->where('is_del', CommonEnum::NO)->where('status', CommonEnum::YES)->get();
-
-        return $res;
-    }
-
-    public function add($data)
-    {
-        $res = $this->model->insertGetId($data);
-        return $res;
-    }
-
-    public function edit($id, $data)
-    {
-        if (!is_array($id)) {
-            $id = [$id];
-        }
-        $res = $this->model->whereIn('id', $id)->update($data);
-        return $res;
-    }
-
-    public function batchEdit($ids, $data)
-    {
-        $res = $this->model->whereIn('id', $ids)->update($data);
-        return $res;
-    }
-
-    public function del($id, $data)
-    {
-        if (!is_array($id)) {
-            $id = [$id];
-        }
-        $res = $this->model->whereIn('id', $id)->update($data);
-        return $res;
-    }
-
-    public function list($param)
-    {
-        $res = $this->model
-            ->when(!empty($param['name']), function ($query) use ($param) {
-                $query->where('name', 'like', "%{$param['name']}%");
-            })
-            ->when(!empty($param['path']), function ($query) use ($param) {
-                $query->where('path', 'like', "%{$param['path']}%");
-            })
-            ->where('is_del', CommonEnum::NO)
-            ->orderBy('parent_id')
-            ->orderBy('sort')
-            ->orderBy('id')
-            ->get();
-
-        return $res;
-    }
-
-    public function getAllPermissions()
-    {
-        // 尝试从Redis缓存获取
         $cached = Cache::get(self::CACHE_KEY_ALL);
         if ($cached !== null) {
             return $cached;
         }
-        
-        // 查询并缓存
+
         $permissions = $this->model
             ->where('is_del', CommonEnum::NO)
             ->where('status', CommonEnum::YES)
             ->orderBy('parent_id')
             ->orderBy('sort')
             ->orderBy('id')
-            ->get()->toArray();
-        
+            ->get()
+            ->toArray();
+
         Cache::set(self::CACHE_KEY_ALL, $permissions, self::CACHE_TTL);
-        
+
         return $permissions;
     }
 
     /**
-     * 清除权限缓存（权限变更时调用）
+     * 清除权限缓存
      */
     public static function clearCache(): void
     {
         Cache::delete(self::CACHE_KEY_ALL);
     }
 
+    // ==================== 列表查询 ====================
 
+    /**
+     * 列表查询（树形结构用）
+     */
+    public function list(array $param)
+    {
+        return $this->model
+            ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', "%{$param['name']}%"))
+            ->when(!empty($param['path']), fn($q) => $q->where('path', 'like', "%{$param['path']}%"))
+            ->where('is_del', CommonEnum::NO)
+            ->orderBy('parent_id')
+            ->orderBy('sort')
+            ->orderBy('id')
+            ->get();
+    }
 }

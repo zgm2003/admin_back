@@ -70,8 +70,8 @@ class AiRunModule extends BaseModule
         $agentIds = $res->pluck('agent_id')->unique()->filter()->toArray();
         $conversationIds = $res->pluck('conversation_id')->unique()->filter()->toArray();
         
-        $agentMap = $this->agentsDep->getMapByIds($agentIds);
-        $conversationMap = $this->conversationsDep->getMapByIds($conversationIds);
+        $agentMap = $this->agentsDep->getMap($agentIds);
+        $conversationMap = $this->conversationsDep->getMap($conversationIds);
 
         $list = $res->map(function ($item) use ($agentMap, $conversationMap) {
             $agent = $agentMap->get($item->agent_id);
@@ -119,19 +119,19 @@ class AiRunModule extends BaseModule
             return self::error($e->getMessage());
         }
 
-        $run = $this->runsDep->getById((int)$param['id']);
+        $run = $this->runsDep->get((int)$param['id']);
         if (!$run) {
             return self::error('记录不存在');
         }
 
         // 查询关联数据（包含已删除，用于审计）
-        $agent = $this->agentsDep->first($run->agent_id);
-        $conversation = $this->conversationsDep->first($run->conversation_id);
-        $user = $this->usersDep->first($run->user_id);
+        $agent = $this->agentsDep->find($run->agent_id);
+        $conversation = $this->conversationsDep->find($run->conversation_id);
+        $user = $this->usersDep->find($run->user_id);
         
         // 查询关联消息（包含已删除）
-        $userMessage = $run->user_message_id ? $this->messagesDep->first($run->user_message_id) : null;
-        $assistantMessage = $run->assistant_message_id ? $this->messagesDep->first($run->assistant_message_id) : null;
+        $userMessage = $run->user_message_id ? $this->messagesDep->find($run->user_message_id) : null;
+        $assistantMessage = $run->assistant_message_id ? $this->messagesDep->find($run->assistant_message_id) : null;
 
         return self::success([
             'id' => $run->id,
@@ -273,7 +273,7 @@ class AiRunModule extends BaseModule
 
         // 关联智能体名称
         $agentIds = $result['list']->pluck('agent_id')->toArray();
-        $agentMap = $this->agentsDep->getMapByIds($agentIds);
+        $agentMap = $this->agentsDep->getMap($agentIds);
         $list = $result['list']->map(function ($item) use ($agentMap) {
             $agent = $agentMap->get($item->agent_id);
             return [
@@ -317,7 +317,7 @@ class AiRunModule extends BaseModule
 
         // 关联用户名称
         $userIds = $result['list']->pluck('user_id')->toArray();
-        $userMap = $this->usersDep->getMapByIds($userIds);
+        $userMap = $this->usersDep->getMap($userIds);
         $list = $result['list']->map(function ($item) use ($userMap) {
             $user = $userMap->get($item->user_id);
             return [

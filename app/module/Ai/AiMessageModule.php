@@ -32,7 +32,7 @@ class AiMessageModule extends BaseModule
         }
 
         // 校验会话存在且属于当前用户
-        $conversation = $this->conversationsDep->getById((int)$param['conversation_id'], $request->userId);
+        $conversation = $this->conversationsDep->getByUser((int)$param['conversation_id'], $request->userId);
         if (!$conversation) {
             return self::error('会话不存在');
         }
@@ -83,7 +83,7 @@ class AiMessageModule extends BaseModule
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
 
         // 这里简化处理，直接软删（实际可校验消息是否属于用户的会话）
-        $this->dep->del($ids, ['is_del' => CommonEnum::YES]);
+        $this->dep->delete($ids);
         return self::success();
     }
 
@@ -99,13 +99,13 @@ class AiMessageModule extends BaseModule
         }
 
         // 校验消息存在
-        $message = $this->dep->getById((int)$param['id']);
+        $message = $this->dep->get((int)$param['id']);
         if (!$message) {
             return self::error('消息不存在');
         }
 
         // 校验消息属于当前用户的会话
-        $conversation = $this->conversationsDep->getById($message->conversation_id, $request->userId);
+        $conversation = $this->conversationsDep->getByUser($message->conversation_id, $request->userId);
         if (!$conversation) {
             return self::error('无权操作');
         }

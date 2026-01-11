@@ -2,24 +2,16 @@
 
 namespace app\dep\Ai;
 
+use app\dep\BaseDep;
 use app\model\Ai\AiRunStepModel;
 use app\enum\CommonEnum;
+use support\Model;
 
-class AiRunStepsDep
+class AiRunStepsDep extends BaseDep
 {
-    protected AiRunStepModel $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new AiRunStepModel();
-    }
-
-    /**
-     * 添加步骤记录
-     */
-    public function add(array $data): int
-    {
-        return $this->model->insertGetId($data);
+        return new AiRunStepModel();
     }
 
     /**
@@ -47,7 +39,7 @@ class AiRunStepsDep
     /**
      * 更新步骤状态
      */
-    public function updateStatus(int $id, int $status, ?string $errorMsg = null, ?int $latencyMs = null): int
+    public function updateStepStatus(int $id, int $status, ?string $errorMsg = null, ?int $latencyMs = null): int
     {
         $data = ['status' => $status];
         if ($errorMsg !== null) {

@@ -30,7 +30,7 @@ class UploadDriverModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadDriverValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $exists = $this->dep->firstByDriverBucket($param['driver'], $param['bucket']);
+        $exists = $this->dep->findByDriverBucket($param['driver'], $param['bucket']);
         if ($exists) {
             return self::error('同一驱动下该桶已存在');
         }
@@ -53,7 +53,7 @@ class UploadDriverModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadDriverValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $exists = $this->dep->firstByDriverBucket($param['driver'], $param['bucket']);
+        $exists = $this->dep->findByDriverBucket($param['driver'], $param['bucket']);
         if ($exists && $exists['id'] != $param['id']) {
             return self::error('同一驱动下该桶已存在');
         }
@@ -68,7 +68,7 @@ class UploadDriverModule extends BaseModule
             'endpoint' => $param['endpoint'] ?? null,
             'bucket_domain' => $param['bucket_domain'] ?? null,
         ];
-        $this->dep->edit($param['id'], $data);
+        $this->dep->update($param['id'], $data);
         return self::success();
     }
 
@@ -76,7 +76,7 @@ class UploadDriverModule extends BaseModule
     {
         try { $param = $this->validate($request, UploadDriverValidate::del()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $this->dep->del($param['id'], ['is_del' => CommonEnum::YES]);
+        $this->dep->delete($param['id']);
         return self::success();
     }
 

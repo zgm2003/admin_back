@@ -100,9 +100,9 @@ class UsersModule extends BaseModule
 
             // 智能判断账号类型 (Email / Phone)
             if (isValidEmail($account)) {
-                $resDep = $this->UserDep->firstByEmail($account);
+                $resDep = $this->UserDep->findByEmail($account);
             } elseif (is_valid_phone_number($account)) {
-                $resDep = $this->UserDep->firstByPhone($account);
+                $resDep = $this->UserDep->findByPhone($account);
             } else {
                 // 如果既不是邮箱也不是手机号，直接返回错误（因为username已废弃作为登录凭证）
                 return self::error('请输入正确的邮箱或手机号');
@@ -145,9 +145,9 @@ class UsersModule extends BaseModule
 
             // 查找用户
             if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
-                $resDep = $this->UserDep->firstByEmail($param['login_account']);
+                $resDep = $this->UserDep->findByEmail($param['login_account']);
             } else {
-                $resDep = $this->UserDep->firstByPhone($param['login_account']);
+                $resDep = $this->UserDep->findByPhone($param['login_account']);
             }
 
             // 自动注册逻辑
@@ -155,7 +155,7 @@ class UsersModule extends BaseModule
                 \support\Db::beginTransaction();
                 try {
                     // Get Default Role
-                    $defaultRole = $this->RoleDep->firstByDefault();
+                    $defaultRole = $this->RoleDep->getDefault();
                     $roleId = $defaultRole ? $defaultRole['id'] : 0;
 
                     $userData = [
@@ -176,7 +176,7 @@ class UsersModule extends BaseModule
                     \support\Db::commit();
 
                     // 重新获取用户对象
-                    $resDep = $this->UserDep->first($userId);
+                    $resDep = $this->UserDep->find($userId);
                 } catch (\Exception $e) {
                     \support\Db::rollBack();
 
@@ -184,9 +184,9 @@ class UsersModule extends BaseModule
                     if ($this->isDuplicateKey($e)) {
                         // 重试查找用户
                         if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
-                            $resDep = $this->UserDep->firstByEmail($param['login_account']);
+                            $resDep = $this->UserDep->findByEmail($param['login_account']);
                         } else {
-                            $resDep = $this->UserDep->firstByPhone($param['login_account']);
+                            $resDep = $this->UserDep->findByPhone($param['login_account']);
                         }
 
                         // 如果重查还是没找到（极小概率），则抛出原异常
@@ -287,7 +287,7 @@ class UsersModule extends BaseModule
             return self::error('令牌格式错误', 401);
         }
 
-        $session = $this->UserSessionsDep->firstValidByRefreshHash($hash);
+        $session = $this->UserSessionsDep->findValidByRefreshHash($hash);
         if (!$session) return self::error('刷新令牌无效或已过期', 401);
 
         if (Carbon::parse($session['refresh_expires_at'])->isPast()) {
@@ -303,7 +303,7 @@ class UsersModule extends BaseModule
         $tokens = TokenService::generateTokenPair();
 
         // Rotate Session
-        $this->UserSessionsDep->rotateById($session['id'], [
+        $this->UserSessionsDep->rotate($session['id'], [
             'access_token_hash' => $tokens['access_token_hash'],
             'refresh_token_hash' => $tokens['refresh_token_hash'],
             'expires_at' => $tokens['access_expires']->toDateTimeString(),
@@ -336,10 +336,10 @@ class UsersModule extends BaseModule
         try {
             $token = str_replace('Bearer ', '', $bearer);
             $hash = TokenService::hashToken($token);
-            $session = $this->UserSessionsDep->firstValidByAccessHash($hash);
+            $session = $this->UserSessionsDep->findValidByAccessHash($hash);
 
             if ($session) {
-                $this->UserSessionsDep->revokeById($session['id']);
+                $this->UserSessionsDep->revoke($session['id']);
                 Redis::connection('token')->del($hash);
                 $this->clearSessionPointerIfMatches($session['user_id'], $session['platform'], $session['id']);
             }
@@ -369,7 +369,7 @@ class UsersModule extends BaseModule
         $allowedId = Redis::connection('token')->get($key);
 
         if (!$allowedId) {
-            $latest = $this->UserSessionsDep->firstLatestActiveByUserPlatform($userId, $platform);
+            $latest = $this->UserSessionsDep->findLatestActiveByUserPlatform($userId, $platform);
             if ($latest) {
                 $allowedId = $latest->id;
                 Redis::connection('token')->set($key, $allowedId, 30 * 24 * 3600);
@@ -455,23 +455,23 @@ class UsersModule extends BaseModule
             return self::error('验证码错误');
         }
 
-        $resdep = $dep->firstByEmail($param['email']);
+        $resdep = $dep->findByEmail($param['email']);
         $data = [
             'password' => password_hash($param['newpassword'], PASSWORD_DEFAULT),
         ];
 
-        $dep->edit($resdep->id, $data);
+        $dep->update($resdep->id, $data);
 
         return self::response();
     }
 
     public function init($request)
     {
-        $user = $this->UserDep->first($request->userId);
+        $user = $this->UserDep->find($request->userId);
         if (!$user) {
             return self::error('用户不存在');
         }
-        $profile = $this->UserProfileDep->firstByUserId($user->id);
+        $profile = $this->UserProfileDep->findByUserId($user->id);
 
         $base = [
             'user_id' => $user->id,
@@ -495,9 +495,9 @@ class UsersModule extends BaseModule
     {
         $param = $request->all();
         $dictService = new DictService();
-        $user = $this->UserDep->first($param['user_id']);
-        $profile = $this->UserProfileDep->firstByUserId($user->id);
-        $resRole = $this->RoleDep->first($user->role_id);
+        $user = $this->UserDep->find($param['user_id']);
+        $profile = $this->UserProfileDep->findByUserId($user->id);
+        $resRole = $this->RoleDep->find($user->role_id);
         $data['list'] = [
             'username' => $user->username,
             'email' => $user->email,
@@ -535,7 +535,7 @@ class UsersModule extends BaseModule
         }
         $userDep = $this->UserDep;
         $profileDep = $this->UserProfileDep;
-        $user = $this->UserDep->first($request->userId);;
+        $user = $this->UserDep->find($request->userId);;
         if (isset($param['phone']) && trim((string)$param['phone']) !== '' && !is_valid_phone_number($param['phone'])) {
             return self::error('无效的手机号码');
         }
@@ -555,8 +555,8 @@ class UsersModule extends BaseModule
             'bio' => $param['bio'] ?? '',
         ];
 
-        $userDep->edit($user->id, $userData);
-        $profileDep->editByUserId($user->id, $profileData);
+        $userDep->update($user->id, $userData);
+        $profileDep->updateByUserId($user->id, $profileData);
 
         return self::response();
     }
@@ -569,7 +569,7 @@ class UsersModule extends BaseModule
             return self::error($e->getMessage());
         }
         $dep = $this->UserDep;
-        $user = $this->UserDep->first($request->userId);;
+        $user = $this->UserDep->find($request->userId);;
 
         // 检查必填项是否为空
 
@@ -594,7 +594,7 @@ class UsersModule extends BaseModule
         ];
 
         // 更新密码
-        $dep->edit($user->id, $data);
+        $dep->update($user->id, $data);
 
         return self::response([], '密码修改成功', 200);
     }
@@ -625,13 +625,13 @@ class UsersModule extends BaseModule
         }
 
         // 检查手机号是否已被其他用户占用
-        $exists = $this->UserDep->firstByPhone($phone);
+        $exists = $this->UserDep->findByPhone($phone);
         if ($exists && $exists['id'] != $request->userId) {
             return self::error('该手机号已被其他账号绑定');
         }
 
         // 更新手机号
-        $this->UserDep->edit($request->userId, ['phone' => $phone]);
+        $this->UserDep->update($request->userId, ['phone' => $phone]);
         Cache::delete($cacheKey);
 
         return self::response([], '手机号绑定成功');
@@ -658,13 +658,13 @@ class UsersModule extends BaseModule
         }
 
         // 检查邮箱是否已被其他用户占用
-        $exists = $this->UserDep->firstByEmail($email);
+        $exists = $this->UserDep->findByEmail($email);
         if ($exists && $exists['id'] != $request->userId) {
             return self::error('该邮箱已被其他账号绑定');
         }
 
         // 更新邮箱
-        $this->UserDep->edit($request->userId, ['email' => $email]);
+        $this->UserDep->update($request->userId, ['email' => $email]);
         Cache::delete($cacheKey);
 
         return self::response([], '邮箱绑定成功');
@@ -684,7 +684,7 @@ class UsersModule extends BaseModule
             return self::error($e->getMessage());
         }
 
-        $user = $this->UserDep->first($request->userId);
+        $user = $this->UserDep->find($request->userId);
         $verifyType = $param['verify_type'];
 
         // 密码一致性检查
@@ -736,7 +736,7 @@ class UsersModule extends BaseModule
         }
 
         // 更新密码
-        $this->UserDep->edit($user->id, [
+        $this->UserDep->update($user->id, [
             'password' => password_hash($param['new_password'], PASSWORD_DEFAULT)
         ]);
 

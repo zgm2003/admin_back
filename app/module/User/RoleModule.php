@@ -35,7 +35,7 @@ class RoleModule extends BaseModule
     {
         try { $param = $this->validate($request, RoleValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $resDep = $this->roleDep->firstByName($param['name']);
+        $resDep = $this->roleDep->findByName($param['name']);
         if ($resDep) {
             return self::error('角色名已存在');
         }
@@ -56,7 +56,7 @@ class RoleModule extends BaseModule
         }
         $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [ (int)$param['id'] ];
         $dep = $this->roleDep;
-        $roles = $dep->getByIds($ids, true);
+        $roles = $dep->getMapActive($ids);
         if ($roles->isEmpty()) {
             return self::error('角色不存在');
         }
@@ -66,11 +66,11 @@ class RoleModule extends BaseModule
         if ($dep->hasDefaultIn($ids)) {
             return self::error('默认角色不能删除');
         }
-        $dep->del($ids, ['is_del' => CommonEnum::YES]);
+        $dep->delete($ids);
 
         // Clear cache for users with these roles
         $usersDep = new UsersDep();
-        $userIds = $usersDep->getUserIdsByRoleIds($ids);
+        $userIds = $usersDep->getIdsByRoleIds($ids);
         foreach ($userIds as $uid) {
             Cache::delete('auth_perm_uid_' . $uid);
         }
@@ -84,7 +84,7 @@ class RoleModule extends BaseModule
         try { $param = $this->validate($request, RoleValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         $dep = $this->roleDep;
-        $resDep = $dep->firstByName($param['name']);
+        $resDep = $dep->findByName($param['name']);
         if ($resDep && $resDep['id'] != $param['id']) {
             return self::error('角色名已存在');
         }
@@ -92,11 +92,11 @@ class RoleModule extends BaseModule
             'name' => $param['name'],
             'permission_id' => json_encode($param['permission_id']),
         ];
-        $dep->edit($param['id'], $data);
+        $dep->update($param['id'], $data);
 
         // Clear cache for users with this role
         $usersDep = new UsersDep();
-        $userIds = $usersDep->getUserIdsByRoleIds([$param['id']]);
+        $userIds = $usersDep->getIdsByRoleIds([$param['id']]);
         foreach ($userIds as $uid) {
             Cache::delete('auth_perm_uid_' . $uid);
         }
@@ -144,7 +144,7 @@ class RoleModule extends BaseModule
 
         $dep = $this->roleDep;
         $id = (int)$param['id'];
-        $role = $dep->first($id);
+        $role = $dep->find($id);
         if (!$role || (isset($role['is_del']) && (int)$role['is_del'] !== CommonEnum::NO)) {
             return self::error('角色不存在');
         }
@@ -153,7 +153,7 @@ class RoleModule extends BaseModule
             // 取消当前默认角色（命中 idx_role_default）
             $dep->clearDefault();
             // 设置新的默认角色（命中主键）
-            $dep->edit($id, ['is_default' => CommonEnum::YES]);
+            $dep->update($id, ['is_default' => CommonEnum::YES]);
             Db::commit();
         } catch (\Throwable $e) {
             Db::rollBack();

@@ -49,6 +49,7 @@ class AiChatModule extends BaseModule
     public function send($request): array
     {
         $userId = $request->userId;
+        $startTime = microtime(true);
 
         try {
             $param = $this->validate($request, AiChatValidate::send());
@@ -63,23 +64,69 @@ class AiChatModule extends BaseModule
         }
         $ctx = $prepared[0];
 
-        // 2. 调用 AI API（非流式）
+        // 2. 创建 run 记录（状态=running）
+        $requestId = $this->generateRequestId();
+        $runId = $this->runsDep->add([
+            'request_id' => $requestId,
+            'user_id' => $userId,
+            'agent_id' => $ctx['agentId'],
+            'conversation_id' => $ctx['conversationId'],
+            'user_message_id' => $ctx['userMessageId'],
+            'run_status' => AiEnum::RUN_STATUS_RUNNING,
+            'model_snapshot' => $ctx['modelCode'],
+            'is_del' => CommonEnum::NO,
+        ]);
+
+        // 3. 调用 AI API（非流式）
+        $result = null;
+        $errorMsg = null;
         try {
             $result = $ctx['client']->chatCompletions($ctx['payload'], $ctx['config']);
-        } catch (RuntimeException $e) {
-            return self::error('AI 调用失败: ' . $e->getMessage());
+
+            // 4. 保存 AI 回复
+            $assistantMessageId = $this->saveAssistantMessage(
+                $ctx['conversationId'],
+                $result['content'],
+                $result['usage'],
+                $ctx['modelCode'],
+                $requestId,
+                $result['raw']['id'] ?? null
+            );
+
+            // 5. 更新 run 状态为成功
+            $latencyMs = (int)((microtime(true) - $startTime) * 1000);
+            $this->runsDep->markSuccess($runId, [
+                'assistant_message_id' => $assistantMessageId,
+                'prompt_tokens' => $result['usage']['prompt_tokens'] ?? null,
+                'completion_tokens' => $result['usage']['completion_tokens'] ?? null,
+                'total_tokens' => $result['usage']['total_tokens'] ?? null,
+                'latency_ms' => $latencyMs,
+            ]);
+        } catch (\Throwable $e) {
+            $errorMsg = $e->getMessage();
+            $this->runsDep->markFailed($runId, $errorMsg);
         }
 
-        // 3. 保存 AI 回复
-        $this->saveAssistantMessage(
-            $ctx['conversationId'],
-            $result['content'],
-            $result['usage'],
-            $ctx['modelCode'],
-            $result['raw']['id'] ?? null
-        );
+        if ($errorMsg !== null) {
+            return self::error('AI 调用失败: ' . $errorMsg);
+        }
 
-        return self::success(['conversation_id' => $ctx['conversationId']]);
+        // 6. 新会话自动生成标题
+        if ($ctx['isNew']) {
+            $this->generateTitle(
+                $ctx['conversationId'],
+                $param['content'],
+                $userId,
+                $ctx['client'],
+                $ctx['config'],
+                $ctx['modelCode']
+            );
+        }
+
+        return self::success([
+            'conversation_id' => $ctx['conversationId'],
+            'run_id' => $runId,
+        ]);
     }
 
     /**
@@ -158,7 +205,7 @@ class AiChatModule extends BaseModule
 
             // LLM 步骤完成，更新耗时和 payload
             $llmLatency = (int)((microtime(true) - $llmStart) * 1000);
-            $this->stepsDep->updateStatus($llmStepId, AiEnum::STEP_STATUS_SUCCESS, null, $llmLatency);
+            $this->stepsDep->updateStepStatus($llmStepId, AiEnum::STEP_STATUS_SUCCESS, null, $llmLatency);
 
             // 4. 保存 AI 回复（带双 request_id）
             $assistantMessageId = $this->saveAssistantMessage(
@@ -200,7 +247,7 @@ class AiChatModule extends BaseModule
             // LLM 步骤失败，更新状态
             if ($llmStepId) {
                 $llmLatency = (int)((microtime(true) - $llmStart) * 1000);
-                $this->stepsDep->updateStatus($llmStepId, AiEnum::STEP_STATUS_FAIL, $errorMsg, $llmLatency);
+                $this->stepsDep->updateStepStatus($llmStepId, AiEnum::STEP_STATUS_FAIL, $errorMsg, $llmLatency);
             }
         } finally {
             // 任何异常都要收尾 run 状态
@@ -276,7 +323,7 @@ class AiChatModule extends BaseModule
                 $onChunk('conversation', ['conversation_id' => $conversationId]);
             }
         } else {
-            $conversation = $this->conversationsDep->getById((int)$conversationId, $userId);
+            $conversation = $this->conversationsDep->getByUser((int)$conversationId, $userId);
             if (!$conversation) {
                 return self::error('会话不存在');
             }
@@ -284,7 +331,7 @@ class AiChatModule extends BaseModule
         }
 
         // 2. 查智能体
-        $agent = $this->agentsDep->getById((int)$agentId);
+        $agent = $this->agentsDep->get((int)$agentId);
         if (!$agent) {
             return self::error('智能体不存在');
         }
@@ -293,7 +340,7 @@ class AiChatModule extends BaseModule
         }
 
         // 3. 查模型
-        $model = $this->modelsDep->getById((int)$agent->model_id);
+        $model = $this->modelsDep->get((int)$agent->model_id);
         if (!$model) {
             return self::error('模型不存在');
         }

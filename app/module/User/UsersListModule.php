@@ -68,8 +68,8 @@ class UsersListModule extends BaseModule
             'detail_address' => $param['detail_address'] ?? '',
             'bio' => $param['bio'] ?? '',
         ];
-        $userDep->edit($param['id'], $userData);
-        $profileDep->editByUserId($param['id'], $profileData);
+        $userDep->update($param['id'], $userData);
+        $profileDep->updateByUserId($param['id'], $profileData);
         
         // Clear permission cache
         Cache::delete('auth_perm_uid_' . $param['id']);
@@ -84,7 +84,7 @@ class UsersListModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $this->UserDep->del($param['id'], ['is_del' => CommonEnum::YES]);
+        $this->UserDep->delete($param['id']);
         return self::response();
     }
 
@@ -107,7 +107,7 @@ class UsersListModule extends BaseModule
         $roleIds = $resList->pluck('role_id')->unique()->toArray();
         
         // 批量查询，返回Map (key => model)
-        $roleMap = $RoleDep->getMapByIds($roleIds);
+        $roleMap = $RoleDep->getMap($roleIds);
         $profileMap = $UserProfileDep->getMapByUserIds($userIds);
         $sessionMap = $UserSessionsDep->getLatestActiveMapByUserIds($userIds, $platform);
         
@@ -174,19 +174,19 @@ class UsersListModule extends BaseModule
             if (empty($param['sex'])) {
                 return self::error('性别不能为空');
             }
-            $profileDep->editByUserId($id, ['sex' => (int)$param['sex']]);
+            $profileDep->updateByUserId($id, ['sex' => (int)$param['sex']]);
         }
         if ($param['field'] == 'address') {
             if (empty($param['address'])) {
                 return self::error('地址不能为空');
             }
-            $profileDep->editByUserId($id, ['address_id' => (int)$param['address']]);
+            $profileDep->updateByUserId($id, ['address_id' => (int)$param['address']]);
         }
         if ($param['field'] == 'detail_address') {
             if (empty($param['detail_address'])) {
                 return self::error('详细地址不能为空');
             }
-            $profileDep->editByUserId($id, ['detail_address' => $param['detail_address']]);
+            $profileDep->updateByUserId($id, ['detail_address' => $param['detail_address']]);
         }
         return self::response();
     }
@@ -198,14 +198,14 @@ class UsersListModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $users = $this->UserDep->getUsersByIds($param['ids']);
+        $users = $this->UserDep->getMap($param['ids'])->values();
         $roleDep = $this->RoleDep;
         $profileDep = $this->UserProfileDep;
         
         // === 优化：批量预加载 ===
         $userIds = $users->pluck('id')->toArray();
         $roleIds = $users->pluck('role_id')->unique()->toArray();
-        $roleMap = $roleDep->getMapByIds($roleIds);
+        $roleMap = $roleDep->getMap($roleIds);
         $profileMap = $profileDep->getMapByUserIds($userIds);
         
         $headers = [
@@ -246,7 +246,7 @@ class UsersListModule extends BaseModule
         $sessionDep = $this->UserSessionsDep;
         
         // 1. 获取该用户在该平台下的最新有效会话
-        $session = $sessionDep->firstLatestActiveByUserPlatform($id, $platform);
+        $session = $sessionDep->findLatestActiveByUserPlatform($id, $platform);
         
         if (!$session) {
             return self::error('该用户当前未在线或无有效会话');
@@ -262,7 +262,7 @@ class UsersListModule extends BaseModule
         }
 
         // 4. 数据库标记为已撤销
-        $sessionDep->revokeById($session->id);
+        $sessionDep->revoke($session->id);
 
         return self::response([], '用户已踢下线');
     }

@@ -2,26 +2,24 @@
 
 namespace app\dep\User;
 
+use app\dep\BaseDep;
 use app\enum\CommonEnum;
 use app\model\User\UserSessionsModel;
+use support\Model;
 
-
-class UserSessionsDep
+class UserSessionsDep extends BaseDep
 {
-    public $model;
-    protected string $table = 'user_sessions';
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new UserSessionsModel();
+        return new UserSessionsModel();
     }
 
-    public function add(array $data): int
-    {
-        return (int) $this->model->insertGetId($data);
-    }
+    // ==================== 查询方法 ====================
 
-    public function firstValidByAccessHash(string $accessHash)
+    /**
+     * 根据 access_token_hash 查询有效会话
+     */
+    public function findValidByAccessHash(string $accessHash)
     {
         $now = date('Y-m-d H:i:s');
         return $this->model
@@ -32,7 +30,10 @@ class UserSessionsDep
             ->first();
     }
 
-    public function firstValidByRefreshHash(string $refreshHash)
+    /**
+     * 根据 refresh_token_hash 查询有效会话
+     */
+    public function findValidByRefreshHash(string $refreshHash)
     {
         $now = date('Y-m-d H:i:s');
         return $this->model
@@ -43,37 +44,38 @@ class UserSessionsDep
             ->first();
     }
 
-    public function rotateById(int $id, array $data): int
+    /**
+     * 获取用户在指定平台的最新有效会话
+     */
+    public function findLatestActiveByUserPlatform(int $userId, string $platform)
     {
-        return (int) $this->model->where('id', $id)->update($data);
-    }
-
-    public function revokeById(int $id): int
-    {
-        return (int) $this->model->where('id', $id)->update([
-            'revoked_at' => date('Y-m-d H:i:s'),
-        ]);
-    }
-
-    public function revokeByUserPlatform(int $userId, string $platform): int
-    {
-        return (int) $this->model
+        $now = date('Y-m-d H:i:s');
+        return $this->model
             ->where('user_id', $userId)
             ->where('platform', $platform)
             ->whereNull('revoked_at')
             ->where('is_del', CommonEnum::NO)
-            ->update([
-                'revoked_at' => date('Y-m-d H:i:s'),
-            ]);
+            ->where('refresh_expires_at', '>', $now)
+            ->orderByDesc('id')
+            ->first();
     }
 
-    public function touch(int $id): int
+    /**
+     * 获取用户最新有效会话
+     */
+    public function findLatestByUserId(int $userId)
     {
-        return (int) $this->model->where('id', $id)->update([
-            'last_seen_at' => date('Y-m-d H:i:s'),
-        ]);
+        return $this->model
+            ->where('user_id', $userId)
+            ->whereNull('revoked_at')
+            ->where('is_del', CommonEnum::NO)
+            ->orderByDesc('id')
+            ->first();
     }
 
+    /**
+     * 获取用户在指定平台的所有活跃会话
+     */
     public function listActiveByUserPlatform(int $userId, string $platform)
     {
         return $this->model
@@ -84,46 +86,17 @@ class UserSessionsDep
             ->get();
     }
 
-    public function firstLatestActiveByUserPlatform(int $userId, string $platform)
-    {
-        $now = date('Y-m-d H:i:s');
-        return $this->model
-            ->where('user_id', $userId)
-            ->where('platform', $platform)
-            ->whereNull('revoked_at')
-            ->where('is_del', CommonEnum::NO)
-            ->where('refresh_expires_at', '>', $now)
-            ->orderByDesc('id')
-            ->first();
-    }
-
-    public function firstLatestByUserId(int $userId)
-    {
-        return $this->model
-            ->where('user_id', $userId)
-            ->whereNull('revoked_at')
-            ->where('is_del', CommonEnum::NO)
-            ->orderByDesc('id')
-            ->first();
-    }
-
-    public function delById($id)
-    {
-        $ids = is_array($id) ? $id : [$id];
-        return $this->model->whereIn('id', $ids)->update(['is_del' => CommonEnum::YES]);
-    }
-
     /**
-     * 批量获取用户最新活跃会话(按user_id+platform)
-     * @param array $userIds
-     * @param string $platform
-     * @return \Illuminate\Support\Collection  user_id => SessionModel
+     * 批量获取用户最新活跃会话
+     * @return \Illuminate\Support\Collection user_id => SessionModel
      */
     public function getLatestActiveMapByUserIds(array $userIds, string $platform)
     {
-        if (empty($userIds)) return collect();
+        if (empty($userIds)) {
+            return collect();
+        }
         $now = date('Y-m-d H:i:s');
-        
+
         // 使用子查询获取每个用户的最新会话ID
         $subQuery = $this->model
             ->selectRaw('MAX(id) as max_id')
@@ -133,10 +106,53 @@ class UserSessionsDep
             ->where('is_del', CommonEnum::NO)
             ->where('refresh_expires_at', '>', $now)
             ->groupBy('user_id');
-        
+
         return $this->model
             ->whereIn('id', $subQuery)
             ->get()
             ->keyBy('user_id');
+    }
+
+    // ==================== 写入方法 ====================
+
+    /**
+     * 轮换 Token
+     */
+    public function rotate(int $id, array $data): int
+    {
+        return $this->model->where('id', $id)->update($data);
+    }
+
+    /**
+     * 撤销会话
+     */
+    public function revoke(int $id): int
+    {
+        return $this->model->where('id', $id)->update([
+            'revoked_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /**
+     * 撤销用户在指定平台的所有会话
+     */
+    public function revokeByUserPlatform(int $userId, string $platform): int
+    {
+        return $this->model
+            ->where('user_id', $userId)
+            ->where('platform', $platform)
+            ->whereNull('revoked_at')
+            ->where('is_del', CommonEnum::NO)
+            ->update(['revoked_at' => date('Y-m-d H:i:s')]);
+    }
+
+    /**
+     * 更新最后活跃时间
+     */
+    public function touch(int $id): int
+    {
+        return $this->model->where('id', $id)->update([
+            'last_seen_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 }

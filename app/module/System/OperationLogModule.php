@@ -44,7 +44,7 @@ class OperationLogModule extends BaseModule
 
         $dep = $this->operationLogDep;
 
-        $dep->del($param['id']);
+        $dep->delete($param['id']);
 
         return self::success();
     }
@@ -60,7 +60,7 @@ class OperationLogModule extends BaseModule
         
         // === 优化：批量预加载用户数据 ===
         $userIds = $resList->pluck('user_id')->unique()->toArray();
-        $userMap = $userDep->getMapByIds($userIds);
+        $userMap = $userDep->getMap($userIds);
 
         $data['list'] = $resList->map(function ($item) use ($userMap){
             $resUser = $userMap->get($item['user_id']);

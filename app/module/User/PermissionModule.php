@@ -150,7 +150,7 @@ class PermissionModule extends BaseModule
                     'sort' => $param['sort'],
                     'show_menu' => $param['show_menu'],
                 ];
-                $this->PermissionDep->edit($param['id'],$data);
+                $this->PermissionDep->update($param['id'],$data);
             } else {
                 $data = [
                     'name' => $param['name'],
@@ -161,7 +161,7 @@ class PermissionModule extends BaseModule
                     'sort' => $param['sort'],
                     'show_menu' => $param['show_menu'],
                 ];
-                $this->PermissionDep->edit($param['id'],$data);
+                $this->PermissionDep->update($param['id'],$data);
             }
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
             foreach (['path','component','i18n_key', 'show_menu'] as $f) {
@@ -182,7 +182,7 @@ class PermissionModule extends BaseModule
                     'sort' => $param['sort'],
                     'show_menu' => $param['show_menu'],
                 ];
-                $this->PermissionDep->edit($param['id'],$data);
+                $this->PermissionDep->update($param['id'],$data);
             } else {
                 $data = [
                     'name' => $param['name'],
@@ -195,7 +195,7 @@ class PermissionModule extends BaseModule
                     'sort' => $param['sort'],
                     'show_menu' => $param['show_menu'],
                 ];
-                $this->PermissionDep->edit($param['id'],$data);
+                $this->PermissionDep->update($param['id'],$data);
             }
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             foreach (['parent_id','code'] as $f) {
@@ -209,7 +209,7 @@ class PermissionModule extends BaseModule
                 'code' => $param['code'],
                 'type' => $param['type'],
             ];
-            $this->PermissionDep->edit($param['id'],$data);
+            $this->PermissionDep->update($param['id'],$data);
         }
 
         // 清除权限缓存
@@ -229,7 +229,7 @@ class PermissionModule extends BaseModule
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
         $dep = $this->PermissionDep;
 
-        $dep->del($ids, ['is_del' => CommonEnum::YES]);
+        $dep->delete($ids);
         
         // 清除权限缓存
         PermissionDep::clearCache();
@@ -252,7 +252,7 @@ class PermissionModule extends BaseModule
             $data = [
                 'description' => $param['description'],
             ];
-            $dep->batchEdit($ids, $data);
+            $dep->update($ids, $data);
         }
 
 
@@ -300,7 +300,7 @@ class PermissionModule extends BaseModule
         $data = [
             'status' => $param['status'],
         ];
-        $this->PermissionDep->edit($param['id'], $data);
+        $this->PermissionDep->update($param['id'], $data);
         
         // 清除权限缓存
         PermissionDep::clearCache();

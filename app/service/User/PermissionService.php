@@ -24,7 +24,7 @@ class PermissionService
      */
     public function buildPermissionContextByUser($user): array
     {
-        $role = $this->roleDep->first($user->role_id);
+        $role = $this->roleDep->find($user->role_id);
         $leafIds = json_decode($role->permission_id ?? '', true);
 
         if (empty($leafIds) || !is_array($leafIds)) {

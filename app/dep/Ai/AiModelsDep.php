@@ -2,16 +2,16 @@
 
 namespace app\dep\Ai;
 
+use app\dep\BaseDep;
 use app\model\Ai\AiModelModel;
 use app\enum\CommonEnum;
+use support\Model;
 
-class AiModelsDep
+class AiModelsDep extends BaseDep
 {
-    protected AiModelModel $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new AiModelModel();
+        return new AiModelModel();
     }
 
     /**
@@ -24,57 +24,11 @@ class AiModelsDep
 
         return $this->model
             ->where('is_del', CommonEnum::NO)
-            ->when(!empty($param['driver']), function ($q) use ($param) {
-                $q->where('driver', $param['driver']);
-            })
-            ->when(isset($param['status']) && $param['status'] !== '', function ($q) use ($param) {
-                $q->where('status', (int)$param['status']);
-            })
-            ->when(!empty($param['name']), function ($q) use ($param) {
-                $q->where('name', 'like', '%' . $param['name'] . '%');
-            })
+            ->when(!empty($param['driver']), fn($q) => $q->where('driver', $param['driver']))
+            ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
+            ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', '%' . $param['name'] . '%'))
             ->orderBy('id', 'desc')
             ->paginate($pageSize, ['*'], 'page', $currentPage);
-    }
-
-    /**
-     * 根据 ID 获取单条记录
-     */
-    public function getById(int $id)
-    {
-        return $this->model
-            ->where('id', $id)
-            ->where('is_del', CommonEnum::NO)
-            ->first();
-    }
-
-    public function add($data)
-    {
-        return $this->model->insertGetId($data);
-    }
-
-    public function edit($id, $data)
-    {
-        if (!is_array($id)) $id = [$id];
-        return $this->model->whereIn('id', $id)->update($data);
-    }
-
-    public function del($id, $data)
-    {
-        return $this->edit($id, $data);
-    }
-
-    /**
-     * 批量设置状态
-     */
-    public function setStatus($ids, int $status): int
-    {
-        $ids = is_array($ids) ? $ids : [$ids];
-
-        return $this->model
-            ->whereIn('id', $ids)
-            ->where('is_del', CommonEnum::NO)
-            ->update(['status' => $status]);
     }
 
     /**
@@ -92,17 +46,5 @@ class AiModelsDep
         }
 
         return $query->exists();
-    }
-
-    /**
-     * 批量查询，返回 id => model 的 Collection
-     */
-    public function getMapByIds(array $ids)
-    {
-        if (empty($ids)) return collect();
-        return $this->model
-            ->whereIn('id', array_unique($ids))
-            ->get()
-            ->keyBy('id');
     }
 }

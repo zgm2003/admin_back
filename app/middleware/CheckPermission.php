@@ -32,7 +32,7 @@ class CheckPermission implements MiddlewareInterface
                 $usersDep = new UsersDep();
                 $permissionService = new PermissionService();
 
-                $user = $usersDep->first($request->userId);
+                $user = $usersDep->find($request->userId);
                 
                 if ($user) {
                     // 重新计算权限

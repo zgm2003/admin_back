@@ -46,7 +46,7 @@ class UsersLoginLogModule extends BaseModule
         
         // === 优化：批量预加载用户数据 ===
         $userIds = $resList->pluck('user_id')->filter()->unique()->toArray();
-        $userMap = $userDep->getMapByIds($userIds);
+        $userMap = $userDep->getMap($userIds);
 
         $data['list'] = $resList->map(function ($item) use ($userMap) {
             // 使用预加载的Map获取用户

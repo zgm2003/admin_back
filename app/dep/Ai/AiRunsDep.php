@@ -2,17 +2,17 @@
 
 namespace app\dep\Ai;
 
+use app\dep\BaseDep;
 use app\model\Ai\AiRunModel;
 use app\enum\CommonEnum;
 use app\enum\AiEnum;
+use support\Model;
 
-class AiRunsDep
+class AiRunsDep extends BaseDep
 {
-    protected AiRunModel $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new AiRunModel();
+        return new AiRunModel();
     }
 
     /**
@@ -23,55 +23,16 @@ class AiRunsDep
         $pageSize = $param['page_size'] ?? 20;
         $currentPage = $param['current_page'] ?? 1;
 
-        // 只查列表需要的字段，减少数据传输
-        $columns = [
-            'id', 'request_id', 'user_id', 'agent_id', 'conversation_id',
-            'run_status', 'model_snapshot', 'prompt_tokens', 'completion_tokens',
-            'total_tokens', 'latency_ms', 'error_msg', 'created_at'
-        ];
-
         return $this->model
-            ->select($columns)
             ->where('is_del', CommonEnum::NO)
-            ->when(!empty($param['run_status']), function ($q) use ($param) {
-                $q->where('run_status', (int)$param['run_status']);
-            })
-            ->when(!empty($param['agent_id']), function ($q) use ($param) {
-                $q->where('agent_id', (int)$param['agent_id']);
-            })
-            ->when(!empty($param['user_id']), function ($q) use ($param) {
-                $q->where('user_id', (int)$param['user_id']);
-            })
-            ->when(!empty($param['request_id']), function ($q) use ($param) {
-                $q->where('request_id', 'like', $param['request_id'] . '%');
-            })
-            ->when(!empty($param['date_start']), function ($q) use ($param) {
-                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
-            })
-            ->when(!empty($param['date_end']), function ($q) use ($param) {
-                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
-            })
+            ->when(!empty($param['run_status']), fn($q) => $q->where('run_status', (int)$param['run_status']))
+            ->when(!empty($param['agent_id']), fn($q) => $q->where('agent_id', (int)$param['agent_id']))
+            ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', (int)$param['user_id']))
+            ->when(!empty($param['request_id']), fn($q) => $q->where('request_id', 'like', $param['request_id'] . '%'))
+            ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
+            ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
             ->orderBy('id', 'desc')
             ->paginate($pageSize, ['*'], 'page', $currentPage);
-    }
-
-    /**
-     * 创建运行记录
-     */
-    public function add(array $data): int
-    {
-        return $this->model->insertGetId($data);
-    }
-
-    /**
-     * 根据 ID 获取
-     */
-    public function getById(int $id)
-    {
-        return $this->model
-            ->where('id', $id)
-            ->where('is_del', CommonEnum::NO)
-            ->first();
     }
 
     /**
@@ -135,193 +96,121 @@ class AiRunsDep
     }
 
     /**
-     * 更新 assistant_message_id
+     * 标记超时的 running 任务为失败（定时任务用）
+     * @param int $timeoutMinutes 超时分钟数
+     * @return int 影响行数
      */
-    public function updateAssistantMessageId(int $id, int $messageId): int
+    public function markTimeoutAsFailed(int $timeoutMinutes = 5): int
     {
+        $threshold = date('Y-m-d H:i:s', strtotime("-{$timeoutMinutes} minutes"));
         return $this->model
-            ->where('id', $id)
-            ->update(['assistant_message_id' => $messageId]);
+            ->where('run_status', AiEnum::RUN_STATUS_RUNNING)
+            ->where('is_del', CommonEnum::NO)
+            ->where('created_at', '<', $threshold)
+            ->update([
+                'run_status' => AiEnum::RUN_STATUS_FAIL,
+                'error_msg' => '执行超时',
+            ]);
     }
 
     /**
-     * 批量查询，返回 id => model 的 Collection
-     */
-    public function getMapByIds(array $ids)
-    {
-        if (empty($ids)) return collect();
-        return $this->model
-            ->whereIn('id', array_unique($ids))
-            ->get()
-            ->keyBy('id');
-    }
-
-    /**
-     * 统计汇总（合并为1次查询）
+     * 统计概览
      */
     public function getStats(array $param): array
     {
-        $result = $this->model
+        $query = $this->model
             ->where('is_del', CommonEnum::NO)
-            ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
-            ->when(!empty($param['date_start']), function ($q) use ($param) {
-                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
-            })
-            ->when(!empty($param['date_end']), function ($q) use ($param) {
-                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
-            })
-            ->when(!empty($param['agent_id']), function ($q) use ($param) {
-                $q->where('agent_id', (int)$param['agent_id']);
-            })
-            ->when(!empty($param['user_id']), function ($q) use ($param) {
-                $q->where('user_id', (int)$param['user_id']);
-            })
-            ->selectRaw('
-                COUNT(*) as total_runs,
-                COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
-                COALESCE(SUM(completion_tokens), 0) as total_completion_tokens,
-                COALESCE(SUM(total_tokens), 0) as total_tokens,
-                COALESCE(SUM(cost), 0) as total_cost,
-                COALESCE(AVG(latency_ms), 0) as avg_latency_ms
-            ')
-            ->first();
+            ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
+            ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
+            ->when(!empty($param['agent_id']), fn($q) => $q->where('agent_id', (int)$param['agent_id']))
+            ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', (int)$param['user_id']));
 
         return [
-            'total_runs' => (int)$result->total_runs,
-            'total_prompt_tokens' => (int)$result->total_prompt_tokens,
-            'total_completion_tokens' => (int)$result->total_completion_tokens,
-            'total_tokens' => (int)$result->total_tokens,
-            'total_cost' => (float)$result->total_cost,
-            'avg_latency_ms' => (int)$result->avg_latency_ms,
+            'total_runs' => (clone $query)->count(),
+            'success_runs' => (clone $query)->where('run_status', AiEnum::RUN_STATUS_SUCCESS)->count(),
+            'fail_runs' => (clone $query)->where('run_status', AiEnum::RUN_STATUS_FAIL)->count(),
+            'total_tokens' => (clone $query)->sum('total_tokens') ?? 0,
+            'total_prompt_tokens' => (clone $query)->sum('prompt_tokens') ?? 0,
+            'total_completion_tokens' => (clone $query)->sum('completion_tokens') ?? 0,
+            'avg_latency_ms' => (clone $query)->avg('latency_ms'),
         ];
     }
 
     /**
-     * 按日期统计（加载更多模式）
+     * 按日期统计（分页）
      */
-    public function getStatsByDate(array $param)
+    public function getStatsByDate(array $param): array
     {
         $pageSize = $param['page_size'] ?? 10;
         $currentPage = $param['current_page'] ?? 1;
+        $offset = ($currentPage - 1) * $pageSize;
 
-        $list = $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
-            ->when(!empty($param['date_start']), function ($q) use ($param) {
-                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
-            })
-            ->when(!empty($param['date_end']), function ($q) use ($param) {
-                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
-            })
-            ->when(!empty($param['agent_id']), function ($q) use ($param) {
-                $q->where('agent_id', (int)$param['agent_id']);
-            })
-            ->when(!empty($param['user_id']), function ($q) use ($param) {
-                $q->where('user_id', (int)$param['user_id']);
-            })
+        $query = $this->model
             ->selectRaw('DATE(created_at) as date, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
+            ->where('is_del', CommonEnum::NO)
+            ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
+            ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
             ->groupBy('date')
-            ->orderBy('date', 'desc')
-            ->offset(($currentPage - 1) * $pageSize)
-            ->limit($pageSize + 1)  // 多查一条判断是否有下一页
-            ->get();
+            ->orderBy('date', 'desc');
 
+        $list = $query->offset($offset)->limit($pageSize + 1)->get();
         $hasMore = $list->count() > $pageSize;
         if ($hasMore) {
             $list = $list->slice(0, $pageSize);
         }
 
-        return [
-            'list' => $list->values(),
-            'has_more' => $hasMore,
-            'page_size' => $pageSize,
-            'current_page' => $currentPage,
-        ];
+        return ['list' => $list, 'has_more' => $hasMore, 'current_page' => $currentPage];
     }
 
     /**
-     * 按智能体统计（加载更多模式）
+     * 按智能体统计（分页）
      */
-    public function getStatsByAgent(array $param)
+    public function getStatsByAgent(array $param): array
     {
         $pageSize = $param['page_size'] ?? 10;
         $currentPage = $param['current_page'] ?? 1;
+        $offset = ($currentPage - 1) * $pageSize;
 
-        $list = $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
-            ->when(!empty($param['date_start']), function ($q) use ($param) {
-                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
-            })
-            ->when(!empty($param['date_end']), function ($q) use ($param) {
-                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
-            })
-            ->when(!empty($param['agent_id']), function ($q) use ($param) {
-                $q->where('agent_id', (int)$param['agent_id']);
-            })
-            ->when(!empty($param['user_id']), function ($q) use ($param) {
-                $q->where('user_id', (int)$param['user_id']);
-            })
+        $query = $this->model
             ->selectRaw('agent_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
+            ->where('is_del', CommonEnum::NO)
+            ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
+            ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
             ->groupBy('agent_id')
-            ->orderByDesc('total_tokens')
-            ->offset(($currentPage - 1) * $pageSize)
-            ->limit($pageSize + 1)
-            ->get();
+            ->orderByRaw('total_runs DESC');
 
+        $list = $query->offset($offset)->limit($pageSize + 1)->get();
         $hasMore = $list->count() > $pageSize;
         if ($hasMore) {
             $list = $list->slice(0, $pageSize);
         }
 
-        return [
-            'list' => $list->values(),
-            'has_more' => $hasMore,
-            'page_size' => $pageSize,
-            'current_page' => $currentPage,
-        ];
+        return ['list' => $list, 'has_more' => $hasMore, 'current_page' => $currentPage];
     }
 
     /**
-     * 按用户统计（加载更多模式）
+     * 按用户统计（分页）
      */
-    public function getStatsByUser(array $param)
+    public function getStatsByUser(array $param): array
     {
         $pageSize = $param['page_size'] ?? 10;
         $currentPage = $param['current_page'] ?? 1;
+        $offset = ($currentPage - 1) * $pageSize;
 
-        $list = $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->where('run_status', AiEnum::RUN_STATUS_SUCCESS)
-            ->when(!empty($param['date_start']), function ($q) use ($param) {
-                $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00');
-            })
-            ->when(!empty($param['date_end']), function ($q) use ($param) {
-                $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59');
-            })
-            ->when(!empty($param['agent_id']), function ($q) use ($param) {
-                $q->where('agent_id', (int)$param['agent_id']);
-            })
-            ->when(!empty($param['user_id']), function ($q) use ($param) {
-                $q->where('user_id', (int)$param['user_id']);
-            })
+        $query = $this->model
             ->selectRaw('user_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
+            ->where('is_del', CommonEnum::NO)
+            ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
+            ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
             ->groupBy('user_id')
-            ->orderByDesc('total_tokens')
-            ->offset(($currentPage - 1) * $pageSize)
-            ->limit($pageSize + 1)
-            ->get();
+            ->orderByRaw('total_runs DESC');
 
+        $list = $query->offset($offset)->limit($pageSize + 1)->get();
         $hasMore = $list->count() > $pageSize;
         if ($hasMore) {
             $list = $list->slice(0, $pageSize);
         }
 
-        return [
-            'list' => $list->values(),
-            'has_more' => $hasMore,
-            'page_size' => $pageSize,
-            'current_page' => $currentPage,
-        ];
+        return ['list' => $list, 'has_more' => $hasMore, 'current_page' => $currentPage];
     }
 }

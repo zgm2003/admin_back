@@ -87,7 +87,7 @@ class SystemSettingModule extends BaseModule
             $j = json_decode((string)$param['value'], true);
             if (!is_array($j)) return self::error('JSON 类型需为合法 JSON');
         }
-        $ok = $this->dep->editById((int)$param['id'], [
+        $ok = $this->dep->updateById((int)$param['id'], [
             'setting_value' => (int)$param['type'] === 4 ? (is_string($param['value']) ? $param['value'] : json_encode($param['value'])) : (string)$param['value'],
             'value_type' => (int)$param['type'],
             'remark' => $param['remark'] ?? '',
@@ -103,7 +103,7 @@ class SystemSettingModule extends BaseModule
         } catch (\RuntimeException $e) {
             return self::error($e->getMessage());
         }
-        $this->dep->delById($param['id']);
+        $this->dep->deleteById($param['id']);
         return self::success();
     }
 

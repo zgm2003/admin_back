@@ -40,7 +40,7 @@ class UploadSettingModule extends BaseModule
         try { $param = $this->validate($request, UploadSettingValidate::add()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         
-        $exists = $this->dep->firstByDriverRule($param['driver_id'], $param['rule_id']);
+        $exists = $this->dep->findByDriverRule($param['driver_id'], $param['rule_id']);
         if ($exists) {
             return self::error('该驱动与规则组合已存在');
         }
@@ -73,7 +73,7 @@ class UploadSettingModule extends BaseModule
         try { $param = $this->validate($request, UploadSettingValidate::edit()); }
         catch (\RuntimeException $e) { return self::error($e->getMessage()); }
         
-        $exists = $this->dep->firstByDriverRule($param['driver_id'], $param['rule_id']);
+        $exists = $this->dep->findByDriverRule($param['driver_id'], $param['rule_id']);
         if ($exists && $exists['id'] != $param['id']) {
             return self::error('该驱动与规则组合已存在');
         }
@@ -89,14 +89,14 @@ class UploadSettingModule extends BaseModule
             Db::beginTransaction();
             try {
                 $this->dep->clearStatus();
-                $this->dep->edit($param['id'], $data);
+                $this->dep->update($param['id'], $data);
                 Db::commit();
             } catch (\Throwable $e) {
                 Db::rollBack();
                 return self::error('编辑失败：' . $e->getMessage());
             }
         } else {
-            $this->dep->edit($param['id'], $data);
+            $this->dep->update($param['id'], $data);
         }
         return self::success();
     }
@@ -109,7 +109,7 @@ class UploadSettingModule extends BaseModule
         if ($this->dep->hasEnabledIn($ids)) {
             return self::error('包含启用的上传设置，无法删除');
         }
-        $this->dep->del($ids, ['is_del' => CommonEnum::YES]);
+        $this->dep->delete($ids);
         return self::success();
     }
     
@@ -122,14 +122,14 @@ class UploadSettingModule extends BaseModule
             Db::beginTransaction();
             try {
                 $this->dep->clearStatus();
-                $this->dep->edit($param['id'], ['status' => $param['status']]);
+                $this->dep->update($param['id'], ['status' => $param['status']]);
                 Db::commit();
             } catch (\Throwable $e) {
                 Db::rollBack();
                 return self::error('状态变更失败：' . $e->getMessage());
             }
         } else {
-            $this->dep->edit($param['id'], ['status' => $param['status']]);
+            $this->dep->update($param['id'], ['status' => $param['status']]);
         }
         return self::success();
     }

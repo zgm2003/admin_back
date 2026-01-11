@@ -57,7 +57,7 @@ class AiAgentModule extends BaseModule
 
         // 批量获取关联的模型信息（避免N+1）
         $modelIds = $res->pluck('model_id')->unique()->toArray();
-        $modelMap = $this->modelsDep->getMapByIds($modelIds);
+        $modelMap = $this->modelsDep->getMap($modelIds);
 
         $list = $res->map(function ($item) use ($modelMap) {
             $model = $modelMap->get($item->model_id);
@@ -104,7 +104,7 @@ class AiAgentModule extends BaseModule
         }
 
         // 校验 model_id 是否存在且有效
-        $model = $this->modelsDep->getById((int)$param['model_id']);
+        $model = $this->modelsDep->get((int)$param['model_id']);
         if (!$model) {
             return self::error('关联的模型不存在');
         }
@@ -144,13 +144,13 @@ class AiAgentModule extends BaseModule
         }
 
         $id = (int)$param['id'];
-        $row = $this->dep->getById($id);
+        $row = $this->dep->get($id);
         if (!$row) {
             return self::error('记录不存在');
         }
 
         // 校验 model_id
-        $model = $this->modelsDep->getById((int)$param['model_id']);
+        $model = $this->modelsDep->get((int)$param['model_id']);
         if (!$model) {
             return self::error('关联的模型不存在');
         }
@@ -175,7 +175,7 @@ class AiAgentModule extends BaseModule
             $data['extra_params'] = json_encode($param['extra_params']);
         }
 
-        $this->dep->edit($id, $data);
+        $this->dep->update($id, $data);
         return self::success();
     }
 
@@ -188,7 +188,7 @@ class AiAgentModule extends BaseModule
         }
 
         $ids = $param['id'];
-        $affected = $this->dep->del($ids, ['is_del' => CommonEnum::YES]);
+        $affected = $this->dep->delete($ids);
 
         return self::success(['affected' => $affected]);
     }

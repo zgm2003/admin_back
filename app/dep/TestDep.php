@@ -2,108 +2,61 @@
 
 namespace app\dep;
 
-
 use app\model\TestModel;
 use app\enum\CommonEnum;
+use support\Model;
 
-class TestDep
+class TestDep extends BaseDep
 {
-    public $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new TestModel();
+        return new TestModel();
     }
 
-    public function first($id)
+    // ==================== 查询方法 ====================
+
+    /**
+     * 根据名称查询
+     */
+    public function findByName(string $name)
     {
-        $res = $this->model->where('id', $id)->first();
-        return $res;
+        return $this->model->where('name', $name)->first();
     }
 
-    public function firstByName($name){
-        $res = $this->model->where('name',$name)->first();
-        return $res;
+    /**
+     * 根据手机号查询
+     */
+    public function findByMobile(string $mobile)
+    {
+        return $this->model->where('mobile', $mobile)->first();
     }
 
-    public function firstByMobile($mobile){
-        $res = $this->model->where('mobile',$mobile)->first();
-        return $res;
-    }
-
+    /**
+     * 获取所有记录
+     */
     public function all()
     {
-
-        $res = $this->model->all();
-
-        return $res;
+        return $this->model->all();
     }
 
-    public function add($data)
+    // ==================== 列表查询 ====================
+
+    /**
+     * 列表查询（分页 + 过滤）
+     */
+    public function list(array $param)
     {
-        $res = $this->model->insertGetId($data);
-        return $res;
-    }
-
-    public function edit($id, $data)
-    {
-        if(!is_array($id)){
-            $id = [$id];
-        }
-        $res = $this->model->whereIn('id', $id)->update($data);
-        return $res;
-    }
-
-    public function batchEdit($ids, $data)
-    {
-        $res = $this->model->whereIn('id', $ids)->update($data);
-        return $res;
-    }
-
-    public function del($id, $data)
-    {
-        if(!is_array($id)){
-            $id = [$id];
-        }
-        $res = $this->model->whereIn('id', $id)->update($data);
-        return $res;
-    }
-
-
-    public function list($param){
-        $res = $this->model
+        return $this->model
             ->where('is_del', CommonEnum::NO)
-            ->when(!empty($param['username']), function ($query) use ($param) {
-                $query->where('username','like' ,"%{$param['username']}%");
-            })
-            ->when(!empty($param['nickname']), function ($query) use ($param) {
-                $query->where('nickname','like' ,"%{$param['nickname']}%");
-            })
-            ->when(!empty($param['status']), function ($query) use ($param) {
-                $query->where('status', $param['status']);
-            })
-            ->when(!empty($param['platform']), function ($query) use ($param) {
-                $query->where('platform', $param['platform']);
-            })
-            ->when(!empty($param['platform_id']), function ($query) use ($param) {
-                $query->where('platform_id', $param['platform_id']);
-            })
-            ->when(!empty($param['mobile_id']), function ($query) use ($param) {
-                $query->where('mobile_id', $param['mobile_id']);
-            })
-            ->when(!empty($param['legal_type']), function ($query) use ($param) {
-                $query->where('legal_type', $param['legal_type']);
-            })
-            ->when(!empty($param['date']), function ($query) use ($param) {
-                // 假设 date 参数是一个包含两个日期的数组
-                if (is_array($param['date']) && count($param['date']) === 2) {
-                    $query->whereBetween('register_at', [$param['date'][0], $param['date'][1]]);
-                }
-            })
-            ->orderBy('id','desc')
+            ->when(!empty($param['username']), fn($q) => $q->where('username', 'like', "%{$param['username']}%"))
+            ->when(!empty($param['nickname']), fn($q) => $q->where('nickname', 'like', "%{$param['nickname']}%"))
+            ->when(!empty($param['status']), fn($q) => $q->where('status', $param['status']))
+            ->when(!empty($param['platform']), fn($q) => $q->where('platform', $param['platform']))
+            ->when(!empty($param['platform_id']), fn($q) => $q->where('platform_id', $param['platform_id']))
+            ->when(!empty($param['mobile_id']), fn($q) => $q->where('mobile_id', $param['mobile_id']))
+            ->when(!empty($param['legal_type']), fn($q) => $q->where('legal_type', $param['legal_type']))
+            ->when(!empty($param['date']) && is_array($param['date']) && count($param['date']) === 2, fn($q) => $q->whereBetween('register_at', [$param['date'][0], $param['date'][1]]))
+            ->orderBy('id', 'desc')
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
-
-        return $res;
     }
-
 }

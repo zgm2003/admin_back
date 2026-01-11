@@ -64,7 +64,7 @@ class TestModule extends BaseModule
 
         $dep = $this->TestDep;
 
-        $dep->del($param['id'],['is_del'=>CommonEnum::YES]);
+        $dep->delete($param['id']);
 
         return self::success();
     }
@@ -82,7 +82,7 @@ class TestModule extends BaseModule
             'mobile_id' => $param['mobile_id'],
         ];
 
-        $dep->edit($param['id'], $data);
+        $dep->update($param['id'], $data);
 
         return self::success();
     }
@@ -96,7 +96,7 @@ class TestModule extends BaseModule
             $data = [
                 'status' => $param['status'],
             ];
-            $dep->edit($id, $data);
+            $dep->update($id, $data);
         }
 
         return self::success();

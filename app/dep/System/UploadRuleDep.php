@@ -2,59 +2,50 @@
 
 namespace app\dep\System;
 
+use app\dep\BaseDep;
 use app\model\System\UploadRuleModel;
 use app\enum\CommonEnum;
+use support\Model;
 
-class UploadRuleDep
+class UploadRuleDep extends BaseDep
 {
-    public $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new UploadRuleModel();
+        return new UploadRuleModel();
     }
 
-    public function first($id)
-    {
-        return $this->model->where('id', $id)->first();
-    }
-    public function firstByTitle($title)
+    // ==================== 查询方法 ====================
+
+    /**
+     * 根据标题查询
+     */
+    public function findByTitle(string $title)
     {
         return $this->model->where('title', $title)->first();
     }
 
-    public function setDict()
+    /**
+     * 获取字典列表
+     */
+    public function getDict()
     {
-        return $this->model->select(['id','title'])->where('is_del', CommonEnum::NO)->get();
-    }
-
-    public function add($data)
-    {
-        return $this->model->insertGetId($data);
-    }
-
-    public function edit($id, $data)
-    {
-        if (!is_array($id)) $id = [$id];
-        return $this->model->whereIn('id', $id)->update($data);
-    }
-
-    public function del($id, $data)
-    {
-        if (!is_array($id)) $id = [$id];
-        return $this->model->whereIn('id', $id)->update($data);
-    }
-
-    public function list($param)
-    {
-        $pageSize = $param['page_size'];
-        $currentPage = $param['current_page'];
         return $this->model
-            ->when(!empty($param['title']), function ($query) use ($param) {
-                $query->where('title', 'like', '%' . $param['title'] . '%');
-            })
+            ->select(['id', 'title'])
+            ->where('is_del', CommonEnum::NO)
+            ->get();
+    }
+
+    // ==================== 列表查询 ====================
+
+    /**
+     * 列表查询（分页 + 过滤）
+     */
+    public function list(array $param)
+    {
+        return $this->model
+            ->when(!empty($param['title']), fn($q) => $q->where('title', 'like', '%' . $param['title'] . '%'))
             ->where('is_del', CommonEnum::NO)
             ->orderBy('id', 'desc')
-            ->paginate($pageSize, ['*'], 'page', $currentPage);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 }

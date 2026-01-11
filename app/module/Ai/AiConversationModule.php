@@ -40,7 +40,7 @@ class AiConversationModule extends BaseModule
 
         // 批量获取关联的智能体信息（避免N+1）
         $agentIds = $res->pluck('agent_id')->unique()->toArray();
-        $agentMap = $this->agentsDep->getMapByIds($agentIds);
+        $agentMap = $this->agentsDep->getMap($agentIds);
 
         $list = $res->map(function ($item) use ($agentMap) {
             $agent = $agentMap->get($item->agent_id);
@@ -77,7 +77,7 @@ class AiConversationModule extends BaseModule
         }
 
         // 校验 agent_id 存在且 is_del=2
-        $agent = $this->agentsDep->getById((int)$param['agent_id']);
+        $agent = $this->agentsDep->get((int)$param['agent_id']);
         if (!$agent) {
             return self::error('智能体不存在');
         }
@@ -127,7 +127,7 @@ class AiConversationModule extends BaseModule
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
         $userId = $request->userId;
 
-        $this->dep->del($ids, $userId);
+        $this->dep->deleteByUser($ids, $userId);
         return self::success();
     }
 

@@ -2,20 +2,25 @@
 
 namespace app\dep\System;
 
+use app\dep\BaseDep;
 use app\model\System\SystemSettingModel;
 use app\enum\CommonEnum;
 use support\Cache;
+use support\Model;
 
-class SystemSettingDep
+class SystemSettingDep extends BaseDep
 {
-    public $model;
-
-    public function __construct()
+    protected function createModel(): Model
     {
-        $this->model = new SystemSettingModel();
+        return new SystemSettingModel();
     }
 
-    public function firstByKey(string $key)
+    // ==================== 查询方法 ====================
+
+    /**
+     * 根据 key 查询
+     */
+    public function findByKey(string $key)
     {
         return $this->model
             ->where('setting_key', $key)
@@ -23,39 +28,53 @@ class SystemSettingDep
             ->first();
     }
 
+    /**
+     * 获取配置值（带缓存和类型转换）
+     */
     public function getValue(string $key, $default = null)
     {
         $cacheKey = 'sys_setting:' . $key;
         $cached = Cache::get($cacheKey);
-        if ($cached !== null) return $cached;
+        if ($cached !== null) {
+            return $cached;
+        }
+
         $row = $this->model
             ->where('setting_key', $key)
             ->where('status', CommonEnum::YES)
             ->where('is_del', CommonEnum::NO)
             ->first();
-        if (!$row) return $default;
+
+        if (!$row) {
+            return $default;
+        }
+
         $val = $row->setting_value;
         switch ((int)$row->value_type) {
-            case 2:
+            case 2: // 数字
                 $val = is_numeric($val) ? $val + 0 : $default;
                 break;
-            case 3:
+            case 3: // 布尔
                 $val = in_array(strtolower((string)$val), ['1', 'true'], true);
                 break;
-            case 4:
+            case 4: // JSON
                 $decoded = json_decode((string)$val, true);
                 $val = is_array($decoded) ? $decoded : $default;
                 break;
-            default:
+            default: // 字符串
                 $val = (string)$val;
         }
+
         Cache::set($cacheKey, $val, 86400);
         return $val;
     }
 
-    public function setValue(string $key, $value, int $type = 1, string $remark = '')
+    /**
+     * 设置配置值
+     */
+    public function setValue(string $key, $value, int $type = 1, string $remark = ''): bool
     {
-        $exists = $this->firstByKey($key);
+        $exists = $this->findByKey($key);
         $data = [
             'setting_key' => $key,
             'setting_value' => $type === 4 ? (is_string($value) ? $value : json_encode($value)) : (string)$value,
@@ -64,32 +83,38 @@ class SystemSettingDep
             'status' => CommonEnum::YES,
             'is_del' => CommonEnum::NO,
         ];
+
         if ($exists) {
             $this->model->where('id', $exists->id)->update($data);
         } else {
             $this->model->insertGetId($data);
         }
+
         Cache::delete('sys_setting:' . $key);
         return true;
     }
 
+    // ==================== 列表查询 ====================
+
+    /**
+     * 列表查询（分页 + 过滤）
+     */
     public function list(array $param)
     {
-        $pageSize = $param['page_size'];
-        $currentPage = $param['current_page'];
         return $this->model
             ->where('is_del', CommonEnum::NO)
-            ->when(!empty($param['key']), function ($q) use ($param) {
-                $q->where('setting_key', 'like', $param['key'] . '%');
-            })
-            ->when(isset($param['status']) && $param['status'] !== '', function ($q) use ($param) {
-                $q->where('status', (int)$param['status']);
-            })
+            ->when(!empty($param['key']), fn($q) => $q->where('setting_key', 'like', $param['key'] . '%'))
+            ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
             ->orderBy('id', 'desc')
-            ->paginate($pageSize, ['*'], 'page', $currentPage);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 
-    public function delByKey(string $key)
+    // ==================== 写入方法 ====================
+
+    /**
+     * 根据 key 删除（软删）
+     */
+    public function deleteByKey(string $key): void
     {
         $this->model
             ->where('setting_key', $key)
@@ -98,7 +123,10 @@ class SystemSettingDep
         Cache::delete('sys_setting:' . $key);
     }
 
-    public function setStatusByKey(string $key, int $status)
+    /**
+     * 根据 key 设置状态
+     */
+    public function setStatusByKey(string $key, int $status): void
     {
         $this->model
             ->where('setting_key', $key)
@@ -107,31 +135,47 @@ class SystemSettingDep
         Cache::delete('sys_setting:' . $key);
     }
 
-    public function editById(int $id, array $data)
+    /**
+     * 根据 ID 更新（带缓存清理）
+     */
+    public function updateById(int $id, array $data): bool
     {
         $row = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->first();
-        if (!$row) return false;
+        if (!$row) {
+            return false;
+        }
         $this->model->where('id', $id)->update($data);
         Cache::delete('sys_setting:' . $row->setting_key);
         return true;
     }
-    public function delById($id)
+
+    /**
+     * 根据 ID 删除（带缓存清理）
+     */
+    public function deleteById($ids): bool
     {
-        $ids = is_array($id) ? $id : [$id];
+        $ids = is_array($ids) ? $ids : [$ids];
         $rows = $this->model->whereIn('id', $ids)->get(['setting_key'])->toArray();
         $this->model->whereIn('id', $ids)->update(['is_del' => CommonEnum::YES]);
         foreach ($rows as $r) {
-            if (!empty($r['setting_key'])) Cache::delete('sys_setting:' . $r['setting_key']);
+            if (!empty($r['setting_key'])) {
+                Cache::delete('sys_setting:' . $r['setting_key']);
+            }
         }
         return true;
     }
-    public function setStatusById(int $id, int $status)
+
+    /**
+     * 根据 ID 设置状态（带缓存清理）
+     */
+    public function setStatusById(int $id, int $status): bool
     {
         $row = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->first();
-        if (!$row) return false;
+        if (!$row) {
+            return false;
+        }
         $this->model->where('id', $id)->update(['status' => $status]);
         Cache::delete('sys_setting:' . $row->setting_key);
         return true;
     }
 }
-
