@@ -14,6 +14,7 @@ use app\lib\Ai\Crypto\KeyVault;
 use app\lib\Ai\AiClientFactory;
 use app\lib\Ai\AiClientInterface;
 use app\module\BaseModule;
+use app\service\Ai\AiStreamCacheService;
 use app\validate\Ai\AiChatValidate;
 use RuntimeException;
 use support\Log;
@@ -42,6 +43,147 @@ class AiChatModule extends BaseModule
     }
 
     // ========== 公开方法 ==========
+
+    /**
+     * 恢复/获取流式输出状态（用于会话切换后恢复）
+     * @param int $runId Run ID
+     * @param int $userId 用户 ID（用于权限校验）
+     * @return array
+     */
+    public function resume(int $runId, int $userId): array
+    {
+        // 1. 校验 run 归属
+        $run = $this->runsDep->find($runId);
+        if (!$run || $run->user_id !== $userId) {
+            return self::error('Run 不存在或无权访问');
+        }
+
+        // 2. 尝试从 Redis 获取缓存
+        $cache = AiStreamCacheService::get($runId);
+        
+        if ($cache) {
+            // Redis 有缓存
+            return self::success([
+                'run_id' => $runId,
+                'conversation_id' => $run->conversation_id,
+                'status' => $cache['status'],
+                'content' => $cache['content'],
+                'content_length' => strlen($cache['content']),
+                'is_complete' => $cache['status'] !== AiStreamCacheService::STATUS_RUNNING,
+                'can_subscribe' => $cache['status'] === AiStreamCacheService::STATUS_RUNNING,
+                'error_msg' => $cache['error_msg'],
+                'result' => $cache['result'],
+            ]);
+        }
+
+        // 3. Redis 无缓存，从数据库获取
+        $statusMap = [
+            AiEnum::RUN_STATUS_RUNNING => 'running',
+            AiEnum::RUN_STATUS_SUCCESS => 'success',
+            AiEnum::RUN_STATUS_FAIL => 'fail',
+            AiEnum::RUN_STATUS_CANCELED => 'fail',
+        ];
+        $status = $statusMap[$run->run_status] ?? 'fail';
+
+        // 如果已完成，从消息表获取内容
+        $content = '';
+        if ($run->assistant_message_id) {
+            $message = $this->messagesDep->find($run->assistant_message_id);
+            $content = $message->content ?? '';
+        }
+
+        return self::success([
+            'run_id' => $runId,
+            'conversation_id' => $run->conversation_id,
+            'status' => $status,
+            'content' => $content,
+            'content_length' => strlen($content),
+            'is_complete' => $status !== 'running',
+            'can_subscribe' => false, // 数据库记录无法续订阅
+            'error_msg' => $run->error_msg,
+            'result' => $run->assistant_message_id ? ['assistant_message_id' => $run->assistant_message_id] : null,
+        ]);
+    }
+
+    /**
+     * 续传流式输出（SSE）
+     * @param int $runId Run ID
+     * @param int $userId 用户 ID
+     * @param int $offset 已接收的内容长度（偏移量）
+     * @param callable $onChunk 回调函数
+     * @return array
+     */
+    public function resumeStream(int $runId, int $userId, int $offset, callable $onChunk): array
+    {
+        // 1. 校验 run 归属
+        $run = $this->runsDep->find($runId);
+        if (!$run || $run->user_id !== $userId) {
+            return self::error('Run 不存在或无权访问');
+        }
+
+        // 2. 检查 Redis 缓存是否存在
+        if (!AiStreamCacheService::exists($runId)) {
+            // 缓存不存在，可能已完成或超时
+            $cache = $this->resume($runId, $userId);
+            if ($cache[1] === 0 && $cache[0]['is_complete']) {
+                // 已完成，直接返回 done
+                $onChunk('done', [
+                    'conversation_id' => $run->conversation_id,
+                    'run_id' => $runId,
+                    'content' => $cache[0]['content'],
+                ]);
+                return self::success(['status' => 'completed']);
+            }
+            return self::error('流式缓存已过期');
+        }
+
+        // 3. 先发送已缓存但客户端未收到的内容
+        $cache = AiStreamCacheService::get($runId);
+        if ($cache && strlen($cache['content']) > $offset) {
+            $missedContent = substr($cache['content'], $offset);
+            $onChunk('content', ['delta' => $missedContent]);
+            $offset = strlen($cache['content']);
+        }
+
+        // 4. 如果已完成，直接返回
+        if ($cache && $cache['status'] !== AiStreamCacheService::STATUS_RUNNING) {
+            if ($cache['status'] === AiStreamCacheService::STATUS_SUCCESS) {
+                $onChunk('done', [
+                    'conversation_id' => $run->conversation_id,
+                    'run_id' => $runId,
+                ]);
+            } else {
+                $onChunk('error', ['msg' => $cache['error_msg'] ?? '未知错误']);
+            }
+            return self::success(['status' => $cache['status']]);
+        }
+
+        // 5. 订阅后续更新
+        foreach (AiStreamCacheService::subscribe($runId, $offset) as $event) {
+            switch ($event['type']) {
+                case 'content':
+                    $onChunk('content', ['delta' => $event['delta']]);
+                    break;
+                case 'done':
+                    $onChunk('done', [
+                        'conversation_id' => $run->conversation_id,
+                        'run_id' => $runId,
+                    ]);
+                    return self::success(['status' => 'success']);
+                case 'error':
+                    $onChunk('error', ['msg' => $event['error_msg']]);
+                    return self::success(['status' => 'fail']);
+                case 'timeout':
+                    $onChunk('error', ['msg' => '续传超时']);
+                    return self::error('续传超时');
+                case 'not_found':
+                    $onChunk('error', ['msg' => '缓存已过期']);
+                    return self::error('缓存已过期');
+            }
+        }
+
+        return self::success(['status' => 'completed']);
+    }
 
     /**
      * 发送消息并获取 AI 回复（非流式）
@@ -160,6 +302,14 @@ class AiChatModule extends BaseModule
             'is_del' => CommonEnum::NO,
         ]);
 
+        // 2.1 初始化 Redis 流式缓存
+        AiStreamCacheService::init($runId, [
+            'user_id' => $userId,
+            'conversation_id' => $ctx['conversationId'],
+            'agent_id' => $ctx['agentId'],
+            'model_code' => $ctx['modelCode'],
+        ]);
+
         // 通知前端 run_id
         $onChunk('run', ['run_id' => $runId, 'request_id' => $requestId]);
 
@@ -182,9 +332,9 @@ class AiChatModule extends BaseModule
         $result = null;
         $errorMsg = null;
         $llmStepId = null;
+        $llmStart = microtime(true);
         try {
             // === Step 2: LLM 调用 ===
-            $llmStart = microtime(true);
             $llmStepId = $this->stepsDep->add([
                 'run_id' => $runId,
                 'step_no' => ++$stepNo,
@@ -200,7 +350,11 @@ class AiChatModule extends BaseModule
             $result = $ctx['client']->chatCompletionsStream(
                 $ctx['payload'],
                 $ctx['config'],
-                fn($delta, $chunk) => $onChunk('content', ['delta' => $delta])
+                function ($delta, $chunk) use ($onChunk, $runId) {
+                    // 同时推送给前端和写入 Redis
+                    $onChunk('content', ['delta' => $delta]);
+                    AiStreamCacheService::append($runId, $delta);
+                }
             );
 
             // LLM 步骤完成，更新耗时和 payload
@@ -242,6 +396,12 @@ class AiChatModule extends BaseModule
                 'total_tokens' => $result['usage']['total_tokens'] ?? null,
                 'latency_ms' => $latencyMs,
             ]);
+
+            // 5.1 标记 Redis 缓存完成
+            AiStreamCacheService::markSuccess($runId, [
+                'assistant_message_id' => $assistantMessageId,
+                'conversation_id' => $ctx['conversationId'],
+            ]);
         } catch (\Throwable $e) {
             $errorMsg = $e->getMessage();
             // LLM 步骤失败，更新状态
@@ -253,6 +413,7 @@ class AiChatModule extends BaseModule
             // 任何异常都要收尾 run 状态
             if ($errorMsg !== null) {
                 $this->runsDep->markFailed($runId, $errorMsg);
+                AiStreamCacheService::markFailed($runId, $errorMsg);
             }
         }
 

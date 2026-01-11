@@ -6,7 +6,6 @@ use app\controller\Controller;
 use app\module\Ai\AiChatModule;
 use app\validate\Ai\AiChatValidate;
 use support\Request;
-use support\Response;
 use Workerman\Protocols\Http\Response as WorkermanResponse;
 use Workerman\Protocols\Http\ServerSentEvents;
 use Respect\Validation\Validator as v;
@@ -21,6 +20,59 @@ class AiChatController extends Controller
     {
         $this->run([AiChatModule::class, 'send'], $request);
         return $this->response();
+    }
+
+    /**
+     * 恢复/获取流式输出状态（用于会话切换后恢复）
+     */
+    public function resume(Request $request)
+    {
+        $runId = (int)$request->input('run_id', 0);
+        if ($runId <= 0) {
+            return json(['code' => 1, 'data' => '', 'msg' => 'run_id 必填']);
+        }
+
+        $module = new AiChatModule();
+        $result = $module->resume($runId, $request->userId);
+        return json(['code' => $result[1], 'data' => $result[0], 'msg' => $result[2] ?? '']);
+    }
+
+    /**
+     * 续传流式输出（SSE）
+     */
+    public function resumeStream(Request $request)
+    {
+        $runId = (int)$request->input('run_id', 0);
+        $offset = (int)$request->input('offset', 0);
+
+        if ($runId <= 0) {
+            return $this->sseError($request, 'run_id 必填');
+        }
+
+        $userId = $request->userId;
+        $connection = $request->connection;
+
+        // 发送 SSE 响应头
+        $connection->send(new WorkermanResponse(200, $this->getSseHeaders($request), "\r\n"));
+
+        // 调用续传接口
+        $module = new AiChatModule();
+        $result = $module->resumeStream($runId, $userId, $offset, function ($event, $data) use ($connection) {
+            $connection->send(new ServerSentEvents([
+                'event' => $event,
+                'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
+            ]));
+        });
+
+        // 如果返回错误，发送 error 事件
+        if ($result[1] !== 0) {
+            $connection->send(new ServerSentEvents([
+                'event' => 'error',
+                'data' => json_encode(['msg' => $result[2]], JSON_UNESCAPED_UNICODE),
+            ]));
+        }
+
+        return null;
     }
 
     /**
