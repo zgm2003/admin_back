@@ -133,8 +133,8 @@ class CheckToken
         }
 
         // 5.1 挂载信息
-        $request->userId = $session['user_id'];
-        $request->sessionId = $session['id'];
+        $request->userId = (int)$session['user_id'];
+        $request->sessionId = (int)$session['id'];
 
         // 6.2 🛡️ single_session_per_platform 策略（立刻生效）
         if (!empty($policyConfig['single_session_per_platform'])) {

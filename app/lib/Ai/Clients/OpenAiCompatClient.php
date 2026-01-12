@@ -105,9 +105,10 @@ class OpenAiCompatClient implements AiClientInterface
      * @param array $payload 请求参数
      * @param array $config 配置信息
      * @param callable $onChunk 回调函数 function(string $deltaContent, array $chunk)
+     * @param callable|null $shouldStop 检查是否应该停止的回调 function(): bool
      * @return array 返回结构：['content' => string, 'usage' => array]
      */
-    public function chatCompletionsStream(array $payload, array $config, callable $onChunk): array
+    public function chatCompletionsStream(array $payload, array $config, callable $onChunk, ?callable $shouldStop = null): array
     {
         $baseUrl = $config['endpoint'] ?? $config['baseUrl'] ?? $this->defaultBaseUrl;
         $apiKey = $config['apiKey'] ?? '';
@@ -133,6 +134,7 @@ class OpenAiCompatClient implements AiClientInterface
         $fullContent = '';
         $usage = ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null];
         $requestId = null;
+        $canceled = false;
 
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -149,7 +151,13 @@ class OpenAiCompatClient implements AiClientInterface
             ],
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$fullContent, &$usage, &$requestId, $onChunk) {
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$fullContent, &$usage, &$requestId, &$canceled, $onChunk, $shouldStop) {
+                // 检查是否应该停止
+                if ($shouldStop && $shouldStop()) {
+                    $canceled = true;
+                    return 0; // 返回 0 中断 curl
+                }
+                
                 // 解析 SSE 数据
                 $lines = explode("\n", $data);
                 foreach ($lines as $line) {
@@ -202,7 +210,17 @@ class OpenAiCompatClient implements AiClientInterface
         $curlError = curl_error($ch);
         curl_close($ch);
 
-        if ($result === false) {
+        // 如果是被取消的，不抛异常
+        if ($canceled) {
+            return [
+                'content' => $fullContent,
+                'usage' => $usage,
+                'request_id' => $requestId,
+                'canceled' => true,
+            ];
+        }
+
+        if ($result === false && !$canceled) {
             throw new RuntimeException('请求失败: ' . $curlError);
         }
 

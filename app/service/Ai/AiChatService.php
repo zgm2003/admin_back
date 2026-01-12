@@ -194,14 +194,15 @@ class AiChatService
      * @param array $payload 请求 payload
      * @param array $config 配置
      * @param callable $onDelta 回调函数 function(string $delta)
+     * @param callable|null $shouldStop 检查是否应该停止 function(): bool
      * @return array AI 响应（包含完整 content 和 usage）
      */
-    public function chatStream(AiClientInterface $client, array $payload, array $config, callable $onDelta): array
+    public function chatStream(AiClientInterface $client, array $payload, array $config, callable $onDelta, ?callable $shouldStop = null): array
     {
         return $client->chatCompletionsStream($payload, $config, function ($delta, $chunk) use ($onDelta) {
             // $chunk 保留用于未来扩展（如 tool_calls、usage 实时统计等）
             $onDelta($delta);
-        });
+        }, $shouldStop);
     }
 
     /**

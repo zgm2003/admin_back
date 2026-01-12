@@ -21,9 +21,10 @@ interface AiClientInterface
      * @param array $payload 请求参数（model, messages, temperature, max_tokens 等）
      * @param array $config 配置信息（baseUrl, apiKey, endpoint 等）
      * @param callable $onChunk 每收到一块数据时的回调 function(string $content, array $chunk)
+     * @param callable|null $shouldStop 检查是否应该停止的回调 function(): bool
      * @return array 返回结构：['content' => string, 'usage' => array]
      */
-    public function chatCompletionsStream(array $payload, array $config, callable $onChunk): array;
+    public function chatCompletionsStream(array $payload, array $config, callable $onChunk, ?callable $shouldStop = null): array;
 
     /**
      * 获取默认的 baseUrl

@@ -20,6 +20,7 @@ class AiStreamCacheService
     const STATUS_RUNNING = 'running';
     const STATUS_SUCCESS = 'success';
     const STATUS_FAIL = 'fail';
+    const STATUS_CANCELED = 'canceled';
 
     /**
      * 初始化流式缓存（开始流式输出时调用）
@@ -72,6 +73,35 @@ class AiStreamCacheService
         
         // 完成后保留 2 分钟供前端获取
         $redis->expire($key, 120);
+    }
+
+    /**
+     * 标记取消
+     */
+    public static function markCanceled(int $runId): void
+    {
+        $key = self::PREFIX . $runId;
+        $redis = Redis::connection('default');
+        
+        $redis->hMSet($key, [
+            'status' => self::STATUS_CANCELED,
+            'finished_at' => date('Y-m-d H:i:s'),
+        ]);
+        
+        // 取消后保留 2 分钟
+        $redis->expire($key, 120);
+    }
+
+    /**
+     * 检查是否已取消
+     */
+    public static function isCanceled(int $runId): bool
+    {
+        $key = self::PREFIX . $runId;
+        $redis = Redis::connection('default');
+        
+        $status = $redis->hGet($key, 'status');
+        return $status === self::STATUS_CANCELED;
     }
 
     /**
@@ -188,7 +218,7 @@ class AiStreamCacheService
                 yield ['type' => 'content', 'delta' => $delta];
             }
             
-            // 检查是否完成
+            // 检查是否完成或取消
             if ($status === self::STATUS_SUCCESS) {
                 yield [
                     'type' => 'done',
@@ -201,6 +231,13 @@ class AiStreamCacheService
                 yield [
                     'type' => 'error',
                     'error_msg' => $data['error_msg'] ?? '未知错误',
+                ];
+                break;
+            }
+            
+            if ($status === self::STATUS_CANCELED) {
+                yield [
+                    'type' => 'canceled',
                 ];
                 break;
             }

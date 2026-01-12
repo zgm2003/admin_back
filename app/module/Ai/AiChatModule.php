@@ -46,10 +46,59 @@ class AiChatModule extends BaseModule
     // ========== 公开方法 ==========
 
     /**
+     * 取消流式输出
+     */
+    public function cancel($request): array
+    {
+        try {
+            $param = $this->validate($request, AiChatValidate::cancel());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        $runId = (int)$param['run_id'];
+        $userId = (int)$request->userId;
+
+        $run = $this->runsDep->find($runId);
+        if (!$run || $run->user_id !== $userId) {
+            return self::error('Run 不存在或无权访问');
+        }
+
+        // 只能取消运行中的 Run
+        if ($run->run_status !== AiEnum::RUN_STATUS_RUNNING) {
+            return self::error('该请求已完成，无法取消');
+        }
+
+        // 标记缓存为取消状态
+        AiStreamCacheService::markCanceled($runId);
+
+        // 更新 Run 状态为取消
+        $this->runsDep->markCanceled($runId);
+
+        // 触发取消事件
+        Event::emit('ai.run.canceled', [
+            'run_id' => $runId,
+            'user_id' => $userId,
+            'conversation_id' => $run->conversation_id,
+        ]);
+
+        return self::success(['run_id' => $runId, 'status' => 'canceled']);
+    }
+
+    /**
      * 恢复/获取流式输出状态（用于会话切换后恢复）
      */
-    public function resume(int $runId, int $userId): array
+    public function resume($request): array
     {
+        try {
+            $param = $this->validate($request, AiChatValidate::resume());
+        } catch (RuntimeException $e) {
+            return self::error($e->getMessage());
+        }
+
+        $runId = (int)$param['run_id'];
+        $userId = (int)$request->userId;
+
         $run = $this->runsDep->find($runId);
         if (!$run || $run->user_id !== $userId) {
             return self::error('Run 不存在或无权访问');
@@ -147,6 +196,9 @@ class AiChatModule extends BaseModule
                 case 'error':
                     $onChunk('error', ['msg' => $event['error_msg']]);
                     return self::success(['status' => 'fail']);
+                case 'canceled':
+                    $onChunk('canceled', ['conversation_id' => $run->conversation_id, 'run_id' => $runId]);
+                    return self::success(['status' => 'canceled']);
                 case 'timeout':
                     return self::error('续传超时');
                 case 'not_found':
@@ -284,8 +336,29 @@ class AiChatModule extends BaseModule
                 function ($delta) use ($onChunk, $runId) {
                     $onChunk('content', ['delta' => $delta]);
                     AiStreamCacheService::append($runId, $delta);
+                },
+                function () use ($runId) {
+                    // 检查是否已取消
+                    return AiStreamCacheService::isCanceled($runId);
                 }
             );
+
+            // 如果被取消，不保存消息，直接返回
+            if (!empty($result['canceled'])) {
+                $this->stepsDep->updateStepStatus($llmStepId, AiEnum::STEP_STATUS_FAIL, '用户取消',
+                    (int)((microtime(true) - $llmStart) * 1000));
+                
+                // 保存已生成的部分内容
+                if (!empty($result['content'])) {
+                    $this->saveAssistantMessage(
+                        $ctx['conversationId'], $result['content'], $result['usage'] ?? [],
+                        $ctx['modelCode'], $requestId, $result['request_id'] ?? null
+                    );
+                }
+                
+                $onChunk('canceled', ['conversation_id' => $ctx['conversationId'], 'run_id' => $runId]);
+                return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'canceled' => true]);
+            }
 
             $this->stepsDep->updateStepStatus($llmStepId, AiEnum::STEP_STATUS_SUCCESS, null,
                 (int)((microtime(true) - $llmStart) * 1000));

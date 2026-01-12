@@ -24,4 +24,24 @@ class AiChatValidate
             'attachments'     => v::optional(v::arrayType())->setName('附件列表'),
         ];
     }
+
+    /**
+     * 取消流式输出校验
+     */
+    public static function cancel(): array
+    {
+        return [
+            'run_id' => v::intVal()->positive()->setName('运行ID'),
+        ];
+    }
+
+    /**
+     * 恢复流式输出校验
+     */
+    public static function resume(): array
+    {
+        return [
+            'run_id' => v::intVal()->positive()->setName('运行ID'),
+        ];
+    }
 }

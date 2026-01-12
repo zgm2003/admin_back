@@ -27,14 +27,17 @@ class AiChatController extends Controller
      */
     public function resume(Request $request)
     {
-        $runId = (int)$request->input('run_id', 0);
-        if ($runId <= 0) {
-            return json(['code' => 1, 'data' => '', 'msg' => 'run_id 必填']);
-        }
+        $this->run([AiChatModule::class, 'resume'], $request);
+        return $this->response();
+    }
 
-        $module = new AiChatModule();
-        $result = $module->resume($runId, $request->userId);
-        return json(['code' => $result[1], 'data' => $result[0], 'msg' => $result[2] ?? '']);
+    /**
+     * 取消流式输出
+     */
+    public function cancel(Request $request)
+    {
+        $this->run([AiChatModule::class, 'cancel'], $request);
+        return $this->response();
     }
 
     /**
