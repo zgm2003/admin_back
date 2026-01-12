@@ -1,0 +1,11 @@
+.git
+.idea
+.vscode
+runtime/logs/*
+runtime/*.pid
+runtime/*.status
+vendor
+node_modules
+*.log
+.env.local
+docker-compose.override.yml

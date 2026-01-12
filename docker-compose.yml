@@ -1,13 +1,76 @@
 version: '3.8'
 
 services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
+  # Webman 应用
+  webman:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: webman-app
     ports:
-      - "5672:5672"     # AMQP 协议端口
-      - "15672:15672"   # 管理后台端口
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin
+      - "8787:8787"   # 主服务
+      - "8788:8788"   # SSE 服务
+    volumes:
+      - .:/app                          # 代码热更新
+      - /app/vendor                     # 排除 vendor 目录
+      - ./runtime:/app/runtime          # 运行时目录
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Linux 兼容
+    networks:
+      - webman-network
     restart: unless-stopped
+    command: php start.php start
+
+  # ========== 以下服务默认注释，如需使用 Docker 版 MySQL/Redis 请取消注释 ==========
+  
+  # # MySQL（Docker 版）
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: webman-mysql
+  #   ports:
+  #     - "3307:3306"
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: 123456
+  #     MYSQL_DATABASE: admin
+  #     TZ: Asia/Shanghai
+  #   volumes:
+  #     - mysql-data:/var/lib/mysql
+  #   networks:
+  #     - webman-network
+  #   restart: unless-stopped
+  #   command: --default-authentication-plugin=mysql_native_password
+
+  # # Redis（Docker 版）
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: webman-redis
+  #   ports:
+  #     - "6380:6379"
+  #   command: redis-server --requirepass 123456
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - webman-network
+  #   restart: unless-stopped
+
+  # RabbitMQ（如果需要的话）
+  # rabbitmq:
+  #   image: rabbitmq:3-management
+  #   container_name: webman-rabbitmq
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: admin
+  #     RABBITMQ_DEFAULT_PASS: admin
+  #   networks:
+  #     - webman-network
+  #   restart: unless-stopped
+
+networks:
+  webman-network:
+    driver: bridge
+
+# volumes:
+#   mysql-data:
+#   redis-data:
