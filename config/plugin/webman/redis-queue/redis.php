@@ -1,7 +1,10 @@
 <?php
+$redisHost = getenv('REDIS_HOST') ?: '127.0.0.1';
+$redisPort = getenv('REDIS_PORT') ?: 6379;
+
 return [
     'default' => [
-        'host' => 'redis://127.0.0.1:6379',
+        'host' => "redis://{$redisHost}:{$redisPort}",
         'options' => [
             'auth' => getenv('REDIS_PASSWORD') ?: '',       // 密码，字符串类型，可选参数
             'db' => 0,            // 数据库

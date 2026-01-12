@@ -33,7 +33,10 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 RUN pecl install redis && docker-php-ext-enable redis
 
 # 安装 event 扩展（可选，提升性能）
-RUN pecl install event && docker-php-ext-enable --ini-name zz-event.ini event
+# 需要先装 libevent-dev，然后非交互安装
+RUN apt-get update && apt-get install -y libevent-dev && rm -rf /var/lib/apt/lists/* \
+    && printf '\n\n\n\n\n\n' | pecl install event \
+    && docker-php-ext-enable --ini-name zz-event.ini event
 
 # 安装 Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

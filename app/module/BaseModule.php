@@ -3,7 +3,6 @@
 namespace app\module;
 
 use app\enum\ErrorCodeEnum;
-use app\exception\BusinessException;
 use Respect\Validation\Validator as v;
 use Respect\Validation\Exceptions\ValidationException;
 use support\Db;
@@ -114,37 +113,4 @@ class BaseModule
         }
     }
 
-    /**
-     * 抛出业务异常（会被全局异常处理器捕获）
-     * @throws BusinessException
-     */
-    protected static function throw(string $msg, int $code = ErrorCodeEnum::PARAM_ERROR): never
-    {
-        throw new BusinessException($msg, $code);
-    }
-
-    /**
-     * 条件抛出异常（条件为真时抛出）
-     * @param mixed $condition 会被转换为 bool
-     * @throws BusinessException
-     */
-    protected static function throwIf(mixed $condition, string $msg, int $code = ErrorCodeEnum::PARAM_ERROR): void
-    {
-        if ($condition) {
-            throw new BusinessException($msg, $code);
-        }
-    }
-
-    /**
-     * 条件抛出异常（条件为假时抛出）
-     * 常用于：self::throwUnless($user, '用户不存在')
-     * @param mixed $condition 会被转换为 bool（null/false/0/'' 都会触发异常）
-     * @throws BusinessException
-     */
-    protected static function throwUnless(mixed $condition, string $msg, int $code = ErrorCodeEnum::PARAM_ERROR): void
-    {
-        if (!$condition) {
-            throw new BusinessException($msg, $code);
-        }
-    }
 }

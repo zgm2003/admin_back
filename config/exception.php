@@ -13,5 +13,6 @@
  */
 
 return [
-    '' => support\exception\Handler::class,
+    // 异常统一由 Controller::run() 的 try-catch 处理
+    // '' => support\exception\Handler::class,
 ];
