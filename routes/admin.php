@@ -133,8 +133,6 @@ Route::group('/api/admin', function () {
     // AI 对话（发送消息并获取回复）
     Route::post('/AiChat/send', [controller\Ai\AiChatController::class, 'send']);
     Route::post('/AiChat/stream', [controller\Ai\AiChatController::class, 'stream']);
-    Route::post('/AiChat/resume', [controller\Ai\AiChatController::class, 'resume']);
-    Route::post('/AiChat/resumeStream', [controller\Ai\AiChatController::class, 'resumeStream']);
     Route::post('/AiChat/cancel', [controller\Ai\AiChatController::class, 'cancel']);
 
     // AI 运行监控

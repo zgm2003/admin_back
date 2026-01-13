@@ -23,59 +23,12 @@ class AiChatController extends Controller
     }
 
     /**
-     * 恢复/获取流式输出状态（用于会话切换后恢复）
-     */
-    public function resume(Request $request)
-    {
-        $this->run([AiChatModule::class, 'resume'], $request);
-        return $this->response();
-    }
-
-    /**
      * 取消流式输出
      */
     public function cancel(Request $request)
     {
         $this->run([AiChatModule::class, 'cancel'], $request);
         return $this->response();
-    }
-
-    /**
-     * 续传流式输出（SSE）
-     */
-    public function resumeStream(Request $request)
-    {
-        $runId = (int)$request->input('run_id', 0);
-        $offset = (int)$request->input('offset', 0);
-
-        if ($runId <= 0) {
-            return $this->sseError($request, 'run_id 必填');
-        }
-
-        $userId = $request->userId;
-        $connection = $request->connection;
-
-        // 发送 SSE 响应头
-        $connection->send(new WorkermanResponse(200, $this->getSseHeaders($request), "\r\n"));
-
-        // 调用续传接口
-        $module = new AiChatModule();
-        $result = $module->resumeStream($runId, $userId, $offset, function ($event, $data) use ($connection) {
-            $connection->send(new ServerSentEvents([
-                'event' => $event,
-                'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
-            ]));
-        });
-
-        // 如果返回错误，发送 error 事件
-        if ($result[1] !== 0) {
-            $connection->send(new ServerSentEvents([
-                'event' => 'error',
-                'data' => json_encode(['msg' => $result[2]], JSON_UNESCAPED_UNICODE),
-            ]));
-        }
-
-        return null;
     }
 
     /**
@@ -99,7 +52,6 @@ class AiChatController extends Controller
      */
     public function stream(Request $request)
     {
-        // 1. 参数校验
         $rules = AiChatValidate::send();
         try {
             $param = v::input($request->all(), $rules);
@@ -110,20 +62,16 @@ class AiChatController extends Controller
         $userId = $request->userId;
         $connection = $request->connection;
 
-        // 2. 发送 SSE 响应头（包含 CORS）
         $connection->send(new WorkermanResponse(200, $this->getSseHeaders($request), "\r\n"));
 
-        // 3. 调用流式接口
         $module = new AiChatModule();
         $result = $module->sendStream($param, $userId, function ($event, $data) use ($connection) {
-            // SSE 格式发送
             $connection->send(new ServerSentEvents([
                 'event' => $event,
                 'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
             ]));
         });
 
-        // 4. 如果返回错误，发送 error 事件
         if ($result[1] !== 0) {
             $connection->send(new ServerSentEvents([
                 'event' => 'error',
@@ -131,8 +79,6 @@ class AiChatController extends Controller
             ]));
         }
 
-        // SSE 不需要返回 Response，返回 null
-        // 连接由前端收到 done 事件后主动关闭
         return null;
     }
 
