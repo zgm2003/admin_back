@@ -14,6 +14,7 @@ use app\module\BaseModule;
 use app\service\Ai\AiChatService;
 use app\validate\Ai\AiChatValidate;
 use RuntimeException;
+use Webman\RedisQueue\Client as RedisQueue;
 use Webman\Event\Event;
 
 /**
@@ -440,11 +441,12 @@ class AiChatModule extends BaseModule
 
     private function autoGenerateTitle(array $ctx, string $userMessage, int $userId): void
     {
-        $title = $this->chatService->generateTitle(
-            $ctx['client'], $ctx['config'], $ctx['modelCode'], $userMessage
-        );
-        if ($title) {
-            $this->conversationsDep->updateTitle($ctx['conversationId'], $title, $userId);
-        }
+        // 异步生成标题，放入 Redis 队列
+        RedisQueue::send('generate_conversation_title', [
+            'conversation_id' => $ctx['conversationId'],
+            'agent_id' => $ctx['agentId'],
+            'user_message' => $userMessage,
+            'user_id' => $userId,
+        ]);
     }
 }
