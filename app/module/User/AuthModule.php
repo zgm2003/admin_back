@@ -103,7 +103,7 @@ class AuthModule extends BaseModule
             return ['error' => '账号或密码错误', 'user' => null];
         }
 
-        return ['error' => null, 'user' => $user];
+        return ['error' => false, 'user' => $user];
     }
 
     /**
@@ -148,7 +148,7 @@ class AuthModule extends BaseModule
             }
         }
 
-        return ['error' => null, 'user' => $user];
+        return ['error' => false, 'user' => $user];
     }
 
     /**
