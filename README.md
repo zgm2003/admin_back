@@ -101,29 +101,128 @@
 
 ---
 
-### 🔧 本地开发部署
+### 🔧 本地开发
 
-1. 安装依赖：
-   ```bash
-   composer install
-   ```
+```bash
+# 安装依赖
+composer install
 
-2. 复制配置文件：
-   ```bash
-   cp .env.example .env
-   ```
+# 复制配置文件
+cp .env.example .env
 
-3. 配置 `.env` 数据库、Redis、COS 等信息
+# 配置 .env 数据库、Redis、COS 等信息
 
-4. 启动服务：
-   ```bash
-   php windows.php
-   ```
+# Windows 启动
+php windows.php
 
+# Linux 启动
+php start.php start
+```
+
+---
+
+### 🌐 生产部署
+
+#### Nginx 配置示例
+
+```nginx
+server {
+    listen 80;
+    listen 443 ssl;
+    listen 443 quic;
+    listen [::]:443 ssl;
+    listen [::]:443 quic;
+    http2 on;
+    listen [::]:80;
+    
+    server_name api.your-domain.com;
+    
+    index index.php index.html;
+    root /www/wwwroot/admin_back/public;
+
+    # SSL 配置
+    ssl_certificate     /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    # HSTS + HTTP/3
+    add_header Strict-Transport-Security "max-age=31536000";
+    add_header Alt-Svc 'h3=":443"; h3-29=":443"';
+    
+    error_page 497 https://$host$request_uri;
+
+    # ========== Webman 反向代理 ==========
+    location ^~ / {
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        
+        # 非静态文件转发到 Webman（端口 8787）
+        if (!-f $request_filename) {
+            proxy_pass http://127.0.0.1:8787;
+        }
+    }
+
+    # 拒绝直接访问 PHP 文件（安全加固）
+    location ~ \.php$ {
+        return 404;
+    }
+
+    # 禁止访问敏感文件
+    location ~ ^/(\.user.ini|\.htaccess|\.git|\.env|\.svn|LICENSE|README.md) {
+        return 404;
+    }
+
+    # 静态资源缓存
+    location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$ {
+        expires 30d;
+        access_log off;
+    }
+
+    location ~ .*\.(js|css)?$ {
+        expires 12h;
+        access_log off;
+    }
+
+    access_log  /www/wwwlogs/backend.log;
+    error_log   /www/wwwlogs/backend.error.log;
+}
+```
+
+#### Supervisor 进程管理
+
+```ini
+[program:webman]
+command=php /www/wwwroot/admin_back/start.php start
+directory=/www/wwwroot/admin_back
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/webman.err.log
+stdout_logfile=/var/log/webman.out.log
+user=www
+```
+
+#### 部署步骤
+
+1. 上传代码到服务器
+2. 安装依赖：`composer install --no-dev`
+3. 配置 `.env` 文件
+4. 配置 Nginx 反向代理
+5. 配置 Supervisor 管理 Webman 进程
+6. 启动服务：`supervisorctl start webman`
+
+---
 
 ### 🌐 项目前端地址
 
-- 后台管理系统：https://gitee.com/zgm2003/admin_front
+- 后台管理系统：[admin_front_ts](../admin_front_ts)
 - 展示博客前台：https://gitee.com/zgm2003/admin_blog
 
 ---
