@@ -71,7 +71,7 @@ class AuthModule extends BaseModule
             return self::error($result['error']);
         }
 
-        return self::response($this->createSession($result['user']['id'], $param['login_account'], $request, $loginType));
+        return self::success($this->createSession($result['user']['id'], $param['login_account'], $request, $loginType));
     }
 
     /**
@@ -257,7 +257,7 @@ class AuthModule extends BaseModule
     {
         $bearer = $request->header('authorization');
         if (!$bearer) {
-            return self::response([], '退出成功');
+            return self::success([], '退出成功');
         }
 
         try {
@@ -274,7 +274,7 @@ class AuthModule extends BaseModule
             // ignore
         }
 
-        return self::response([], '退出成功');
+        return self::success([], '退出成功');
     }
 
     /**

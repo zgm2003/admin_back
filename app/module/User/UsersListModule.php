@@ -44,7 +44,7 @@ class UsersListModule extends BaseModule
             ->setPlatformArr()
             ->getDict();
         $data['dict'] = $dict;
-        return self::response($data);
+        return self::success($data);
     }
 
     public function edit($request)
@@ -72,7 +72,7 @@ class UsersListModule extends BaseModule
         // Clear permission cache
         Cache::delete('auth_perm_uid_' . $param['id']);
 
-        return self::response();
+        return self::success();
     }
 
     public function del($request)
@@ -83,7 +83,7 @@ class UsersListModule extends BaseModule
             return self::error($e->getMessage());
         }
         $this->usersDep->delete($param['id']);
-        return self::response();
+        return self::success();
     }
 
     public function list($request)
@@ -95,7 +95,7 @@ class UsersListModule extends BaseModule
 
         $resList = $this->usersDep->list($param);
         
-        // === 优化：批量预加载所有关联数据 ===
+        // 批量预加载所有关联数据
         $userIds = $resList->pluck('id')->toArray();
         $roleIds = $resList->pluck('role_id')->unique()->toArray();
         
@@ -151,7 +151,7 @@ class UsersListModule extends BaseModule
             'total_page' => $resList->lastPage(),
             'total' => $resList->total(),
         ];
-        return self::response($data);
+        return self::success($data);
     }
 
     public function batchEdit($request)
@@ -180,7 +180,7 @@ class UsersListModule extends BaseModule
             }
             $this->userProfileDep->updateByUserId($id, ['detail_address' => $param['detail_address']]);
         }
-        return self::response();
+        return self::success();
     }
 
     public function export($request)
@@ -192,7 +192,7 @@ class UsersListModule extends BaseModule
         }
         $users = $this->usersDep->getMap($param['ids'])->values();
         
-        // === 优化：批量预加载 ===
+        // 批量预加载
         $userIds = $users->pluck('id')->toArray();
         $roleIds = $users->pluck('role_id')->unique()->toArray();
         $roleMap = $this->roleDep->getMap($roleIds);
@@ -222,7 +222,6 @@ class UsersListModule extends BaseModule
         })->toArray();
         $exportService = new ExportService();
         $url = $exportService->export($headers, $data, 'users_export');
-        return self::response(['url' => $url]);
+        return self::success(['url' => $url]);
     }
 }
-
