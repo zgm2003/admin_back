@@ -4,6 +4,7 @@ namespace app\module\System;
 
 use app\dep\System\UploadDriverDep;
 use app\enum\UploadConfigEnum;
+use app\lib\Crypto\KeyVault;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\enum\CommonEnum;
@@ -31,10 +32,13 @@ class UploadDriverModule extends BaseModule
         $param = $this->validate($request, UploadDriverValidate::add());
         $exists = $this->uploadDriverDep->findByDriverBucket($param['driver'], $param['bucket']);
         self::throwIf($exists, '同一驱动下该桶已存在');
+
         $data = [
             'driver' => $param['driver'],
-            'secret_id' => $param['secret_id'],
-            'secret_key' => $param['secret_key'],
+            'secret_id_enc' => KeyVault::encrypt($param['secret_id']),
+            'secret_id_hint' => KeyVault::hint($param['secret_id']),
+            'secret_key_enc' => KeyVault::encrypt($param['secret_key']),
+            'secret_key_hint' => KeyVault::hint($param['secret_key']),
             'bucket' => $param['bucket'],
             'region' => $param['region'],
             'role_arn' => $param['role_arn'] ?? null,
@@ -51,10 +55,9 @@ class UploadDriverModule extends BaseModule
         $param = $this->validate($request, UploadDriverValidate::edit());
         $exists = $this->uploadDriverDep->findByDriverBucket($param['driver'], $param['bucket']);
         self::throwIf($exists && $exists['id'] != $param['id'], '同一驱动下该桶已存在');
+
         $data = [
             'driver' => $param['driver'],
-            'secret_id' => $param['secret_id'],
-            'secret_key' => $param['secret_key'],
             'bucket' => $param['bucket'],
             'region' => $param['region'],
             'role_arn' => $param['role_arn'] ?? null,
@@ -62,6 +65,17 @@ class UploadDriverModule extends BaseModule
             'endpoint' => $param['endpoint'] ?? null,
             'bucket_domain' => $param['bucket_domain'] ?? null,
         ];
+
+        // 密钥留空不改，非空则重新加密
+        if (!empty($param['secret_id'])) {
+            $data['secret_id_enc'] = KeyVault::encrypt($param['secret_id']);
+            $data['secret_id_hint'] = KeyVault::hint($param['secret_id']);
+        }
+        if (!empty($param['secret_key'])) {
+            $data['secret_key_enc'] = KeyVault::encrypt($param['secret_key']);
+            $data['secret_key_hint'] = KeyVault::hint($param['secret_key']);
+        }
+
         $this->uploadDriverDep->update($param['id'], $data);
         return self::success();
     }
@@ -84,8 +98,8 @@ class UploadDriverModule extends BaseModule
                 'id' => $item['id'],
                 'driver' => $item['driver'],
                 'driver_show' => UploadConfigEnum::$driverArr[$item->driver],
-                'secret_id' => $item['secret_id'],
-                'secret_key' => $item['secret_key'],
+                'secret_id_hint' => $item['secret_id_hint'] ?? '',
+                'secret_key_hint' => $item['secret_key_hint'] ?? '',
                 'bucket' => $item['bucket'],
                 'region' => $item['region'],
                 'role_arn' => $item['role_arn'],

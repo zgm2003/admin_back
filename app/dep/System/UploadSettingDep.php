@@ -39,7 +39,7 @@ class UploadSettingDep extends BaseDep
             ->leftJoin('upload_rule as ur', 'us.rule_id', '=', 'ur.id')
             ->select(
                 'us.*',
-                'ud.driver', 'ud.secret_id', 'ud.secret_key', 'ud.bucket', 'ud.region', 'ud.appid', 'ud.role_arn', 'ud.endpoint', 'ud.bucket_domain',
+                'ud.driver', 'ud.secret_id_enc', 'ud.secret_key_enc', 'ud.bucket', 'ud.region', 'ud.appid', 'ud.role_arn', 'ud.endpoint', 'ud.bucket_domain',
                 'ur.title as rule_title', 'ur.max_size_mb', 'ur.image_exts', 'ur.file_exts'
             )
             ->where('us.status', CommonEnum::YES)

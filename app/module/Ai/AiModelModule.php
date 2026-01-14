@@ -5,7 +5,7 @@ namespace app\module\Ai;
 use app\dep\Ai\AiModelsDep;
 use app\enum\AiEnum;
 use app\enum\CommonEnum;
-use app\lib\Ai\Crypto\KeyVault;
+use app\lib\Crypto\KeyVault;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\Ai\AiModelValidate;

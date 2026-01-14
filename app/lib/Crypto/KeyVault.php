@@ -1,12 +1,13 @@
 <?php
 
-namespace app\lib\Ai\Crypto;
+namespace app\lib\Crypto;
 
 use RuntimeException;
 
 /**
- * API Key 加密/解密工具
+ * 敏感数据加密/解密工具
  * 使用 AES-256-GCM 算法，IV 随机生成，tag 一并保存，整体 base64 存储
+ * 适用场景：API Key、云存储密钥等敏感字段的加密存储
  */
 class KeyVault
 {
@@ -19,9 +20,9 @@ class KeyVault
      */
     private static function getKey(): string
     {
-        $key = config('ai.vault_key', '');
+        $key = config('app.vault_key', '');
         if (empty($key)) {
-            throw new RuntimeException('AI_VAULT_KEY 未配置，请在 .env 中设置');
+            throw new RuntimeException('VAULT_KEY 未配置，请在 .env 中设置');
         }
         // 确保密钥为 32 字节
         return hash('sha256', $key, true);
@@ -100,8 +101,8 @@ class KeyVault
     }
 
     /**
-     * 生成 API Key 提示（显示后4位）
-     * @param string $plain 明文 API Key
+     * 生成脱敏提示（显示后4位）
+     * @param string $plain 明文
      * @return string 如 "***1234"
      */
     public static function hint(string $plain): string

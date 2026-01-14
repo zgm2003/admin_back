@@ -3,6 +3,7 @@
 namespace app\module;
 
 use app\dep\System\UploadSettingDep;
+use app\lib\Crypto\KeyVault;
 use AlibabaCloud\Client\AlibabaCloud;
 use TencentCloud\Sts\V20180813\Models\GetFederationTokenRequest;
 use TencentCloud\Sts\V20180813\StsClient;
@@ -58,8 +59,8 @@ class UploadModule extends BaseModule
 
     private function getCosToken($setting, $folder)
     {
-        $secretId  = $setting['secret_id'];
-        $secretKey = $setting['secret_key'];
+        $secretId  = KeyVault::decrypt($setting['secret_id_enc'] ?? '');
+        $secretKey = KeyVault::decrypt($setting['secret_key_enc'] ?? '');
         $bucket    = $setting['bucket'];
         $region    = $setting['region'];
         $appid     = $setting['appid'];
@@ -117,8 +118,8 @@ class UploadModule extends BaseModule
         $region  = $setting['region'];
         $bucket  = $setting['bucket'];
         $roleArn = $setting['role_arn'];
-        $ak      = $setting['secret_id'];
-        $sk      = $setting['secret_key'];
+        $ak      = KeyVault::decrypt($setting['secret_id_enc'] ?? '');
+        $sk      = KeyVault::decrypt($setting['secret_key_enc'] ?? '');
 
         if (!$region || !$bucket || !$roleArn || !$ak || !$sk) {
             throw new \Exception('OSS 配置缺失');

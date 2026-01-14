@@ -4,6 +4,6 @@
  */
 
 return [
-    // API Key 加密密钥（从 .env 读取，必须 32 字节）
-    'vault_key' => getenv('AI_VAULT_KEY', ''),
+    // 其他 AI 相关配置可以放这里
+    // vault_key 已移至 config/app.php 统一管理
 ];

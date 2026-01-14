@@ -27,6 +27,9 @@ return [
     // 用于hash token的pepper（不要泄露，不要放前端）
     'token_pepper' => env('TOKEN_PEPPER', ''),
 
-    // 注册默认头像（你之前问“要不要默认头像”，建议要，省得数据空一堆）
+    // 注册默认头像（你之前问"要不要默认头像"，建议要，省得数据空一堆）
     'default_avatar' => getenv('DEFAULT_AVATAR', ''),
+
+    // 敏感数据加密密钥（用于 API Key、云存储密钥等加密存储）
+    'vault_key' => getenv('VAULT_KEY', ''),
 ];

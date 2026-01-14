@@ -6,7 +6,7 @@ use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\AiMessagesDep;
 use app\dep\Ai\AiModelsDep;
 use app\enum\AiEnum;
-use app\lib\Ai\Crypto\KeyVault;
+use app\lib\Crypto\KeyVault;
 use app\lib\Ai\AiClientFactory;
 use app\lib\Ai\AiClientInterface;
 use RuntimeException;
