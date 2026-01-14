@@ -3,6 +3,7 @@
 namespace app\module;
 
 use app\enum\ErrorCodeEnum;
+use app\exception\BusinessException;
 use Respect\Validation\Validator as v;
 use Respect\Validation\Exceptions\ValidationException;
 use support\Db;
@@ -10,85 +11,88 @@ use support\Request;
 
 class BaseModule
 {
-    // 业务通用状态码常量（与 HTTP 状态码区分）
-    const CODE_SUCCESS       = ErrorCodeEnum::SUCCESS;      // 成功
-    const CODE_PARAM_ERROR   = ErrorCodeEnum::PARAM_ERROR;  // 参数/校验错误
-    const CODE_UNAUTHORIZED  = ErrorCodeEnum::UNAUTHORIZED; // 未认证（业务层语义）
-    const CODE_FORBIDDEN     = ErrorCodeEnum::FORBIDDEN;    // 无权限（业务层语义）
-    const CODE_NOT_FOUND     = ErrorCodeEnum::NOT_FOUND;    // 资源不存在（业务层语义）
-    const CODE_SERVER_ERROR  = ErrorCodeEnum::SERVER_ERROR; // 服务器内部错误（业务层语义）
+    // ==================== 状态码常量 ====================
+    const CODE_SUCCESS       = ErrorCodeEnum::SUCCESS;
+    const CODE_PARAM_ERROR   = ErrorCodeEnum::PARAM_ERROR;
+    const CODE_UNAUTHORIZED  = ErrorCodeEnum::UNAUTHORIZED;
+    const CODE_FORBIDDEN     = ErrorCodeEnum::FORBIDDEN;
+    const CODE_NOT_FOUND     = ErrorCodeEnum::NOT_FOUND;
+    const CODE_SERVER_ERROR  = ErrorCodeEnum::SERVER_ERROR;
+
+    // ==================== 响应方法 ====================
 
     /**
-     * 统一响应底层方法（保持兼容：返回 [data, code, msg]）
+     * 成功响应
      */
-    public static function response(array $data = [], string $msg = 'success', int $code = self::CODE_SUCCESS): array
+    public static function success(array $data = [], string $msg = 'success'): array
+    {
+        return [$data, self::CODE_SUCCESS, $msg];
+    }
+
+    /**
+     * 失败响应
+     */
+    public static function error(string $msg = 'error', int $code = self::CODE_PARAM_ERROR, array $data = []): array
     {
         return [$data, $code, $msg];
     }
 
     /**
-     * 成功响应（code 固定为 0）
-     */
-    public static function success(array $data = [], string $msg = 'success'): array
-    {
-        return [
-            $data,
-            self::CODE_SUCCESS,
-            $msg,
-        ];
-    }
-
-    /**
-     * 失败/错误响应（默认使用业务错误码 100，可自定义）
-     */
-    public static function error(string $msg = 'error', int $code = self::CODE_PARAM_ERROR, array $data = []): array
-    {
-        return [
-            $data,
-            $code,
-            $msg,
-        ];
-    }
-
-    /**
-     * 别名：fail（等价于 error）
-     */
-    public static function fail(string $msg = 'error', int $code = self::CODE_PARAM_ERROR, array $data = []): array
-    {
-        return self::error($msg, $code, $data);
-    }
-
-    /**
-     * 分页响应快捷方法
-     * 传入列表与分页信息，结构统一为 { list, page }
+     * 分页响应
      */
     public static function paginate($list, array $page, string $msg = 'success'): array
     {
-        return [
-            [
-                'list' => $list,
-                'page' => $page,
-            ],
-            self::CODE_SUCCESS,
-            $msg,
-        ];
+        return [['list' => $list, 'page' => $page], self::CODE_SUCCESS, $msg];
+    }
+
+    // ==================== 异常快捷方法 ====================
+
+    /**
+     * 直接抛出业务异常
+     * @throws BusinessException
+     */
+    public static function throw(string $msg, int $code = self::CODE_PARAM_ERROR): void
+    {
+        throw new BusinessException($msg, $code);
     }
 
     /**
-     * 异常转统一响应（在 debug 模式下可附带 trace）
+     * 条件为 true 时抛出异常
+     * @throws BusinessException
      */
-    public static function fromException(\Throwable $e, int $code = self::CODE_SERVER_ERROR, array $data = []): array
+    public static function throwIf(bool $condition, string $msg, int $code = self::CODE_PARAM_ERROR): void
     {
-        if (function_exists('config') && (bool)config('app.debug')) {
-            $data['trace'] = $e->getTraceAsString();
+        if ($condition) {
+            throw new BusinessException($msg, $code);
         }
-        return [$data, $code, $e->getMessage() ?: 'server error'];
     }
+
+    /**
+     * 条件为 false/null/empty 时抛出异常（常用于检查资源存在）
+     * @throws BusinessException
+     */
+    public static function throwUnless(mixed $value, string $msg, int $code = self::CODE_PARAM_ERROR): void
+    {
+        if (!$value) {
+            throw new BusinessException($msg, $code);
+        }
+    }
+
+    /**
+     * 检查资源存在，不存在则抛 404
+     * @throws BusinessException
+     */
+    public static function throwNotFound(mixed $value, string $msg = '资源不存在'): void
+    {
+        if (!$value) {
+            throw new BusinessException($msg, self::CODE_NOT_FOUND);
+        }
+    }
+
+    // ==================== 事务封装 ====================
 
     /**
      * 事务封装
-     * @param callable $callback 事务内执行的回调
-     * @return mixed 回调返回值
      * @throws \Throwable
      */
     protected function withTransaction(callable $callback)
@@ -104,13 +108,39 @@ class BaseModule
         }
     }
 
+    // ==================== 参数校验 ====================
+
+    /**
+     * 参数校验（校验失败抛 BusinessException）
+     * @throws BusinessException
+     */
     protected function validate(Request $request, array $rules, ?array $input = null): array
     {
         try {
             return v::input($input ?? $request->all(), $rules);
         } catch (ValidationException $e) {
-            throw new \RuntimeException($e->getMessage(), 0, $e);
+            throw new BusinessException($e->getMessage(), self::CODE_PARAM_ERROR);
         }
     }
 
+    // ==================== 异常转响应 ====================
+
+    /**
+     * 异常转统一响应格式（供 Controller 兜底使用）
+     * 业务异常：只返回 msg，不带 trace
+     * 未知异常：trace 写日志，不返回给前端
+     */
+    public static function fromException(\Throwable $e): array
+    {
+        if ($e instanceof BusinessException) {
+            // 业务异常：msg 足够定位问题，不需要 trace
+            return [[], $e->getCode(), $e->getMessage()];
+        }
+        
+        // 未知异常：记录日志，返回通用错误信息
+        // TODO: Log::error('Unexpected error', ['exception' => $e]);
+        
+        $msg = config('app.debug') ? $e->getMessage() : 'server error';
+        return [[], self::CODE_SERVER_ERROR, $msg];
+    }
 }

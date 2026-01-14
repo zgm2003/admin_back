@@ -30,9 +30,6 @@ Route::group('/api', function () {
     Route::post('/Users/sendCode', [controller\User\UsersController::class, 'sendCode']);
     Route::post('/Users/forgetPassword', [controller\User\UsersController::class, 'forgetPassword']);
 
-    Route::post('/test', [controller\TestController::class, 'test']);
-    Route::post('/test/sendTest', [controller\TestController::class, 'sendTest']);
-
 });
 
 Route::group('/api', function () {

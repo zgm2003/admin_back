@@ -24,7 +24,9 @@ Route::group('/api/admin', function () {
 
 Route::group('/api/admin', function () {
     //不需要认证的接口
-
+    
+    // 测试接口
+    Route::post('/test', [controller\TestController::class, 'test']);
 });
 
 Route::group('/api/admin', function () {

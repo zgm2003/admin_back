@@ -2,164 +2,114 @@
 
 namespace app\module;
 
-//导入部分
-use app\dep\TestDep;
-use app\enum\CommonEnum;
-use app\process\CleanExportTask;
-use app\service\DictService;
-use Carbon\Carbon;
-use Webman\RedisQueue\Redis;
-use app\validate\Test\TestValidate;
-
+/**
+ * 测试模块 - 用于测试 BaseModule 的异常快捷方法
+ */
 class TestModule extends BaseModule
 {
-    public $TestDep;
-
-    public function __construct()
+    /**
+     * 测试 self::throw()
+     */
+    public function testThrow($request): array
     {
-        $this->TestDep = new TestDep();
-    }
-
-
-    public function init(){
-
-        $dictService = new DictService();
-
-        $dict = $dictService
-            ->getDict();
-
-        $data['dict'] = $dict;
-
-        return self::success($data);
-
-    }
-
-
-    public function add($request)
-    {
-        try { $param = $this->validate($request, TestValidate::add()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-
-        $dep = $this->TestDep;
-
-        foreach (['password','newpassword','respassword'] as $f) {
-            if (empty($param[$f])) {
-                return self::error("{$f} 不能为空");
-            }
-        }
+        self::throw('这是一个直接抛出的业务异常');
         
-        $data = [
-            'mobile_id' => $param['mobile_id'],
+        return self::success(['msg' => '不会执行到这里']);
+    }
+
+    /**
+     * 测试 self::throwIf()
+     */
+    public function testThrowIf($request): array
+    {
+        $value = $request->post('value', 'bad');
         
-        ];
-
-        $dep->add($data);
-        return self::success();
+        self::throwIf($value === 'bad', '参数 value 不能是 bad');
+        
+        return self::success(['value' => $value]);
     }
 
-    public function del($request)
+    /**
+     * 测试 self::throwUnless()
+     */
+    public function testThrowUnless($request): array
     {
-        try { $param = $this->validate($request, TestValidate::del()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-
-        $dep = $this->TestDep;
-
-        $dep->delete($param['id']);
-
-        return self::success();
+        $user = $request->post('user');
+        
+        self::throwUnless($user, '用户不存在');
+        
+        return self::success(['user' => $user]);
     }
 
-    public function edit($request)
+    /**
+     * 测试 self::throwNotFound()
+     */
+    public function testThrowNotFound($request): array
     {
-        try { $param = $this->validate($request, TestValidate::edit()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $dep = $this->TestDep;
-        if ($param['newpassword'] !== $param['respassword']) {
-            return self::error('两次输入不一致');
-        }
-
-        $data = [
-            'mobile_id' => $param['mobile_id'],
-        ];
-
-        $dep->update($param['id'], $data);
-
-        return self::success();
+        $id = $request->post('id');
+        $resource = $id ? ['id' => $id, 'name' => 'test'] : null;
+        
+        self::throwNotFound($resource, '资源不存在');
+        
+        return self::success($resource);
     }
-    public function batchEdit($request)
+
+    /**
+     * 测试事务 - 成功场景
+     */
+    public function testTransactionSuccess($request): array
     {
-        try { $param = $this->validate($request, TestValidate::batchEdit()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
-        $dep = $this->TestDep;
-        $id = $param['ids'];
-        if ($param['field'] == 'status') {
-            $data = [
-                'status' => $param['status'],
-            ];
-            $dep->update($id, $data);
-        }
-
-        return self::success();
-    }
-    public function list($request)
-    {
-        $dep = new TestDep();
-        $param = $request->all();
-        $param['page_size'] = isset($param['page_size']) ? $param['page_size'] : 20;
-        $param['current_page'] = isset($param['current_page']) ? $param['current_page'] : 1;
-
-        $resList = $dep->list($param);
-
-        $data['list'] = $resList->map(function ($item){
-            return [
-                'id' => $item['id'],
-                'created_at' => $item['created_at']->toDateTimeString(),
-                'updated_at' => $item['updated_at']->toDateTimeString()
-            ];
+        $this->withTransaction(function () {
+            // 模拟两个数据库操作
+            \support\Db::table('system_settings')->where('id', 1)->update(['updated_at' => date('Y-m-d H:i:s')]);
+            \support\Db::table('system_settings')->where('id', 2)->update(['updated_at' => date('Y-m-d H:i:s')]);
         });
-        $data['page'] = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
-            'total_page' => $resList->lastPage(),
-            'total' => $resList->total(),
-        ];
-
-        return self::paginate($data['list'], $data['page']);
+        
+        return self::success(['message' => '事务提交成功']);
     }
-//    public function test($request)
-//    {
-//        $param = $request->all();
-//        // 队列名
-//        $queue = 'test-test';
-//        // 数据，可以直接传数组，无需序列化
-//        $data = [
-//            'id' => 1
-//        ];
-//       // 投递消息
-//        Redis::send($queue, $data);
-//        // 投递延迟消息，消息会在60秒后处理
-////        Redis::send($queue, $data, 60);
-//        $data = [
-//            'msg' => 'hello world',
-//            'a' => $param,
-//        ];
-//
-//        return self::response($data);
-//    }
 
-    public function test($request)
+    /**
+     * 测试事务 - 回滚场景
+     */
+    public function testTransactionRollback($request): array
     {
-        $param = $request->all();
-        $queue = 'test-test';
-        $data = 666;
-        Redis::send($queue, $data);
-
-        return self::success();
+        $this->withTransaction(function () {
+            // 第一个操作成功
+            \support\Db::table('system_settings')->where('id', 1)->update(['updated_at' => date('Y-m-d H:i:s')]);
+            
+            // 第二个操作前抛异常，触发回滚
+            self::throw('模拟事务中的业务异常，触发回滚');
+            
+            // 这行不会执行
+            \support\Db::table('system_settings')->where('id', 2)->update(['updated_at' => date('Y-m-d H:i:s')]);
+        });
+        
+        return self::success(['message' => '不会执行到这里']);
     }
 
-    // 已移除 RabbitMQ 相关示例方法
+    /**
+     * 测试正常流程
+     */
+    public function testSuccess($request): array
+    {
+        return self::success(['message' => 'BaseModule 异常快捷方法测试通过！']);
+    }
 
-
-
+    /**
+     * 综合测试
+     */
+    public function test($request): array
+    {
+        $action = $request->post('action', 'success');
+        
+        return match ($action) {
+            'throw' => $this->testThrow($request),
+            'throwIf' => $this->testThrowIf($request),
+            'throwUnless' => $this->testThrowUnless($request),
+            'throwNotFound' => $this->testThrowNotFound($request),
+            'transactionSuccess' => $this->testTransactionSuccess($request),
+            'transactionRollback' => $this->testTransactionRollback($request),
+            default => $this->testSuccess($request),
+        };
+    }
 }
-
