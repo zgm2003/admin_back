@@ -57,10 +57,10 @@ class BaseModule
     }
 
     /**
-     * 条件为 true 时抛出异常
+     * 条件为真值时抛出异常（支持 PHP 隐式类型转换）
      * @throws BusinessException
      */
-    public static function throwIf(bool $condition, string $msg, int $code = self::CODE_PARAM_ERROR): void
+    public static function throwIf(mixed $condition, string $msg, int $code = self::CODE_PARAM_ERROR): void
     {
         if ($condition) {
             throw new BusinessException($msg, $code);
