@@ -44,11 +44,7 @@ class AiAgentModule extends BaseModule
 
     public function list($request): array
     {
-        try {
-            $param = $this->validate($request, AiAgentValidate::list());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiAgentValidate::list());
 
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
@@ -98,20 +94,12 @@ class AiAgentModule extends BaseModule
 
     public function add($request): array
     {
-        try {
-            $param = $this->validate($request, AiAgentValidate::add());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiAgentValidate::add());
 
         // 校验 model_id 是否存在且有效
         $model = $this->modelsDep->get((int)$param['model_id']);
-        if (!$model) {
-            return self::error('关联的模型不存在');
-        }
-        if ($model->status !== CommonEnum::YES) {
-            return self::error('关联的模型已禁用');
-        }
+        self::throwNotFound($model, '关联的模型不存在');
+        self::throwIf($model->status !== CommonEnum::YES, '关联的模型已禁用');
 
         // extra_params
         $extraParams = null;
@@ -138,26 +126,16 @@ class AiAgentModule extends BaseModule
 
     public function edit($request): array
     {
-        try {
-            $param = $this->validate($request, AiAgentValidate::edit());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiAgentValidate::edit());
 
         $id = (int)$param['id'];
         $row = $this->dep->get($id);
-        if (!$row) {
-            return self::error('记录不存在');
-        }
+        self::throwNotFound($row, '记录不存在');
 
         // 校验 model_id
         $model = $this->modelsDep->get((int)$param['model_id']);
-        if (!$model) {
-            return self::error('关联的模型不存在');
-        }
-        if ($model->status !== CommonEnum::YES) {
-            return self::error('关联的模型已禁用');
-        }
+        self::throwNotFound($model, '关联的模型不存在');
+        self::throwIf($model->status !== CommonEnum::YES, '关联的模型已禁用');
 
         // 构建更新数据
         $data = [
@@ -182,11 +160,7 @@ class AiAgentModule extends BaseModule
 
     public function del($request): array
     {
-        try {
-            $param = $this->validate($request, AiAgentValidate::del());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiAgentValidate::del());
 
         $ids = $param['id'];
         $affected = $this->dep->delete($ids);
@@ -196,11 +170,7 @@ class AiAgentModule extends BaseModule
 
     public function status($request): array
     {
-        try {
-            $param = $this->validate($request, AiAgentValidate::status());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiAgentValidate::status());
 
         $ids = $param['id'];
         $status = (int)$param['status'];

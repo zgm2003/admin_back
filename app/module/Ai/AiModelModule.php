@@ -35,11 +35,7 @@ class AiModelModule extends BaseModule
      */
     public function list($request): array
     {
-        try {
-            $param = $this->validate($request, AiModelValidate::list());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiModelValidate::list());
 
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
@@ -79,16 +75,10 @@ class AiModelModule extends BaseModule
      */
     public function add($request): array
     {
-        try {
-            $param = $this->validate($request, AiModelValidate::add());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiModelValidate::add());
 
         // 检查唯一性
-        if ($this->dep->existsByDriverAndName($param['driver'], $param['name'])) {
-            return self::error('该驱动下已存在同名模型');
-        }
+        self::throwIf($this->dep->existsByDriverAndName($param['driver'], $param['name']), '该驱动下已存在同名模型');
 
         // 处理 default_params
         $defaultParams = null;
@@ -116,12 +106,8 @@ class AiModelModule extends BaseModule
 
         // 处理 API Key 加密
         if (!empty($param['api_key'])) {
-            try {
-                $data['api_key_enc'] = KeyVault::encrypt($param['api_key']);
-                $data['api_key_hint'] = KeyVault::hint($param['api_key']);
-            } catch (RuntimeException $e) {
-                return self::error($e->getMessage());
-            }
+            $data['api_key_enc'] = KeyVault::encrypt($param['api_key']);
+            $data['api_key_hint'] = KeyVault::hint($param['api_key']);
         }
 
         $this->dep->add($data);
@@ -134,22 +120,14 @@ class AiModelModule extends BaseModule
      */
     public function edit($request): array
     {
-        try {
-            $param = $this->validate($request, AiModelValidate::edit());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiModelValidate::edit());
 
         $id = (int)$param['id'];
         $row = $this->dep->get($id);
-        if (!$row) {
-            return self::error('记录不存在');
-        }
+        self::throwNotFound($row, '记录不存在');
 
         // 唯一性校验
-        if ($this->dep->existsByDriverAndName($param['driver'], $param['name'], $id)) {
-            return self::error('该驱动下已存在同名模型');
-        }
+        self::throwIf($this->dep->existsByDriverAndName($param['driver'], $param['name'], $id), '该驱动下已存在同名模型');
 
         // 构建更新数据
         $data = [
@@ -185,11 +163,7 @@ class AiModelModule extends BaseModule
      */
     public function del($request): array
     {
-        try {
-            $param = $this->validate($request, AiModelValidate::del());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiModelValidate::del());
 
         $ids = $param['id'];
         $affected = $this->dep->delete($ids);
@@ -202,11 +176,7 @@ class AiModelModule extends BaseModule
      */
     public function status($request): array
     {
-        try {
-            $param = $this->validate($request, AiModelValidate::setStatus());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiModelValidate::setStatus());
 
         $ids = $param['id'];
         $status = (int)$param['status'];

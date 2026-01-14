@@ -25,11 +25,7 @@ class AiConversationModule extends BaseModule
 
     public function list($request): array
     {
-        try {
-            $param = $this->validate($request, AiConversationValidate::list());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiConversationValidate::list());
 
         $param['user_id'] = $request->userId;
         $param['page_size'] = $param['page_size'] ?? 20;
@@ -73,20 +69,12 @@ class AiConversationModule extends BaseModule
 
     public function add($request): array
     {
-        try {
-            $param = $this->validate($request, AiConversationValidate::add());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiConversationValidate::add());
 
         // 校验 agent_id 存在且 is_del=2
         $agent = $this->agentsDep->get((int)$param['agent_id']);
-        if (!$agent) {
-            return self::error('智能体不存在');
-        }
-        if ($agent->status !== CommonEnum::YES) {
-            return self::error('智能体已禁用');
-        }
+        self::throwNotFound($agent, '智能体不存在');
+        self::throwIf($agent->status !== CommonEnum::YES, '智能体已禁用');
 
         $data = [
             'user_id' => $request->userId,
@@ -102,11 +90,7 @@ class AiConversationModule extends BaseModule
 
     public function edit($request): array
     {
-        try {
-            $param = $this->validate($request, AiConversationValidate::edit());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiConversationValidate::edit());
 
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
         $userId = $request->userId;
@@ -121,11 +105,7 @@ class AiConversationModule extends BaseModule
 
     public function del($request): array
     {
-        try {
-            $param = $this->validate($request, AiConversationValidate::del());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiConversationValidate::del());
 
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
         $userId = $request->userId;
@@ -140,11 +120,7 @@ class AiConversationModule extends BaseModule
      */
     public function status($request): array
     {
-        try {
-            $param = $this->validate($request, AiConversationValidate::status());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiConversationValidate::status());
 
         $this->dep->updateStatus($param['id'], (int)$param['status'], $request->userId);
         return self::success();
@@ -155,16 +131,10 @@ class AiConversationModule extends BaseModule
      */
     public function detail($request): array
     {
-        try {
-            $param = $this->validate($request, AiConversationValidate::detail());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiConversationValidate::detail());
 
         $item = $this->dep->getByUser((int)$param['id'], $request->userId);
-        if (!$item) {
-            return self::error('会话不存在');
-        }
+        self::throwNotFound($item, '会话不存在');
 
         $agent = $this->agentsDep->get((int)$item->agent_id);
         $model = $agent ? $this->modelsDep->get((int)$agent->model_id) : null;

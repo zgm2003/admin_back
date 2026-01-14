@@ -31,12 +31,9 @@ class RoleModule extends BaseModule
 
     public function add($request)
     {
-        try { $param = $this->validate($request, RoleValidate::add()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, RoleValidate::add());
         $resDep = $this->roleDep->findByName($param['name']);
-        if ($resDep) {
-            return self::error('角色名已存在');
-        }
+        self::throwIf($resDep, '角色名已存在');
         $data = [
             'name' => $param['name'],
             'permission_id' => json_encode($param['permission_id']),
@@ -49,21 +46,16 @@ class RoleModule extends BaseModule
     public function del($request)
     {
         $param = $request->all();
-        if (empty($param['id'])) {
-            return self::error('ID不能为空');
-        }
+        self::throwIf(empty($param['id']), 'ID不能为空');
+        
         $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [ (int)$param['id'] ];
         $dep = $this->roleDep;
         $roles = $dep->getMapActive($ids);
-        if ($roles->isEmpty()) {
-            return self::error('角色不存在');
-        }
-        if ($roles->count() !== count($ids)) {
-            return self::error('包含不存在的角色');
-        }
-        if ($dep->hasDefaultIn($ids)) {
-            return self::error('默认角色不能删除');
-        }
+        
+        self::throwIf($roles->isEmpty(), '角色不存在');
+        self::throwIf($roles->count() !== count($ids), '包含不存在的角色');
+        self::throwIf($dep->hasDefaultIn($ids), '默认角色不能删除');
+        
         $dep->delete($ids);
 
         // Clear cache for users with these roles
@@ -79,13 +71,10 @@ class RoleModule extends BaseModule
 
     public function edit($request)
     {
-        try { $param = $this->validate($request, RoleValidate::edit()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, RoleValidate::edit());
         $dep = $this->roleDep;
         $resDep = $dep->findByName($param['name']);
-        if ($resDep && $resDep['id'] != $param['id']) {
-            return self::error('角色名已存在');
-        }
+        self::throwIf($resDep && $resDep['id'] != $param['id'], '角色名已存在');
         $data = [
             'name' => $param['name'],
             'permission_id' => json_encode($param['permission_id']),
@@ -137,22 +126,20 @@ class RoleModule extends BaseModule
      */
     public function setDefault($request)
     {
-        try { $param = $this->validate($request, RoleValidate::setDefault()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, RoleValidate::setDefault());
 
         $dep = $this->roleDep;
         $id = (int)$param['id'];
         $role = $dep->find($id);
-        if (!$role || (isset($role['is_del']) && (int)$role['is_del'] !== CommonEnum::NO)) {
-            return self::error('角色不存在');
-        }
+        self::throwIf(!$role || (isset($role['is_del']) && (int)$role['is_del'] !== CommonEnum::NO), '角色不存在');
+        
         try {
             $this->withTransaction(function () use ($id) {
                 $this->roleDep->clearDefault();
                 $this->roleDep->update($id, ['is_default' => CommonEnum::YES]);
             });
         } catch (\Throwable $e) {
-            return self::error('设置默认角色失败');
+            self::throw('设置默认角色失败');
         }
         return self::success();
     }

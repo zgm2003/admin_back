@@ -30,18 +30,11 @@ class PermissionModule extends BaseModule
 
     public function add($request)
     {
-        try {
-            $param = $this->validate($request, PermissionValidate::add());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, PermissionValidate::add());
+        
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
-            if (empty($param['i18n_key'])) {
-                return self::error('i18n_key 不能为空');
-            }
-            if (empty($param['show_menu'])) {
-                return self::error('show_menu 不能为空');
-            }
+            self::throwIf(empty($param['i18n_key']), 'i18n_key 不能为空');
+            self::throwIf(empty($param['show_menu']), 'show_menu 不能为空');
             $data = [
                 'name' => $param['name'],
                 'parent_id' => empty($param['parent_id']) ? -1 : $param['parent_id'],
@@ -54,9 +47,7 @@ class PermissionModule extends BaseModule
             $this->permissionDep->add($data);
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
             foreach (['path','component','i18n_key', 'show_menu'] as $f) {
-                if (empty($param[$f])) {
-                    return self::error("{$f} 不能为空");
-                }
+                self::throwIf(empty($param[$f]), "{$f} 不能为空");
             }
             $data = [
                 'name' => $param['name'],
@@ -72,9 +63,7 @@ class PermissionModule extends BaseModule
             $this->permissionDep->add($data);
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             foreach (['parent_id','code'] as $f) {
-                if (empty($param[$f])) {
-                    return self::error("{$f} 不能为空");
-                }
+                self::throwIf(empty($param[$f]), "{$f} 不能为空");
             }
             $data = [
                 'name' => $param['name'],
@@ -94,18 +83,11 @@ class PermissionModule extends BaseModule
 
     public function edit($request)
     {
-        try {
-            $param = $this->validate($request, PermissionValidate::edit());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, PermissionValidate::edit());
+        
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
-            if (empty($param['i18n_key'])) {
-                return self::error('i18n_key 不能为空');
-            }
-            if (empty($param['show_menu'])) {
-                return self::error('show_menu 不能为空');
-            }
+            self::throwIf(empty($param['i18n_key']), 'i18n_key 不能为空');
+            self::throwIf(empty($param['show_menu']), 'show_menu 不能为空');
             $data = [
                 'name' => $param['name'],
                 'parent_id' => empty($param['parent_id']) ? -1 : $param['parent_id'],
@@ -118,9 +100,7 @@ class PermissionModule extends BaseModule
             $this->permissionDep->update($param['id'], $data);
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
             foreach (['path','component','i18n_key', 'show_menu'] as $f) {
-                if (empty($param[$f])) {
-                    return self::error("{$f} 不能为空");
-                }
+                self::throwIf(empty($param[$f]), "{$f} 不能为空");
             }
             $data = [
                 'name' => $param['name'],
@@ -136,9 +116,7 @@ class PermissionModule extends BaseModule
             $this->permissionDep->update($param['id'], $data);
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             foreach (['parent_id','code'] as $f) {
-                if (empty($param[$f])) {
-                    return self::error("{$f} 不能为空");
-                }
+                self::throwIf(empty($param[$f]), "{$f} 不能为空");
             }
             $data = [
                 'name' => $param['name'],
@@ -157,11 +135,7 @@ class PermissionModule extends BaseModule
 
     public function del($request)
     {
-        try {
-            $param = $this->validate($request, PermissionValidate::del());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, PermissionValidate::del());
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
         $this->permissionDep->delete($ids);
         
@@ -173,11 +147,7 @@ class PermissionModule extends BaseModule
 
     public function batchEdit($request)
     {
-        try {
-            $param = $this->validate($request, PermissionValidate::batchEdit());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, PermissionValidate::batchEdit());
         $ids = is_array($param['ids']) ? $param['ids'] : [$param['ids']];
 
         if ($param['field'] == 'description') {
@@ -218,11 +188,7 @@ class PermissionModule extends BaseModule
 
     public function status($request)
     {
-        try {
-            $param = $this->validate($request, PermissionValidate::status());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, PermissionValidate::status());
         $this->permissionDep->update($param['id'], ['status' => $param['status']]);
         
         PermissionDep::clearCache();

@@ -48,19 +48,13 @@ class AiChatModule extends BaseModule
      */
     public function cancel($request): array
     {
-        try {
-            $param = $this->validate($request, AiChatValidate::cancel());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiChatValidate::cancel());
 
         $runId = (int)$param['run_id'];
         $userId = (int)$request->userId;
 
         $run = $this->runsDep->find($runId);
-        if (!$run || $run->user_id !== $userId) {
-            return self::error('Run 不存在或无权访问');
-        }
+        self::throwIf(!$run || $run->user_id !== $userId, 'Run 不存在或无权访问');
 
         // 只能取消运行中的 Run
         if ($run->run_status !== AiEnum::RUN_STATUS_RUNNING) {
@@ -89,11 +83,7 @@ class AiChatModule extends BaseModule
         $userId = $request->userId;
         $startTime = microtime(true);
 
-        try {
-            $param = $this->validate($request, AiChatValidate::send());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiChatValidate::send());
 
         $prepared = $this->prepareChat($param, $userId);
         if ($prepared[1] !== 0) {
@@ -145,7 +135,7 @@ class AiChatModule extends BaseModule
         }
 
         if ($errorMsg !== null) {
-            return self::error('AI 调用失败: ' . $errorMsg);
+            self::throw('AI 调用失败: ' . $errorMsg);
         }
 
         if ($ctx['isNew']) {
@@ -275,7 +265,7 @@ class AiChatModule extends BaseModule
         }
 
         if ($errorMsg !== null) {
-            return self::error('AI 调用失败: ' . $errorMsg);
+            self::throw('AI 调用失败: ' . $errorMsg);
         }
 
         if ($ctx['isNew']) {
@@ -299,9 +289,7 @@ class AiChatModule extends BaseModule
         $isNew = false;
 
         if (empty($conversationId)) {
-            if (empty($agentId)) {
-                return self::error('会话ID为空时，智能体ID必填');
-            }
+            self::throwIf(empty($agentId), '会话ID为空时，智能体ID必填');
             $conversationId = $this->conversationsDep->add([
                 'user_id' => $userId,
                 'agent_id' => $agentId,
@@ -316,26 +304,20 @@ class AiChatModule extends BaseModule
             }
         } else {
             $conversation = $this->conversationsDep->getByUser((int)$conversationId, $userId);
-            if (!$conversation) {
-                return self::error('会话不存在');
-            }
+            self::throwNotFound($conversation, '会话不存在');
             $agentId = $conversation->agent_id;
         }
 
         $agent = $this->agentsDep->get((int)$agentId);
-        if (!$agent || $agent->status !== CommonEnum::YES) {
-            return self::error($agent ? '智能体已禁用' : '智能体不存在');
-        }
+        self::throwIf(!$agent, '智能体不存在');
+        self::throwIf($agent->status !== CommonEnum::YES, '智能体已禁用');
 
         $model = $this->modelsDep->get((int)$agent->model_id);
-        if (!$model || $model->status !== CommonEnum::YES) {
-            return self::error($model ? '模型已禁用' : '模型不存在');
-        }
+        self::throwIf(!$model, '模型不存在');
+        self::throwIf($model->status !== CommonEnum::YES, '模型已禁用');
 
         [$client, $config, $error] = $this->chatService->createClient($model);
-        if ($error) {
-            return self::error($error);
-        }
+        self::throwIf($error, $error ?? '创建客户端失败');
 
         $metaJson = null;
         if (!empty($attachments)) {

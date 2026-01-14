@@ -28,12 +28,9 @@ class UploadRuleModule extends BaseModule
 
     public function add($request)
     {
-        try { $param = $this->validate($request, UploadRuleValidate::add()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadRuleValidate::add());
         $resDep = $this->uploadRuleDep->findByTitle($param['title']);
-        if ($resDep){
-            return self::error('规则标题已存在');
-        }
+        self::throwIf($resDep, '规则标题已存在');
         $data = [
             'title'       => $param['title'],
             'max_size_mb' => $param['max_size_mb'],
@@ -46,12 +43,9 @@ class UploadRuleModule extends BaseModule
 
     public function edit($request)
     {
-        try { $param = $this->validate($request, UploadRuleValidate::edit()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadRuleValidate::edit());
         $resDep = $this->uploadRuleDep->findByTitle($param['title']);
-        if ($resDep && $resDep['id'] != $param['id']){
-            return self::error('规则标题已存在');
-        }
+        self::throwIf($resDep && $resDep['id'] != $param['id'], '规则标题已存在');
         $data = [
             'title'       => $param['title'],
             'max_size_mb' => $param['max_size_mb'],
@@ -64,8 +58,7 @@ class UploadRuleModule extends BaseModule
 
     public function del($request)
     {
-        try { $param = $this->validate($request, UploadRuleValidate::del()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadRuleValidate::del());
         $this->uploadRuleDep->delete($param['id']);
         return self::success();
     }

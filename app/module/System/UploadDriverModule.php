@@ -28,12 +28,9 @@ class UploadDriverModule extends BaseModule
 
     public function add($request)
     {
-        try { $param = $this->validate($request, UploadDriverValidate::add()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadDriverValidate::add());
         $exists = $this->uploadDriverDep->findByDriverBucket($param['driver'], $param['bucket']);
-        if ($exists) {
-            return self::error('同一驱动下该桶已存在');
-        }
+        self::throwIf($exists, '同一驱动下该桶已存在');
         $data = [
             'driver' => $param['driver'],
             'secret_id' => $param['secret_id'],
@@ -51,12 +48,9 @@ class UploadDriverModule extends BaseModule
 
     public function edit($request)
     {
-        try { $param = $this->validate($request, UploadDriverValidate::edit()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadDriverValidate::edit());
         $exists = $this->uploadDriverDep->findByDriverBucket($param['driver'], $param['bucket']);
-        if ($exists && $exists['id'] != $param['id']) {
-            return self::error('同一驱动下该桶已存在');
-        }
+        self::throwIf($exists && $exists['id'] != $param['id'], '同一驱动下该桶已存在');
         $data = [
             'driver' => $param['driver'],
             'secret_id' => $param['secret_id'],
@@ -74,8 +68,7 @@ class UploadDriverModule extends BaseModule
 
     public function del($request)
     {
-        try { $param = $this->validate($request, UploadDriverValidate::del()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadDriverValidate::del());
         $this->uploadDriverDep->delete($param['id']);
         return self::success();
     }

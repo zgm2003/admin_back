@@ -35,13 +35,10 @@ class UploadSettingModule extends BaseModule
 
     public function add($request)
     {
-        try { $param = $this->validate($request, UploadSettingValidate::add()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadSettingValidate::add());
         
         $exists = $this->uploadSettingDep->findByDriverRule($param['driver_id'], $param['rule_id']);
-        if ($exists) {
-            return self::error('该驱动与规则组合已存在');
-        }
+        self::throwIf($exists, '该驱动与规则组合已存在');
 
         $data = [
             'driver_id' => $param['driver_id'],
@@ -51,14 +48,10 @@ class UploadSettingModule extends BaseModule
         ];
 
         if ((int)$param['status'] === CommonEnum::YES) {
-            try {
-                $this->withTransaction(function () use ($data) {
-                    $this->uploadSettingDep->clearStatus();
-                    $this->uploadSettingDep->add($data);
-                });
-            } catch (\Throwable $e) {
-                return self::error('新增失败：' . $e->getMessage());
-            }
+            $this->withTransaction(function () use ($data) {
+                $this->uploadSettingDep->clearStatus();
+                $this->uploadSettingDep->add($data);
+            });
         } else {
             $this->uploadSettingDep->add($data);
         }
@@ -67,13 +60,10 @@ class UploadSettingModule extends BaseModule
 
     public function edit($request)
     {
-        try { $param = $this->validate($request, UploadSettingValidate::edit()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadSettingValidate::edit());
         
         $exists = $this->uploadSettingDep->findByDriverRule($param['driver_id'], $param['rule_id']);
-        if ($exists && $exists['id'] != $param['id']) {
-            return self::error('该驱动与规则组合已存在');
-        }
+        self::throwIf($exists && $exists['id'] != $param['id'], '该驱动与规则组合已存在');
 
         $data = [
             'driver_id' => $param['driver_id'],
@@ -83,14 +73,10 @@ class UploadSettingModule extends BaseModule
         ];
 
         if ((int)$param['status'] === CommonEnum::YES) {
-            try {
-                $this->withTransaction(function () use ($param, $data) {
-                    $this->uploadSettingDep->clearStatus();
-                    $this->uploadSettingDep->update($param['id'], $data);
-                });
-            } catch (\Throwable $e) {
-                return self::error('编辑失败：' . $e->getMessage());
-            }
+            $this->withTransaction(function () use ($param, $data) {
+                $this->uploadSettingDep->clearStatus();
+                $this->uploadSettingDep->update($param['id'], $data);
+            });
         } else {
             $this->uploadSettingDep->update($param['id'], $data);
         }
@@ -99,30 +85,22 @@ class UploadSettingModule extends BaseModule
 
     public function del($request)
     {
-        try { $param = $this->validate($request, UploadSettingValidate::del()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadSettingValidate::del());
         $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [ (int)$param['id'] ];
-        if ($this->uploadSettingDep->hasEnabledIn($ids)) {
-            return self::error('包含启用的上传设置，无法删除');
-        }
+        self::throwIf($this->uploadSettingDep->hasEnabledIn($ids), '包含启用的上传设置，无法删除');
         $this->uploadSettingDep->delete($ids);
         return self::success();
     }
     
     public function status($request)
     {
-        try { $param = $this->validate($request, UploadSettingValidate::status()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, UploadSettingValidate::status());
         
         if ((int)$param['status'] === CommonEnum::YES) {
-            try {
-                $this->withTransaction(function () use ($param) {
-                    $this->uploadSettingDep->clearStatus();
-                    $this->uploadSettingDep->update($param['id'], ['status' => $param['status']]);
-                });
-            } catch (\Throwable $e) {
-                return self::error('状态变更失败：' . $e->getMessage());
-            }
+            $this->withTransaction(function () use ($param) {
+                $this->uploadSettingDep->clearStatus();
+                $this->uploadSettingDep->update($param['id'], ['status' => $param['status']]);
+            });
         } else {
             $this->uploadSettingDep->update($param['id'], ['status' => $param['status']]);
         }

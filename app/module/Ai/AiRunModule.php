@@ -55,11 +55,7 @@ class AiRunModule extends BaseModule
      */
     public function list($request): array
     {
-        try {
-            $param = $this->validate($request, AiRunValidate::list());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiRunValidate::list());
 
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
@@ -113,16 +109,10 @@ class AiRunModule extends BaseModule
      */
     public function detail($request): array
     {
-        try {
-            $param = $this->validate($request, AiRunValidate::detail());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiRunValidate::detail());
 
         $run = $this->runsDep->get((int)$param['id']);
-        if (!$run) {
-            return self::error('记录不存在');
-        }
+        self::throwNotFound($run, '记录不存在');
 
         // 查询关联数据（包含已删除，用于审计）
         $agent = $this->agentsDep->find($run->agent_id);
@@ -199,11 +189,7 @@ class AiRunModule extends BaseModule
      */
     public function statsSummary($request): array
     {
-        try {
-            $param = $this->validate($request, AiRunValidate::statsFilter());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiRunValidate::statsFilter());
 
         // 默认查询最近 30 天
         if (empty($param['date_start']) && empty($param['date_end'])) {
@@ -228,11 +214,7 @@ class AiRunModule extends BaseModule
      */
     public function statsByDate($request): array
     {
-        try {
-            $param = $this->validate($request, AiRunValidate::statsList());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiRunValidate::statsList());
 
         if (empty($param['date_start']) && empty($param['date_end'])) {
             $param['date_start'] = date('Y-m-d', strtotime('-29 days'));
@@ -256,11 +238,7 @@ class AiRunModule extends BaseModule
      */
     public function statsByAgent($request): array
     {
-        try {
-            $param = $this->validate($request, AiRunValidate::statsList());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiRunValidate::statsList());
 
         if (empty($param['date_start']) && empty($param['date_end'])) {
             $param['date_start'] = date('Y-m-d', strtotime('-29 days'));
@@ -300,11 +278,7 @@ class AiRunModule extends BaseModule
      */
     public function statsByUser($request): array
     {
-        try {
-            $param = $this->validate($request, AiRunValidate::statsList());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiRunValidate::statsList());
 
         if (empty($param['date_start']) && empty($param['date_end'])) {
             $param['date_start'] = date('Y-m-d', strtotime('-29 days'));

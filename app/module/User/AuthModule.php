@@ -52,11 +52,7 @@ class AuthModule extends BaseModule
      */
     public function login($request): array
     {
-        try {
-            $param = $this->validate($request, UsersValidate::login());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, UsersValidate::login());
 
         $loginType = $param['login_type'];
 
@@ -67,9 +63,7 @@ class AuthModule extends BaseModule
             $result = $this->loginByCode($param, $loginType, $request);
         }
 
-        if ($result['error']) {
-            return self::error($result['error']);
-        }
+        self::throwIf($result['error'], $result['error'] ?? '登录失败');
 
         return self::success($this->createSession($result['user']['id'], $param['login_account'], $request, $loginType));
     }
@@ -201,29 +195,21 @@ class AuthModule extends BaseModule
     public function refresh($request): array
     {
         $refreshToken = $request->post('refresh_token');
-        if (!$refreshToken) {
-            return self::error('缺少刷新令牌', 401);
-        }
+        self::throwIf(!$refreshToken, '缺少刷新令牌', self::CODE_UNAUTHORIZED);
 
         try {
             $hash = TokenService::hashToken($refreshToken);
         } catch (\Exception $e) {
-            return self::error('令牌格式错误', 401);
+            self::throw('令牌格式错误', self::CODE_UNAUTHORIZED);
         }
 
         $session = $this->userSessionsDep->findValidByRefreshHash($hash);
-        if (!$session) {
-            return self::error('刷新令牌无效或已过期', 401);
-        }
+        self::throwIf(!$session, '刷新令牌无效或已过期', self::CODE_UNAUTHORIZED);
 
-        if (Carbon::parse($session['refresh_expires_at'])->isPast()) {
-            return self::error('刷新令牌已过期，请重新登录', 401);
-        }
+        self::throwIf(Carbon::parse($session['refresh_expires_at'])->isPast(), '刷新令牌已过期，请重新登录', self::CODE_UNAUTHORIZED);
 
         $platform = $session['platform'];
-        if (!$this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id'])) {
-            return self::error('账号已在其他设备登录，请重新登录', 401);
-        }
+        self::throwIf(!$this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id']), '账号已在其他设备登录，请重新登录', self::CODE_UNAUTHORIZED);
 
         $tokens = TokenService::generateTokenPair();
 
@@ -282,11 +268,7 @@ class AuthModule extends BaseModule
      */
     public function sendCode($request): array
     {
-        try {
-            $param = $this->validate($request, UsersValidate::sendCode());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, UsersValidate::sendCode());
 
         $account = $param['account'];
         $scene = $param['scene'];
@@ -309,7 +291,7 @@ class AuthModule extends BaseModule
             return self::success([], '验证码发送成功(测试:123456)');
         }
 
-        return self::error('请输入正确的邮箱或手机号');
+        self::throw('请输入正确的邮箱或手机号');
     }
 
     /**
@@ -317,22 +299,14 @@ class AuthModule extends BaseModule
      */
     public function forgetPassword($request): array
     {
-        try {
-            $param = $this->validate($request, UsersValidate::forgetPassword());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, UsersValidate::forgetPassword());
 
         $cacheKey = 'email_code_' . md5($param['email']);
         $code = Cache::get($cacheKey);
-        if ($code != $param['code']) {
-            return self::error('验证码错误');
-        }
+        self::throwIf($code != $param['code'], '验证码错误');
 
         $user = $this->usersDep->findByEmail($param['email']);
-        if (!$user) {
-            return self::error('用户不存在');
-        }
+        self::throwNotFound($user, '用户不存在');
 
         $this->usersDep->update($user->id, [
             'password' => password_hash($param['newpassword'], PASSWORD_DEFAULT),

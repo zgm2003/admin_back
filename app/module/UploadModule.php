@@ -25,43 +25,35 @@ class UploadModule extends BaseModule
     {
         $folder = trim((string)$request->input('folderName', ''));
 
-        if (
+        self::throwIf(
             $folder === ''
             || !in_array($folder, $this->allowedFolders, true)
-            || str_contains($folder, '..')
-        ) {
-            return self::error('folderName 非法', 400);
-        }
+            || str_contains($folder, '..'),
+            'folderName 非法'
+        );
 
         $dep = new UploadSettingDep();
         $setting = $dep->getActive();
 
-        if (!$setting) {
-            return self::error('未配置有效的上传设置', 500);
+        self::throwIf(!$setting, '未配置有效的上传设置');
+
+        $data = [];
+        if ($setting['driver'] === 'cos') {
+            $data = $this->getCosToken($setting, $folder);
+        } elseif ($setting['driver'] === 'oss') {
+            $data = $this->getOssToken($setting, $folder);
+        } else {
+            self::throw('不支持的驱动类型');
         }
 
-        try {
-            $data = [];
-            if ($setting['driver'] === 'cos') {
-                $data = $this->getCosToken($setting, $folder);
-            } elseif ($setting['driver'] === 'oss') {
-                $data = $this->getOssToken($setting, $folder);
-            } else {
-                return self::error('不支持的驱动类型', 500);
-            }
+        // Merge rule info
+        $data['rule'] = [
+            'maxSize' => (int)$setting['max_size_mb'], // MB
+            'imageExts' => json_decode($setting['image_exts'] ?? '[]'),
+            'fileExts' => json_decode($setting['file_exts'] ?? '[]'),
+        ];
 
-            // Merge rule info
-            $data['rule'] = [
-                'maxSize' => (int)$setting['max_size_mb'], // MB
-                'imageExts' => json_decode($setting['image_exts'] ?? '[]'),
-                'fileExts' => json_decode($setting['file_exts'] ?? '[]'),
-            ];
-
-            return self::success($data);
-
-        } catch (\Throwable $e) {
-            return self::error($e->getMessage(), 500);
-        }
+        return self::success($data);
     }
 
     private function getCosToken($setting, $folder)

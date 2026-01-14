@@ -25,17 +25,11 @@ class AiMessageModule extends BaseModule
      */
     public function list($request): array
     {
-        try {
-            $param = $this->validate($request, AiMessageValidate::list());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiMessageValidate::list());
 
         // 校验会话存在且属于当前用户
         $conversation = $this->conversationsDep->getByUser((int)$param['conversation_id'], $request->userId);
-        if (!$conversation) {
-            return self::error('会话不存在');
-        }
+        self::throwNotFound($conversation, '会话不存在');
 
         $param['page_size'] = $param['page_size'] ?? 100;
         $param['current_page'] = $param['current_page'] ?? 1;
@@ -74,11 +68,7 @@ class AiMessageModule extends BaseModule
      */
     public function del($request): array
     {
-        try {
-            $param = $this->validate($request, AiMessageValidate::del());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiMessageValidate::del());
 
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
 
@@ -92,23 +82,15 @@ class AiMessageModule extends BaseModule
      */
     public function feedback($request): array
     {
-        try {
-            $param = $this->validate($request, AiMessageValidate::feedback());
-        } catch (RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, AiMessageValidate::feedback());
 
         // 校验消息存在
         $message = $this->dep->get((int)$param['id']);
-        if (!$message) {
-            return self::error('消息不存在');
-        }
+        self::throwNotFound($message, '消息不存在');
 
         // 校验消息属于当前用户的会话
         $conversation = $this->conversationsDep->getByUser($message->conversation_id, $request->userId);
-        if (!$conversation) {
-            return self::error('无权操作');
-        }
+        self::throwIf(!$conversation, '无权操作');
 
         // feedback: 1=点赞 2=点踩 null=取消
         $feedback = isset($param['feedback']) ? (int)$param['feedback'] : null;

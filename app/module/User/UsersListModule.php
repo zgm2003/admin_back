@@ -49,11 +49,7 @@ class UsersListModule extends BaseModule
 
     public function edit($request)
     {
-        try {
-            $param = $this->validate($request, UsersListValidate::edit());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, UsersListValidate::edit());
 
         $userData = [
             'username' => $param['username'],
@@ -77,11 +73,7 @@ class UsersListModule extends BaseModule
 
     public function del($request)
     {
-        try {
-            $param = $this->validate($request, UsersListValidate::del());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, UsersListValidate::del());
         $this->usersDep->delete($param['id']);
         return self::success();
     }
@@ -156,28 +148,18 @@ class UsersListModule extends BaseModule
 
     public function batchEdit($request)
     {
-        try {
-            $param = $this->validate($request, UsersListValidate::batchEdit());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, UsersListValidate::batchEdit());
         $id = $param['ids'];
         if ($param['field'] == 'sex') {
-            if (empty($param['sex'])) {
-                return self::error('性别不能为空');
-            }
+            self::throwIf(empty($param['sex']), '性别不能为空');
             $this->userProfileDep->updateByUserId($id, ['sex' => (int)$param['sex']]);
         }
         if ($param['field'] == 'address') {
-            if (empty($param['address'])) {
-                return self::error('地址不能为空');
-            }
+            self::throwIf(empty($param['address']), '地址不能为空');
             $this->userProfileDep->updateByUserId($id, ['address_id' => (int)$param['address']]);
         }
         if ($param['field'] == 'detail_address') {
-            if (empty($param['detail_address'])) {
-                return self::error('详细地址不能为空');
-            }
+            self::throwIf(empty($param['detail_address']), '详细地址不能为空');
             $this->userProfileDep->updateByUserId($id, ['detail_address' => $param['detail_address']]);
         }
         return self::success();
@@ -185,11 +167,7 @@ class UsersListModule extends BaseModule
 
     public function export($request)
     {
-        try {
-            $param = $this->validate($request, UsersListValidate::export());
-        } catch (\RuntimeException $e) {
-            return self::error($e->getMessage());
-        }
+        $param = $this->validate($request, UsersListValidate::export());
         $users = $this->usersDep->getMap($param['ids'])->values();
         
         // 批量预加载

@@ -39,8 +39,7 @@ class OperationLogModule extends BaseModule
 
     public function del($request)
     {
-        try { $param = $this->validate($request, OperationLogValidate::del()); }
-        catch (\RuntimeException $e) { return self::error($e->getMessage()); }
+        $param = $this->validate($request, OperationLogValidate::del());
 
         $this->operationLogDep->delete($param['id']);
 

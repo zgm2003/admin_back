@@ -58,22 +58,16 @@ class UserSessionModule extends BaseModule
     public function kick($request): array
     {
         $id = $request->post('id');
-        if (!$id) {
-            return self::error('缺少会话ID');
-        }
+        self::throwIf(!$id, '缺少会话ID');
 
         // 获取会话信息
         $sessions = $this->sessionsDep->getByIds([$id]);
         $session = $sessions->first();
-        if (!$session) {
-            return self::error('会话不存在');
-        }
+        self::throwNotFound($session, '会话不存在');
 
         // 不能踢自己当前会话
         $currentSessionId = $request->sessionId ?? null;
-        if ($currentSessionId && (int)$currentSessionId === (int)$id) {
-            return self::error('不能踢自己的当前会话');
-        }
+        self::throwIf($currentSessionId && (int)$currentSessionId === (int)$id, '不能踢自己的当前会话');
 
         // 撤销会话
         $this->sessionsDep->revoke($id);
@@ -95,15 +89,11 @@ class UserSessionModule extends BaseModule
     public function batchKick($request): array
     {
         $ids = $request->post('ids', []);
-        if (empty($ids)) {
-            return self::error('请选择要踢下线的会话');
-        }
+        self::throwIf(empty($ids), '请选择要踢下线的会话');
 
         // 获取会话信息
         $sessions = $this->sessionsDep->getByIds($ids);
-        if ($sessions->isEmpty()) {
-            return self::error('未找到有效会话');
-        }
+        self::throwIf($sessions->isEmpty(), '未找到有效会话');
 
         // 过滤掉当前会话，收集要清除的 Redis keys
         $currentSessionId = $request->sessionId ?? null;
