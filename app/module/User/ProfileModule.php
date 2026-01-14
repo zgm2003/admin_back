@@ -44,11 +44,13 @@ class ProfileModule extends BaseModule
         self::throwNotFound($user, '用户不存在');
 
         $profile = $this->userProfileDep->findByUserId($user->id);
+        $role = $user->role_id ? $this->roleDep->find($user->role_id) : null;
 
         $base = [
             'user_id' => $user->id,
             'username' => $user->username,
             'avatar' => $profile->avatar ?? '',
+            'role_name' => $role->name ?? '',
         ];
 
         $perm = $this->permissionService->buildPermissionContextByUser($user);
