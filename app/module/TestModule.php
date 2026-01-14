@@ -2,6 +2,8 @@
 
 namespace app\module;
 
+use app\dep\System\SystemSettingDep;
+
 /**
  * 测试模块 - 用于测试 BaseModule 的异常快捷方法
  */
@@ -106,6 +108,53 @@ class TestModule extends BaseModule
     }
 
     /**
+     * 测试系统设置 CRUD
+     */
+    public function testSystemSetting($request): array
+    {
+        $dep = new SystemSettingDep();
+        $testKey = 'test.crud.' . time();
+        
+        // 1. 新增
+        $dep->setValue($testKey, 'hello world', 1, '测试配置');
+        
+        // 2. 读取
+        $value = $dep->getValue($testKey);
+        self::throwIf($value !== 'hello world', '读取失败: ' . $value);
+        
+        // 3. 更新
+        $row = $dep->findByKey($testKey);
+        $dep->updateById($row->id, ['setting_value' => 'updated value']);
+        $value2 = $dep->getValue($testKey);
+        self::throwIf($value2 !== 'updated value', '更新失败: ' . $value2);
+        
+        // 4. 删除
+        $dep->deleteByKey($testKey);
+        $value3 = $dep->getValue($testKey);
+        self::throwIf($value3 !== null, '删除失败，值仍存在');
+        
+        return self::success(['message' => '系统设置 CRUD 测试通过！', 'test_key' => $testKey]);
+    }
+
+    /**
+     * 测试 SettingService 读取数据库配置
+     */
+    public function testSettingService($request): array
+    {
+        $accessTtl = \app\service\System\SettingService::getAccessTtl();
+        $refreshTtl = \app\service\System\SettingService::getRefreshTtl();
+        $adminPolicy = \app\service\System\SettingService::getAuthPolicy('admin');
+        $defaultAvatar = \app\service\System\SettingService::getDefaultAvatar();
+        
+        return self::success([
+            'access_ttl' => $accessTtl,
+            'refresh_ttl' => $refreshTtl,
+            'admin_policy' => $adminPolicy,
+            'default_avatar' => $defaultAvatar,
+        ]);
+    }
+
+    /**
      * 综合测试
      */
     public function test($request): array
@@ -120,6 +169,8 @@ class TestModule extends BaseModule
             'forbidden' => $this->testForbidden($request),
             'transactionSuccess' => $this->testTransactionSuccess($request),
             'transactionRollback' => $this->testTransactionRollback($request),
+            'systemSetting' => $this->testSystemSetting($request),
+            'settingService' => $this->testSettingService($request),
             default => $this->testSuccess($request),
         };
     }

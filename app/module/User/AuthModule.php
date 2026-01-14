@@ -12,6 +12,7 @@ use app\enum\SexEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
 use app\service\DictService;
+use app\service\System\SettingService;
 use app\service\User\TokenService;
 use app\validate\User\UsersValidate;
 use Carbon\Carbon;
@@ -142,6 +143,9 @@ class AuthModule extends BaseModule
 
         // 自动注册
         if (!$user) {
+            if (!SettingService::isRegisterEnabled()) {
+                return ['error' => '暂未开放注册', 'user' => null];
+            }
             $user = $this->autoRegister($param['login_account'], $loginType);
             if (!$user) {
                 return ['error' => '自动注册失败，请稍后重试', 'user' => null];
@@ -156,6 +160,11 @@ class AuthModule extends BaseModule
      */
     private function autoRegister(string $account, string $loginType)
     {
+        // 检查是否允许注册
+        if (!SettingService::isRegisterEnabled()) {
+            return null;
+        }
+
         try {
             return $this->withTransaction(function () use ($account, $loginType) {
                 $defaultRole = $this->roleDep->getDefault();
@@ -172,7 +181,7 @@ class AuthModule extends BaseModule
 
                 $this->userProfileDep->add([
                     'user_id' => $userId,
-                    'avatar' => config('app.default_avatar', ''),
+                    'avatar' => SettingService::getDefaultAvatar(),
                     'sex' => SexEnum::UNKNOWN,
                 ]);
 
@@ -329,7 +338,7 @@ class AuthModule extends BaseModule
         $tokens = TokenService::generateTokenPair();
 
         // 单端登录策略（互踢）
-        $policyConfig = config('auth.policies.' . ($platformHeader ?: 'default')) ?? config('auth.default_policy');
+        $policyConfig = SettingService::getAuthPolicy($platformHeader ?: 'default');
         if (!empty($policyConfig['single_session_per_platform'])) {
             $oldSessions = $this->userSessionsDep->listActiveByUserPlatform($userId, $platformHeader);
             foreach ($oldSessions as $oldSession) {
@@ -386,7 +395,7 @@ class AuthModule extends BaseModule
 
     private function checkSingleSessionPolicy(int $userId, string $platform, int $currentSessionId): bool
     {
-        $policyConfig = config('auth.policies.' . ($platform ?: 'default')) ?? config('auth.default_policy');
+        $policyConfig = SettingService::getAuthPolicy($platform ?: 'default');
         if (empty($policyConfig['single_session_per_platform'])) {
             return true;
         }

@@ -4,6 +4,7 @@ namespace app\middleware;
 
 use app\dep\User\UserSessionsDep;
 use app\enum\ErrorCodeEnum;
+use app\service\System\SettingService;
 use app\service\User\TokenService;
 use Carbon\Carbon;
 use support\Redis;
@@ -106,7 +107,7 @@ class CheckToken
         $currentPlatform = $request->header('platform');
         
         // 4.2 Load policy
-        $policyConfig = config('auth.policies.' . ($session['platform'] ?: 'default')) ?? config('auth.default_policy');
+        $policyConfig = SettingService::getAuthPolicy($session['platform'] ?: 'default');
         
         // 4.3 Bind Platform
         if (!empty($policyConfig['bind_platform'])) {

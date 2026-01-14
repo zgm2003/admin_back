@@ -33,7 +33,7 @@ class SystemSettingDep extends BaseDep
      */
     public function getValue(string $key, $default = null)
     {
-        $cacheKey = 'sys_setting:' . $key;
+        $cacheKey = 'sys_setting_' . str_replace('.', '_', $key);
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return $cached;
@@ -90,7 +90,7 @@ class SystemSettingDep extends BaseDep
             $this->model->insertGetId($data);
         }
 
-        Cache::delete('sys_setting:' . $key);
+        Cache::delete('sys_setting_' . str_replace('.', '_', $key));
         return true;
     }
 
@@ -120,7 +120,7 @@ class SystemSettingDep extends BaseDep
             ->where('setting_key', $key)
             ->where('is_del', CommonEnum::NO)
             ->update(['is_del' => CommonEnum::YES]);
-        Cache::delete('sys_setting:' . $key);
+        Cache::delete('sys_setting_' . str_replace('.', '_', $key));
     }
 
     /**
@@ -132,7 +132,7 @@ class SystemSettingDep extends BaseDep
             ->where('setting_key', $key)
             ->where('is_del', CommonEnum::NO)
             ->update(['status' => $status]);
-        Cache::delete('sys_setting:' . $key);
+        Cache::delete('sys_setting_' . str_replace('.', '_', $key));
     }
 
     /**
@@ -145,7 +145,7 @@ class SystemSettingDep extends BaseDep
             return false;
         }
         $this->model->where('id', $id)->update($data);
-        Cache::delete('sys_setting:' . $row->setting_key);
+        Cache::delete('sys_setting_' . str_replace('.', '_', $row->setting_key));
         return true;
     }
 
@@ -159,7 +159,7 @@ class SystemSettingDep extends BaseDep
         $this->model->whereIn('id', $ids)->update(['is_del' => CommonEnum::YES]);
         foreach ($rows as $r) {
             if (!empty($r['setting_key'])) {
-                Cache::delete('sys_setting:' . $r['setting_key']);
+                Cache::delete('sys_setting_' . str_replace('.', '_', $r['setting_key']));
             }
         }
         return true;
@@ -175,7 +175,7 @@ class SystemSettingDep extends BaseDep
             return false;
         }
         $this->model->where('id', $id)->update(['status' => $status]);
-        Cache::delete('sys_setting:' . $row->setting_key);
+        Cache::delete('sys_setting_' . str_replace('.', '_', $row->setting_key));
         return true;
     }
 }

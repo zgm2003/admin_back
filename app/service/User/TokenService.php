@@ -2,6 +2,7 @@
 
 namespace app\service\User;
 
+use app\service\System\SettingService;
 use Carbon\Carbon;
 
 class TokenService
@@ -23,8 +24,8 @@ class TokenService
     public static function generateTokenPair(): array
     {
         $now = Carbon::now();
-        $accessTtl = (int)config('auth.access_ttl', 4 * 3600);
-        $refreshTtl = (int)config('auth.refresh_ttl', 14 * 24 * 3600);
+        $accessTtl = SettingService::getAccessTtl();
+        $refreshTtl = SettingService::getRefreshTtl();
 
         $accessToken = self::makeToken(32);
         $refreshToken = self::makeToken(64);
