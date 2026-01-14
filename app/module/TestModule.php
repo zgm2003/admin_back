@@ -96,6 +96,16 @@ class TestModule extends BaseModule
     }
 
     /**
+     * 测试 403 无权限
+     */
+    public function testForbidden($request): array
+    {
+        self::throw('您没有权限执行此操作', self::CODE_FORBIDDEN);
+        
+        return self::success();
+    }
+
+    /**
      * 综合测试
      */
     public function test($request): array
@@ -107,6 +117,7 @@ class TestModule extends BaseModule
             'throwIf' => $this->testThrowIf($request),
             'throwUnless' => $this->testThrowUnless($request),
             'throwNotFound' => $this->testThrowNotFound($request),
+            'forbidden' => $this->testForbidden($request),
             'transactionSuccess' => $this->testTransactionSuccess($request),
             'transactionRollback' => $this->testTransactionRollback($request),
             default => $this->testSuccess($request),
