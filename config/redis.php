@@ -26,12 +26,12 @@ return [
             'heartbeat_interval' => 50,  // 心跳检测间隔，不要大于60秒
         ],
     ],
-    'cache' => [ // <==== 新增
+    'cache' => [
         'password' => getenv('REDIS_PASSWORD') ?: '',
         'host' => getenv('REDIS_HOST') ?: '127.0.0.1',
         'port' => (int)(getenv('REDIS_PORT') ?: 6379),
         'database' => 1,
-        'prefix' => 'webman_cache-',
+        'prefix' => 'cache:',
     ],
     // 专门的 Token 缓存
     'token' => [
@@ -39,7 +39,7 @@ return [
         'host'     => getenv('REDIS_HOST') ?: '127.0.0.1',
         'port'     => (int)(getenv('REDIS_PORT') ?: 6379),
         'database' => 2,
-        'prefix'   => 'atk:',
+        'prefix'   => 'token:',
         'pool'     => [
             'max_connections'    => 20,
             'min_connections'    => 2,
