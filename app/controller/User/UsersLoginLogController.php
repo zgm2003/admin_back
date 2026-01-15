@@ -1,9 +1,9 @@
 <?php
 
-namespace app\controller\System;
+namespace app\controller\User;
 
 use app\controller\Controller;
-use app\module\System\UsersLoginLogModule;
+use app\module\User\UsersLoginLogModule;
 use support\Request;
 
 class UsersLoginLogController extends Controller

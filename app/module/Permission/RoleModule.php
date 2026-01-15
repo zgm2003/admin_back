@@ -1,13 +1,13 @@
 <?php
 
-namespace app\module\User;
+namespace app\module\Permission;
 
-use app\dep\User\RoleDep;
+use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\validate\User\RoleValidate;
+use app\validate\Permission\RoleValidate;
 use support\Cache;
 
 class RoleModule extends BaseModule
@@ -48,7 +48,7 @@ class RoleModule extends BaseModule
         $param = $request->all();
         self::throwIf(empty($param['id']), 'ID不能为空');
         
-        $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [ (int)$param['id'] ];
+        $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [(int)$param['id']];
         $dep = $this->roleDep;
         $roles = $dep->getMapActive($ids);
         
@@ -67,7 +67,6 @@ class RoleModule extends BaseModule
 
         return self::success();
     }
-
 
     public function edit($request)
     {
@@ -93,11 +92,10 @@ class RoleModule extends BaseModule
 
     public function list($request)
     {
-
         $dep = $this->roleDep;
         $param = $request->all();
 
-       $param['page_size'] = $param['page_size'] ?? 20;
+        $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
         $resList = $dep->list($param);
 
@@ -143,7 +141,4 @@ class RoleModule extends BaseModule
         }
         return self::success();
     }
-
-
 }
-

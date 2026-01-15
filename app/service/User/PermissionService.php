@@ -2,8 +2,8 @@
 
 namespace app\service\User;
 
-use app\dep\User\PermissionDep;
-use app\dep\User\RoleDep;
+use app\dep\Permission\PermissionDep;
+use app\dep\Permission\RoleDep;
 use app\enum\PermissionEnum;
 use app\enum\CommonEnum;
 

@@ -1,12 +1,12 @@
 <?php
 
-namespace app\module\User;
+namespace app\module\Permission;
 
-use app\dep\User\PermissionDep;
+use app\dep\Permission\PermissionDep;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\validate\User\PermissionValidate;
+use app\validate\Permission\PermissionValidate;
 
 class PermissionModule extends BaseModule
 {

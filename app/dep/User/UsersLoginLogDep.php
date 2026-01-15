@@ -1,9 +1,9 @@
 <?php
 
-namespace app\dep\System;
+namespace app\dep\User;
 
 use app\dep\BaseDep;
-use app\model\System\UsersLoginLogModel;
+use app\model\User\UsersLoginLogModel;
 use support\Model;
 
 /**

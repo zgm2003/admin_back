@@ -1,10 +1,10 @@
 <?php
 
-namespace app\dep\User;
+namespace app\dep\Permission;
 
 use app\dep\BaseDep;
 use app\enum\CommonEnum;
-use app\model\User\RoleModel;
+use app\model\Permission\RoleModel;
 use support\Model;
 
 class RoleDep extends BaseDep

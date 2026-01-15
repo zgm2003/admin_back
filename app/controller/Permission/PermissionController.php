@@ -1,27 +1,25 @@
 <?php
-namespace app\controller\User;
+namespace app\controller\Permission;
 
 use app\controller\Controller;
-use app\module\User\PermissionModule;
+use app\module\Permission\PermissionModule;
 use support\Request;
 
-// Webman 原生 Request 类
-// 正确引用业务模块
-class PermissionController extends Controller{
-
-    public function init(Request $request){
-
-        $this->run([PermissionModule::class,'init'],$request);
+class PermissionController extends Controller
+{
+    public function init(Request $request)
+    {
+        $this->run([PermissionModule::class, 'init'], $request);
         return $this->response();
-
     }
+
     /**
      * @OperationLog("菜单新增")
      * @Permission("permission.add")
      */
     public function add(Request $request)
     {
-        $this->run([PermissionModule::class,'add'],$request);
+        $this->run([PermissionModule::class, 'add'], $request);
         return $this->response();
     }
 
@@ -29,30 +27,34 @@ class PermissionController extends Controller{
      * @OperationLog("菜单编辑")
      * @Permission("permission.edit")
      */
-    public function edit(Request $request){
-        $this->run([PermissionModule::class,'edit'],$request);
+    public function edit(Request $request)
+    {
+        $this->run([PermissionModule::class, 'edit'], $request);
         return $this->response();
     }
+
     /**
      * @OperationLog("菜单删除")
      * @Permission("permission.del")
      */
     public function del(Request $request)
     {
-        $this->run([PermissionModule::class,'del'],$request);
+        $this->run([PermissionModule::class, 'del'], $request);
         return $this->response();
     }
+
     public function list(Request $request)
     {
-        $this->run([PermissionModule::class,'list'],$request);
+        $this->run([PermissionModule::class, 'list'], $request);
         return $this->response();
     }
+
     /**
      * @OperationLog("菜单批量修改")
      */
     public function batchEdit(Request $request)
     {
-        $this->run([PermissionModule::class,'batchEdit'],$request);
+        $this->run([PermissionModule::class, 'batchEdit'], $request);
         return $this->response();
     }
 
@@ -61,9 +63,7 @@ class PermissionController extends Controller{
      */
     public function status(Request $request)
     {
-        $this->run([PermissionModule::class,'status'],$request);
+        $this->run([PermissionModule::class, 'status'], $request);
         return $this->response();
     }
-
-
 }

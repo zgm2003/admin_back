@@ -1,8 +1,8 @@
 <?php
 
-namespace app\module\System;
+namespace app\module\User;
 
-use app\dep\System\UsersLoginLogDep;
+use app\dep\User\UsersLoginLogDep;
 use app\dep\User\UsersDep;
 use app\module\BaseModule;
 use app\service\DictService;

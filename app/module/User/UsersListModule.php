@@ -3,7 +3,7 @@
 namespace app\module\User;
 
 use app\dep\AddressDep;
-use app\dep\User\RoleDep;
+use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UserSessionsDep;
 use app\dep\User\UserProfileDep;

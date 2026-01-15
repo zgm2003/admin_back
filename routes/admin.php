@@ -33,21 +33,21 @@ Route::group('/api/admin', function () {
     // 需要认证的接口
 
     //菜单管理
-    Route::post('/Permission/init', [controller\User\PermissionController::class, 'init']);
-    Route::post('/Permission/add', [controller\User\PermissionController::class, 'add']);
-    Route::post('/Permission/edit', [controller\User\PermissionController::class, 'edit']);
-    Route::post('/Permission/del', [controller\User\PermissionController::class, 'del']);
-    Route::post('/Permission/list', [controller\User\PermissionController::class, 'list']);
-    Route::post('/Permission/batchEdit', [controller\User\PermissionController::class, 'batchEdit']);
-    Route::post('/Permission/status', [controller\User\PermissionController::class, 'status']);
+    Route::post('/Permission/init', [controller\Permission\PermissionController::class, 'init']);
+    Route::post('/Permission/add', [controller\Permission\PermissionController::class, 'add']);
+    Route::post('/Permission/edit', [controller\Permission\PermissionController::class, 'edit']);
+    Route::post('/Permission/del', [controller\Permission\PermissionController::class, 'del']);
+    Route::post('/Permission/list', [controller\Permission\PermissionController::class, 'list']);
+    Route::post('/Permission/batchEdit', [controller\Permission\PermissionController::class, 'batchEdit']);
+    Route::post('/Permission/status', [controller\Permission\PermissionController::class, 'status']);
 
     //角色管理
-    Route::post('/Role/init', [controller\User\RoleController::class, 'init']);
-    Route::post('/Role/list', [controller\User\RoleController::class, 'list']);
-    Route::post('/Role/add', [controller\User\RoleController::class, 'add']);
-    Route::post('/Role/edit', [controller\User\RoleController::class, 'edit']);
-    Route::post('/Role/del', [controller\User\RoleController::class, 'del']);
-    Route::post('/Role/default', [controller\User\RoleController::class, 'default']);
+    Route::post('/Role/init', [controller\Permission\RoleController::class, 'init']);
+    Route::post('/Role/list', [controller\Permission\RoleController::class, 'list']);
+    Route::post('/Role/add', [controller\Permission\RoleController::class, 'add']);
+    Route::post('/Role/edit', [controller\Permission\RoleController::class, 'edit']);
+    Route::post('/Role/del', [controller\Permission\RoleController::class, 'del']);
+    Route::post('/Role/default', [controller\Permission\RoleController::class, 'default']);
 
     //用户列表管理（拆分模块）
     Route::post('/UsersList/init', [controller\User\UsersListController::class, 'init']);
@@ -69,8 +69,8 @@ Route::group('/api/admin', function () {
     Route::post('/OperationLog/del', [controller\System\OperationLogController::class, 'del']);
 
     //用户登录日志管理
-    Route::post('/UsersLoginLog/init', [controller\System\UsersLoginLogController::class, 'init']);
-    Route::post('/UsersLoginLog/list', [controller\System\UsersLoginLogController::class, 'list']);
+    Route::post('/UsersLoginLog/init', [controller\User\UsersLoginLogController::class, 'init']);
+    Route::post('/UsersLoginLog/list', [controller\User\UsersLoginLogController::class, 'list']);
 
 
     //上传规则

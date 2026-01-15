@@ -1,11 +1,11 @@
 <?php
 
-namespace app\dep\User;
+namespace app\dep\Permission;
 
 use app\dep\BaseDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
-use app\model\User\PermissionModel;
+use app\model\Permission\PermissionModel;
 use support\Cache;
 use support\Model;
 
