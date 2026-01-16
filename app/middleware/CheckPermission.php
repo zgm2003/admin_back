@@ -1,5 +1,5 @@
 <?php
-// 文件：app/middleware/OperationLogMiddleware.php
+// 文件：app/middleware/CheckPermission.php
 
 namespace app\middleware;
 
