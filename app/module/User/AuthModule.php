@@ -210,6 +210,7 @@ class AuthModule extends BaseModule
             $hash = TokenService::hashToken($refreshToken);
         } catch (\Exception $e) {
             self::throw('令牌格式错误', self::CODE_UNAUTHORIZED);
+            return []; // unreachable, but satisfies static analysis
         }
 
         $session = $this->userSessionsDep->findValidByRefreshHash($hash);
