@@ -18,7 +18,7 @@ class UsersListModule extends BaseModule
     protected UsersDep $usersDep;
     protected RoleDep $roleDep;
     protected AddressDep $addressDep;
-    protected UserProfileDep $userProfileDep;
+    protected UserProfileDep $userProfileDep;  // export 还需要
 
     public function __construct()
     {
@@ -80,38 +80,33 @@ class UsersListModule extends BaseModule
 
         $resList = $this->usersDep->list($param);
         
-        // 批量预加载所有关联数据
-        $userIds = $resList->pluck('id')->toArray();
+        // 批量预加载角色数据（profile 已在 Dep 层 JOIN 查出）
         $roleIds = $resList->pluck('role_id')->unique()->toArray();
-        
-        // 批量查询，返回Map (key => model)
         $roleMap = $this->roleDep->getMap($roleIds);
-        $profileMap = $this->userProfileDep->getMapByUserIds($userIds);
         
-        $data['list'] = $resList->map(function ($item) use ($roleMap, $profileMap) {
+        $data['list'] = $resList->map(function ($item) use ($roleMap) {
             $resRole = $roleMap->get($item->role_id);
-            $profile = $profileMap->get($item->id);
             
             // 地址路径构建（使用内存缓存）
-            $districtId = (int)($profile->address_id ?? 0);
+            $districtId = (int)($item->address_id ?? 0);
             $addressPath = $this->addressDep->buildAddressPath($districtId);
-            $detail = $profile->detail_address ?? '';
+            $detail = $item->detail_address ?? '';
             $address = $addressPath ? ($addressPath . '-' . $detail) : $detail;
 
             return [
                 'id' => $item->id,
                 'username' => $item->username,
                 'email' => $item->email,
-                'avatar' => $profile->avatar ?? null,
+                'avatar' => $item->avatar ?? null,
                 'phone' => $item->phone,
-                'sex' => (int)($profile->sex ?? 1),
-                'sex_show' => SexEnum::$SexArr[(int)($profile->sex ?? 1)],
+                'sex' => (int)($item->sex ?? 1),
+                'sex_show' => SexEnum::$SexArr[(int)($item->sex ?? 1)],
                 'role_id' => $item->role_id,
                 'role_name' => $resRole->name ?? '',
-                'bio' => $profile->bio ?? '',
+                'bio' => $item->bio ?? '',
                 'address_show' => $address,
                 'address' => $districtId,
-                'detail_address' => $profile->detail_address ?? '',
+                'detail_address' => $item->detail_address ?? '',
                 'created_at' => $item['created_at']->toDateTimeString(),
             ];
         });

@@ -102,7 +102,7 @@ class UsersDep extends BaseDep
             ->when(!empty($param['date']) && is_array($param['date']) && count($param['date']) === 2, fn($q) => $q->whereBetween('u.created_at', [$param['date'][0], $param['date'][1]]))
             ->select([
                 'u.id', 'u.username', 'u.email', 'u.phone', 'u.role_id', 'u.status', 'u.created_at', 'u.updated_at',
-                'up.avatar', 'up.sex', 'up.address_id', 'up.detail_address',
+                'up.avatar', 'up.sex', 'up.address_id', 'up.detail_address', 'up.bio',
             ])
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
