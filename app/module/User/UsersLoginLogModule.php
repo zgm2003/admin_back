@@ -19,12 +19,12 @@ class UsersLoginLogModule extends BaseModule
         $this->usersDep = new UsersDep();
     }
 
+    // 用户列表不需要了，前端使用远程搜索
     public function init()
     {
         $dictService = new DictService();
 
         $dict = $dictService
-            ->setUserArr()
             ->setPlatformArr()
             ->setLoginTypeArr()
             ->getDict();

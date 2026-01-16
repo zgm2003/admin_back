@@ -21,19 +21,10 @@ class OperationLogModule extends BaseModule
         $this->usersDep = new UsersDep();
     }
 
-
-    public function init(){
-
-        $dictService = new DictService();
-
-        $dict = $dictService
-            ->setUserArr()
-            ->getDict();
-
-        $data['dict'] = $dict;
-
-        return self::success($data);
-
+    // init 无需返回用户列表，前端使用远程搜索
+    public function init($request)
+    {
+        return self::success();
     }
 
 

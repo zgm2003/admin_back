@@ -37,14 +37,13 @@ class AiRunModule extends BaseModule
     }
 
     /**
-     * 初始化（获取字典）
+     * 初始化（获取字典）- 用户列表不需要了，前端使用远程搜索
      */
     public function init($request): array
     {
         $dictService = new DictService();
         $data['dict'] = $dictService
             ->setRunStatusArr()
-            ->setUserArr()
             ->setAgentArr()
             ->getDict();
         return self::success($data);

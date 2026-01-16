@@ -7,7 +7,6 @@ use app\dep\System\UploadDriverDep;
 use app\dep\System\UploadRuleDep;
 use app\dep\Permission\RoleDep;
 use app\dep\Permission\PermissionDep;
-use app\dep\User\UsersDep;
 use app\dep\Ai\AiAgentsDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
@@ -177,26 +176,6 @@ class DictService
     }
     public function setSystemSettingValueTypeArr(){
         $this->dict['system_setting_value_type_arr'] = $this->enumToDict(SystemEnum::$valueTypeArr);
-        return $this;
-    }
-    public function setUserArr()
-    {
-        $dep = new UsersDep();
-        $res = $dep->all();
-        // 遍历集合并处理每个元素
-        $this->dict['usernameArr'] = $res->map(function ($item) {
-            return [
-                'value' => $item->id,
-                'label' => $item->username,
-            ];
-        });
-        $this->dict['userArr'] = $this->dict['usernameArr']; // 别名
-        $this->dict['emailArr'] = $res->map(function ($item) {
-            return [
-                'value' => $item->id,
-                'label' => $item->email,
-            ];
-        });
         return $this;
     }
 
