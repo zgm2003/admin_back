@@ -43,7 +43,7 @@ class UploadRuleDep extends BaseDep
     public function list(array $param)
     {
         return $this->model
-            ->when(!empty($param['title']), fn($q) => $q->where('title', 'like', '%' . $param['title'] . '%'))
+            ->when(!empty($param['title']), fn($q) => $q->where('title', 'like', $param['title'] . '%'))
             ->where('is_del', CommonEnum::NO)
             ->orderBy('id', 'desc')
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);

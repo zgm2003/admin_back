@@ -79,9 +79,16 @@ class UsersDep extends BaseDep
             ->from('users as u')
             ->leftJoin('user_profiles as up', 'u.id', '=', 'up.user_id')
             ->where('u.is_del', CommonEnum::NO)
-            ->when(isset($param['username']) && $param['username'] !== '', fn($q) => $q->where('u.username', 'like', '%' . $param['username'] . '%'))
-            ->when(isset($param['email']) && $param['email'] !== '', fn($q) => $q->where('u.email', 'like', '%' . $param['email'] . '%'))
-            ->when(isset($param['detail_address']) && $param['detail_address'] !== '', fn($q) => $q->where('up.detail_address', 'like', '%' . $param['detail_address'] . '%'))
+            // keyword 模糊搜索（用户名/邮箱/手机号）- 右模糊，保留索引
+            ->when(isset($param['keyword']) && $param['keyword'] !== '', fn($q) => $q->where(function ($q) use ($param) {
+                $kw = $param['keyword'] . '%';
+                $q->where('u.username', 'like', $kw)
+                  ->orWhere('u.email', 'like', $kw)
+                  ->orWhere('u.phone', 'like', $kw);
+            }))
+            ->when(isset($param['username']) && $param['username'] !== '', fn($q) => $q->where('u.username', 'like', $param['username'] . '%'))
+            ->when(isset($param['email']) && $param['email'] !== '', fn($q) => $q->where('u.email', 'like', $param['email'] . '%'))
+            ->when(isset($param['detail_address']) && $param['detail_address'] !== '', fn($q) => $q->where('up.detail_address', 'like', $param['detail_address'] . '%'))
             ->when(!empty($param['address_id'] ?? $param['address'] ?? null), function ($q) use ($param) {
                 $ids = $param['address_id'] ?? $param['address'];
                 if (is_array($ids)) {

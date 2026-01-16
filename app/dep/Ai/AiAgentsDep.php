@@ -27,7 +27,7 @@ class AiAgentsDep extends BaseDep
             ->when(!empty($param['model_id']), fn($q) => $q->where('model_id', (int)$param['model_id']))
             ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
             ->when(!empty($param['mode']), fn($q) => $q->where('mode', $param['mode']))
-            ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', '%' . $param['name'] . '%'))
+            ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', $param['name'] . '%'))
             ->orderBy('id', 'desc')
             ->paginate($pageSize, ['*'], 'page', $currentPage);
     }

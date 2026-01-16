@@ -183,7 +183,7 @@ class UserSessionsDep extends BaseDep
 
         // 筛选条件
         if (!empty($param['username'])) {
-            $query->where('users.username', 'like', '%' . $param['username'] . '%');
+            $query->where('users.username', 'like', $param['username'] . '%');
         }
         if (!empty($param['platform'])) {
             $query->where('user_sessions.platform', $param['platform']);

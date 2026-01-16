@@ -71,7 +71,7 @@ class UploadSettingDep extends BaseDep
             ->leftJoin('upload_driver as ud', 'us.driver_id', '=', 'ud.id')
             ->leftJoin('upload_rule as ur', 'us.rule_id', '=', 'ur.id')
             ->select('us.*', 'ud.driver', 'ud.bucket', 'ur.title as rule_title')
-            ->when(!empty($param['remark']), fn($q) => $q->where('us.remark', 'like', '%' . $param['remark'] . '%'))
+            ->when(!empty($param['remark']), fn($q) => $q->where('us.remark', 'like', $param['remark'] . '%'))
             ->when(!empty($param['status']), fn($q) => $q->where('us.status', $param['status']))
             ->when(!empty($param['driver_id']), fn($q) => $q->where('us.driver_id', $param['driver_id']))
             ->when(!empty($param['rule_id']), fn($q) => $q->where('us.rule_id', $param['rule_id']))

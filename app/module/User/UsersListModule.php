@@ -5,22 +5,17 @@ namespace app\module\User;
 use app\dep\AddressDep;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
-use app\dep\User\UserSessionsDep;
 use app\dep\User\UserProfileDep;
-use app\enum\CommonEnum;
 use app\enum\SexEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\service\ExportService;
-use Carbon\Carbon;
 use support\Cache;
-use support\Redis;
 use app\validate\User\UsersListValidate;
 
 class UsersListModule extends BaseModule
 {
     protected UsersDep $usersDep;
-    protected UserSessionsDep $userSessionsDep;
     protected RoleDep $roleDep;
     protected AddressDep $addressDep;
     protected UserProfileDep $userProfileDep;
@@ -28,7 +23,6 @@ class UsersListModule extends BaseModule
     public function __construct()
     {
         $this->usersDep = new UsersDep();
-        $this->userSessionsDep = new UserSessionsDep();
         $this->roleDep = new RoleDep();
         $this->addressDep = new AddressDep();
         $this->userProfileDep = new UserProfileDep();
@@ -83,7 +77,6 @@ class UsersListModule extends BaseModule
         $param = $request->all();
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
-        $platform = $param['platform'] ?? 'admin';
 
         $resList = $this->usersDep->list($param);
         
@@ -94,12 +87,10 @@ class UsersListModule extends BaseModule
         // 批量查询，返回Map (key => model)
         $roleMap = $this->roleDep->getMap($roleIds);
         $profileMap = $this->userProfileDep->getMapByUserIds($userIds);
-        $sessionMap = $this->userSessionsDep->getLatestActiveMapByUserIds($userIds, $platform);
         
-        $data['list'] = $resList->map(function ($item) use ($roleMap, $profileMap, $sessionMap, $platform) {
+        $data['list'] = $resList->map(function ($item) use ($roleMap, $profileMap) {
             $resRole = $roleMap->get($item->role_id);
             $profile = $profileMap->get($item->id);
-            $resUserSession = $sessionMap->get($item->id);
             
             // 地址路径构建（使用内存缓存）
             $districtId = (int)($profile->address_id ?? 0);
@@ -107,15 +98,8 @@ class UsersListModule extends BaseModule
             $detail = $profile->detail_address ?? '';
             $address = $addressPath ? ($addressPath . '-' . $detail) : $detail;
 
-            $expiresAt = $resUserSession->expires_at ?? null;
-            $isExpired = '无记录';
-            if ($expiresAt) {
-                $isExpired = $expiresAt < Carbon::now()->toDateTimeString() ? '已过期' : '未过期';
-            }
-
             return [
                 'id' => $item->id,
-                'uid' => $item->uid,
                 'username' => $item->username,
                 'email' => $item->email,
                 'avatar' => $profile->avatar ?? null,
@@ -123,17 +107,11 @@ class UsersListModule extends BaseModule
                 'sex' => (int)($profile->sex ?? 1),
                 'sex_show' => SexEnum::$SexArr[(int)($profile->sex ?? 1)],
                 'role_id' => $item->role_id,
-                'bio' => $profile->bio ?? '',
                 'role_name' => $resRole->name ?? '',
+                'bio' => $profile->bio ?? '',
                 'address_show' => $address,
                 'address' => $districtId,
                 'detail_address' => $profile->detail_address ?? '',
-                'expires_in' => $expiresAt,
-                'is_expired' => $isExpired,
-                'ip' => $resUserSession->ip ?? '',
-                'platform' => $resUserSession->platform ?? '',
-                'device_id' => $resUserSession->device_id ?? '',
-                'last_seen_at' => $resUserSession->last_seen_at ?? '',
                 'created_at' => $item['created_at']->toDateTimeString(),
             ];
         });

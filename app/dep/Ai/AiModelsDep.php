@@ -26,7 +26,7 @@ class AiModelsDep extends BaseDep
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['driver']), fn($q) => $q->where('driver', $param['driver']))
             ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
-            ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', '%' . $param['name'] . '%'))
+            ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', $param['name'] . '%'))
             ->orderBy('id', 'desc')
             ->paginate($pageSize, ['*'], 'page', $currentPage);
     }
