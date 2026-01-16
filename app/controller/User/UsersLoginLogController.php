@@ -8,15 +8,6 @@ use support\Request;
 
 class UsersLoginLogController extends Controller
 {
-    public function init(Request $request)
-    {
-        $this->run([UsersLoginLogModule::class, 'init'], $request);
-        return $this->response();
-    }
-
-    public function list(Request $request)
-    {
-        $this->run([UsersLoginLogModule::class, 'list'], $request);
-        return $this->response();
-    }
+    public function init(Request $request) { return $this->run([UsersLoginLogModule::class, 'init'], $request); }
+    public function list(Request $request) { return $this->run([UsersLoginLogModule::class, 'list'], $request); }
 }

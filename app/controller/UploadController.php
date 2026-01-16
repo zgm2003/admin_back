@@ -7,9 +7,5 @@ use support\Request;
 
 class UploadController extends Controller
 {
-    public function getUploadToken(Request $request)
-    {
-        $this->run([UploadModule::class, 'getUploadToken'], $request);
-        return $this->response();
-    }
+    public function getUploadToken(Request $request) { return $this->run([UploadModule::class, 'getUploadToken'], $request); }
 }

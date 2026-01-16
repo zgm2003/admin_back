@@ -8,21 +8,7 @@ use support\Request;
 
 class AiMessageController extends Controller
 {
-    public function list(Request $request)
-    {
-        $this->run([AiMessageModule::class, 'list'], $request);
-        return $this->response();
-    }
-
-    public function del(Request $request)
-    {
-        $this->run([AiMessageModule::class, 'del'], $request);
-        return $this->response();
-    }
-
-    public function feedback(Request $request)
-    {
-        $this->run([AiMessageModule::class, 'feedback'], $request);
-        return $this->response();
-    }
+    public function list(Request $request) { return $this->run([AiMessageModule::class, 'list'], $request); }
+    public function del(Request $request) { return $this->run([AiMessageModule::class, 'del'], $request); }
+    public function feedback(Request $request) { return $this->run([AiMessageModule::class, 'feedback'], $request); }
 }

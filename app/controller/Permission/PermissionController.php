@@ -1,4 +1,5 @@
 <?php
+
 namespace app\controller\Permission;
 
 use app\controller\Controller;
@@ -7,63 +8,21 @@ use support\Request;
 
 class PermissionController extends Controller
 {
-    public function init(Request $request)
-    {
-        $this->run([PermissionModule::class, 'init'], $request);
-        return $this->response();
-    }
+    public function init(Request $request) { return $this->run([PermissionModule::class, 'init'], $request); }
+    public function list(Request $request) { return $this->run([PermissionModule::class, 'list'], $request); }
 
-    /**
-     * @OperationLog("菜单新增")
-     * @Permission("permission.add")
-     */
-    public function add(Request $request)
-    {
-        $this->run([PermissionModule::class, 'add'], $request);
-        return $this->response();
-    }
+    /** @OperationLog("菜单新增") @Permission("permission.add") */
+    public function add(Request $request) { return $this->run([PermissionModule::class, 'add'], $request); }
 
-    /**
-     * @OperationLog("菜单编辑")
-     * @Permission("permission.edit")
-     */
-    public function edit(Request $request)
-    {
-        $this->run([PermissionModule::class, 'edit'], $request);
-        return $this->response();
-    }
+    /** @OperationLog("菜单编辑") @Permission("permission.edit") */
+    public function edit(Request $request) { return $this->run([PermissionModule::class, 'edit'], $request); }
 
-    /**
-     * @OperationLog("菜单删除")
-     * @Permission("permission.del")
-     */
-    public function del(Request $request)
-    {
-        $this->run([PermissionModule::class, 'del'], $request);
-        return $this->response();
-    }
+    /** @OperationLog("菜单删除") @Permission("permission.del") */
+    public function del(Request $request) { return $this->run([PermissionModule::class, 'del'], $request); }
 
-    public function list(Request $request)
-    {
-        $this->run([PermissionModule::class, 'list'], $request);
-        return $this->response();
-    }
+    /** @OperationLog("菜单批量修改") */
+    public function batchEdit(Request $request) { return $this->run([PermissionModule::class, 'batchEdit'], $request); }
 
-    /**
-     * @OperationLog("菜单批量修改")
-     */
-    public function batchEdit(Request $request)
-    {
-        $this->run([PermissionModule::class, 'batchEdit'], $request);
-        return $this->response();
-    }
-
-    /**
-     * @OperationLog("菜单状态修改")
-     */
-    public function status(Request $request)
-    {
-        $this->run([PermissionModule::class, 'status'], $request);
-        return $this->response();
-    }
+    /** @OperationLog("菜单状态修改") */
+    public function status(Request $request) { return $this->run([PermissionModule::class, 'status'], $request); }
 }

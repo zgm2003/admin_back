@@ -8,20 +8,10 @@ use support\Request;
 
 class AiAgentController extends Controller
 {
-    public function init(Request $request)
-    {
-        $this->run([AiAgentModule::class, 'init'], $request);
-        return $this->response();
-    }
-
-    public function list(Request $request)
-    {
-        $this->run([AiAgentModule::class, 'list'], $request);
-        return $this->response();
-    }
-
-    public function add(Request $request) { $this->run([AiAgentModule::class, 'add'], $request); return $this->response(); }
-    public function edit(Request $request) { $this->run([AiAgentModule::class, 'edit'], $request); return $this->response(); }
-    public function del(Request $request) { $this->run([AiAgentModule::class, 'del'], $request); return $this->response(); }
-    public function status(Request $request) { $this->run([AiAgentModule::class, 'status'], $request); return $this->response(); }
+    public function init(Request $request) { return $this->run([AiAgentModule::class, 'init'], $request); }
+    public function list(Request $request) { return $this->run([AiAgentModule::class, 'list'], $request); }
+    public function add(Request $request) { return $this->run([AiAgentModule::class, 'add'], $request); }
+    public function edit(Request $request) { return $this->run([AiAgentModule::class, 'edit'], $request); }
+    public function del(Request $request) { return $this->run([AiAgentModule::class, 'del'], $request); }
+    public function status(Request $request) { return $this->run([AiAgentModule::class, 'status'], $request); }
 }

@@ -13,23 +13,8 @@ use Respect\Validation\Exceptions\ValidationException;
 
 class AiChatController extends Controller
 {
-    /**
-     * 发送消息并获取 AI 回复（非流式）
-     */
-    public function send(Request $request)
-    {
-        $this->run([AiChatModule::class, 'send'], $request);
-        return $this->response();
-    }
-
-    /**
-     * 取消流式输出
-     */
-    public function cancel(Request $request)
-    {
-        $this->run([AiChatModule::class, 'cancel'], $request);
-        return $this->response();
-    }
+    public function send(Request $request) { return $this->run([AiChatModule::class, 'send'], $request); }
+    public function cancel(Request $request) { return $this->run([AiChatModule::class, 'cancel'], $request); }
 
     /**
      * 获取 SSE CORS 响应头
