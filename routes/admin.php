@@ -145,6 +145,12 @@ Route::group('/api/admin', function () {
     Route::post('/AiRun/statsByDate', [controller\Ai\AiRunController::class, 'statsByDate']);
     Route::post('/AiRun/statsByAgent', [controller\Ai\AiRunController::class, 'statsByAgent']);
     Route::post('/AiRun/statsByUser', [controller\Ai\AiRunController::class, 'statsByUser']);
+
+    // 代码生成器
+    Route::post('/DevTools/Gen/tables', [controller\DevTools\GenController::class, 'tables']);
+    Route::post('/DevTools/Gen/columns', [controller\DevTools\GenController::class, 'columns']);
+    Route::post('/DevTools/Gen/preview', [controller\DevTools\GenController::class, 'preview']);
+    Route::post('/DevTools/Gen/generate', [controller\DevTools\GenController::class, 'generate']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,
