@@ -206,7 +206,7 @@ class GenModule extends BaseModule
         
         if ($name === 'status') return 'status';
         if (str_starts_with($name, 'is_')) return 'yes_no';
-        if ($name === 'sex') return 'sex';
+        if ($name === 'sex' || $name === 'gender') return 'sex';
         
         return '';
     }

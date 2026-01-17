@@ -18,6 +18,11 @@ class CommonEnum
     const PLATFORM_H5 = 'h5';
     const PLATFORM_MINI = 'mini';
 
+    // 性别常量
+    const SEX_UNKNOWN = 0;
+    const SEX_MALE = 1;
+    const SEX_FEMALE = 2;
+
     public static $isArr = [
         self::YES => "是",
         self::NO => "否",
@@ -27,12 +32,16 @@ class CommonEnum
         self::NO => "禁用",
     ];
 
+    public static $sexArr = [
+        self::SEX_UNKNOWN => "未知",
+        self::SEX_MALE => "男",
+        self::SEX_FEMALE => "女",
+    ];
 
     public static $platformArr = [
         self::PLATFORM_admin => "admin",
         self::PLATFORM_APP => "app",
         self::PLATFORM_H5 => "h5",
         self::PLATFORM_MINI => "mini",
-
     ];
 }

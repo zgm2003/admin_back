@@ -10,7 +10,6 @@ use app\dep\Permission\PermissionDep;
 use app\dep\Ai\AiAgentsDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
-use app\enum\SexEnum;
 use app\enum\UploadConfigEnum;
 use app\enum\SystemEnum;
 use app\enum\AiEnum;
@@ -61,7 +60,7 @@ class DictService
         return $this;
     }
     public function setSexArr(){
-        $this->dict['sexArr'] = $this->enumToDict(SexEnum::$SexArr);
+        $this->dict['sexArr'] = $this->enumToDict(CommonEnum::$sexArr);
         return $this;
     }
     public function setPermissionTree()

@@ -6,7 +6,7 @@ use app\dep\AddressDep;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UserProfileDep;
-use app\enum\SexEnum;
+use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\service\ExportService;
@@ -99,8 +99,8 @@ class UsersListModule extends BaseModule
                 'email' => $item->email,
                 'avatar' => $item->avatar ?? null,
                 'phone' => $item->phone,
-                'sex' => (int)($item->sex ?? 1),
-                'sex_show' => SexEnum::$SexArr[(int)($item->sex ?? 1)],
+                'sex' => (int)($item->sex ?? CommonEnum::SEX_UNKNOWN),
+                'sex_show' => CommonEnum::$sexArr[(int)($item->sex ?? CommonEnum::SEX_UNKNOWN)],
                 'role_id' => $item->role_id,
                 'role_name' => $resRole->name ?? '',
                 'bio' => $item->bio ?? '',
@@ -167,7 +167,7 @@ class UsersListModule extends BaseModule
                 'email' => $item->email,
                 'phone' => $item->phone,
                 'avatar' => $profile->avatar ?? null,
-                'sex' => SexEnum::$SexArr[(int)($profile->sex ?? 1)],
+                'sex' => CommonEnum::$sexArr[(int)($profile->sex ?? CommonEnum::SEX_UNKNOWN)],
                 'role' => $resRole->name ?? '',
             ];
         })->toArray();

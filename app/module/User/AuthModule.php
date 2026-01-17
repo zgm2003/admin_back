@@ -8,7 +8,6 @@ use app\dep\User\UsersDep;
 use app\dep\User\UserSessionsDep;
 use app\enum\CommonEnum;
 use app\enum\EmailEnum;
-use app\enum\SexEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
 use app\service\DictService;
@@ -182,7 +181,7 @@ class AuthModule extends BaseModule
                 $this->userProfileDep->add([
                     'user_id' => $userId,
                     'avatar' => SettingService::getDefaultAvatar(),
-                    'sex' => SexEnum::UNKNOWN,
+                    'sex' => CommonEnum::SEX_UNKNOWN,
                 ]);
 
                 return $this->usersDep->find($userId);
