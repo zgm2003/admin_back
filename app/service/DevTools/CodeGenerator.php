@@ -111,32 +111,41 @@ class CodeGenerator
      */
     private function generateController(): string
     {
-        return <<<PHP
+        $code = <<<'PHP'
 <?php
 
-namespace app\controller\\{$this->domain};
+namespace app\controller\{DOMAIN};
 
 use app\controller\Controller;
-use app\module\\{$this->domain}\\{$this->moduleName}Module;
+use app\module\{DOMAIN}\{MODULE}Module;
 use support\Request;
 
-class {$this->moduleName}Controller extends Controller
+class {MODULE}Controller extends Controller
 {
-    public function init(Request \$request) { return \$this->run([{$this->moduleName}Module::class, 'init'], \$request); }
-    public function list(Request \$request) { return \$this->run([{$this->moduleName}Module::class, 'list'], \$request); }
+    public function init(Request $request) { return $this->run([{MODULE}Module::class, 'init'], $request); }
+    public function list(Request $request) { return $this->run([{MODULE}Module::class, 'list'], $request); }
 
-    /** @OperationLog("{$this->config['menu_name']}新增") @Permission("{$this->moduleNameLower}.add") */
-    public function add(Request \$request) { return \$this->run([{$this->moduleName}Module::class, 'add'], \$request); }
+    /** @OperationLog("{MENU_NAME}新增") @Permission("{MODULE_LOWER}.add") */
+    public function add(Request $request) { return $this->run([{MODULE}Module::class, 'add'], $request); }
 
-    /** @OperationLog("{$this->config['menu_name']}编辑") @Permission("{$this->moduleNameLower}.edit") */
-    public function edit(Request \$request) { return \$this->run([{$this->moduleName}Module::class, 'edit'], \$request); }
+    /** @OperationLog("{MENU_NAME}编辑") @Permission("{MODULE_LOWER}.edit") */
+    public function edit(Request $request) { return $this->run([{MODULE}Module::class, 'edit'], $request); }
 
-    /** @OperationLog("{$this->config['menu_name']}删除") @Permission("{$this->moduleNameLower}.del") */
-    public function del(Request \$request) { return \$this->run([{$this->moduleName}Module::class, 'del'], \$request); }
+    /** @OperationLog("{MENU_NAME}删除") @Permission("{MODULE_LOWER}.del") */
+    public function del(Request $request) { return $this->run([{MODULE}Module::class, 'del'], $request); }
 }
 PHP;
+
+        return str_replace(
+            ['{DOMAIN}', '{MODULE}', '{MODULE_LOWER}', '{MENU_NAME}'],
+            [$this->domain, $this->moduleName, $this->moduleNameLower, $this->config['menu_name']],
+            $code
+        );
     }
 
+    /**
+     * 生成 Module
+     */
     /**
      * 生成 Module
      */
@@ -149,86 +158,93 @@ PHP;
         $searchConditions = $this->buildSearchConditions($searchFields);
         $listMapping = $this->buildListMapping($listFields);
 
-        return <<<PHP
+        $code = <<<'PHP'
 <?php
 
-namespace app\module\\{$this->domain};
+namespace app\module\{DOMAIN};
 
-use app\dep\\{$this->domain}\\{$this->moduleName}Dep;
+use app\dep\{DOMAIN}\{MODULE}Dep;
 use app\module\BaseModule;
-use app\validate\\{$this->domain}\\{$this->moduleName}Validate;
+use app\validate\{DOMAIN}\{MODULE}Validate;
 
-class {$this->moduleName}Module extends BaseModule
+class {MODULE}Module extends BaseModule
 {
-    protected {$this->moduleName}Dep \${$this->moduleNameLower}Dep;
+    protected {MODULE}Dep ${MODULE_LOWER}Dep;
 
     public function __construct()
     {
-        \$this->{$this->moduleNameLower}Dep = new {$this->moduleName}Dep();
+        $this->{MODULE_LOWER}Dep = new {MODULE}Dep();
     }
 
-    public function init(\$request): array
+    public function init($request): array
     {
         return self::success([
             'dict' => []
         ]);
     }
 
-    public function list(\$request): array
+    public function list($request): array
     {
-        \$param = \$request->all();
-        \$param['page_size'] = \$param['page_size'] ?? 20;
-        \$param['current_page'] = \$param['current_page'] ?? 1;
+        $param = $this->validate($request, {MODULE}Validate::list());
         
-        \$res = \$this->{$this->moduleNameLower}Dep->list(\$param);
+        $param['page_size'] = $param['page_size'] ?? 20;
+        $param['current_page'] = $param['current_page'] ?? 1;
         
-        \$list = \$res->map(function (\$item) {
+        $res = $this->{MODULE_LOWER}Dep->list($param);
+        
+        $list = $res->map(function ($item) {
             return [
-{$listMapping}
+{LIST_MAPPING}
             ];
         });
         
-        \$page = [
-            'page_size' => \$param['page_size'],
-            'current_page' => \$param['current_page'],
-            'total_page' => \$res->lastPage(),
-            'total' => \$res->total(),
+        $page = [
+            'page_size' => $param['page_size'],
+            'current_page' => $param['current_page'],
+            'total_page' => $res->lastPage(),
+            'total' => $res->total(),
         ];
         
-        return self::paginate(\$list, \$page);
+        return self::paginate($list, $page);
     }
 
-    public function add(\$request): array
+    public function add($request): array
     {
-        \$param = \$this->validate(\$request, {$this->moduleName}Validate::add());
+        $param = $this->validate($request, {MODULE}Validate::add());
         
-        \$this->{$this->moduleNameLower}Dep->add(\$param);
+        $this->{MODULE_LOWER}Dep->add($param);
         
         return self::success();
     }
 
-    public function edit(\$request): array
+    public function edit($request): array
     {
-        \$param = \$this->validate(\$request, {$this->moduleName}Validate::edit());
+        $param = $this->validate($request, {MODULE}Validate::edit());
         
-        \$row = \$this->{$this->moduleNameLower}Dep->find(\$param['id']);
-        self::throwNotFound(\$row);
+        $row = $this->{MODULE_LOWER}Dep->get((int)$param['id']);
+        self::throwNotFound($row);
         
-        \$this->{$this->moduleNameLower}Dep->update(\$param['id'], \$param);
+        $this->{MODULE_LOWER}Dep->update((int)$param['id'], $param);
         
         return self::success();
     }
 
-    public function del(\$request): array
+    public function del($request): array
     {
-        \$param = \$this->validate(\$request, {$this->moduleName}Validate::del());
+        $param = $this->validate($request, {MODULE}Validate::del());
         
-        \$this->{$this->moduleNameLower}Dep->delete(\$param['id']);
+        $this->{MODULE_LOWER}Dep->delete($param['id']);
         
         return self::success();
     }
 }
 PHP;
+
+        return str_replace(
+            ['{DOMAIN}', '{MODULE}', '{MODULE_LOWER}', '{LIST_MAPPING}'],
+            [$this->domain, $this->moduleName, $this->moduleNameLower, $listMapping],
+            $code
+        );
     }
 
     /**
@@ -240,36 +256,42 @@ PHP;
         $searchWhen = $this->buildDepSearchWhen($searchFields);
         $modelClass = $this->guessModelClass();
 
-        return <<<PHP
+        $code = <<<'PHP'
 <?php
 
-namespace app\dep\\{$this->domain};
+namespace app\dep\{DOMAIN};
 
 use app\dep\BaseDep;
-{$modelClass['import']}
+{MODEL_IMPORT}
 use app\enum\CommonEnum;
 use support\Model;
 
-class {$this->moduleName}Dep extends BaseDep
+class {MODULE}Dep extends BaseDep
 {
     protected function createModel(): Model
     {
-        return new {$modelClass['name']}();
+        return new {MODEL_NAME}();
     }
 
     /**
      * 列表查询（分页 + 过滤）
      */
-    public function list(array \$param)
+    public function list(array $param)
     {
-        return \$this->model
-{$searchWhen}
+        return $this->model
+{SEARCH_WHEN}
             ->where('is_del', CommonEnum::NO)
             ->orderBy('id', 'desc')
-            ->paginate(\$param['page_size'], ['*'], 'page', \$param['current_page']);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 }
 PHP;
+
+        return str_replace(
+            ['{DOMAIN}', '{MODULE}', '{MODEL_IMPORT}', '{MODEL_NAME}', '{SEARCH_WHEN}'],
+            [$this->domain, $this->moduleName, $modelClass['import'], $modelClass['name'], $searchWhen],
+            $code
+        );
     }
 
     /**
@@ -278,39 +300,55 @@ PHP;
     private function generateValidate(): string
     {
         $formFields = $this->getFormFields();
-        $addRules = $this->buildValidateRules($formFields, 'add');
-        $editRules = $this->buildValidateRules($formFields, 'edit');
+        $addRules = $this->buildRespectValidateRules($formFields, 'add');
+        $editRules = $this->buildRespectValidateRules($formFields, 'edit');
 
-        return <<<PHP
+        $code = <<<'PHP'
 <?php
 
-namespace app\validate\\{$this->domain};
+namespace app\validate\{DOMAIN};
 
-class {$this->moduleName}Validate
+use Respect\Validation\Validator as v;
+
+class {MODULE}Validate
 {
     public static function add(): array
     {
         return [
-{$addRules}
+{ADD_RULES}
         ];
     }
 
     public static function edit(): array
     {
         return [
-            'id' => 'required|integer',
-{$editRules}
+            'id' => v::intVal()->positive()->setName('ID'),
+{EDIT_RULES}
         ];
     }
 
     public static function del(): array
     {
         return [
-            'id' => 'required|integer',
+            'id' => v::oneOf(v::intVal()->positive(), v::arrayType())->setName('ID'),
+        ];
+    }
+
+    public static function list(): array
+    {
+        return [
+            'page_size'    => v::optional(v::intVal()->positive()),
+            'current_page' => v::optional(v::intVal()->positive()),
         ];
     }
 }
 PHP;
+
+        return str_replace(
+            ['{DOMAIN}', '{MODULE}', '{ADD_RULES}', '{EDIT_RULES}'],
+            [$this->domain, $this->moduleName, $addRules, $editRules],
+            $code
+        );
     }
 
     /**
@@ -367,7 +405,8 @@ import {ref, computed, onMounted, nextTick} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {{$this->moduleName}Api} from '@/api/{$this->domainLower}/{$this->moduleNameLower}'
 import {useIsMobile} from '@/hooks/useResponsive'
-import {ElNotification} from 'element-plus'
+import {ElNotification, ElIcon} from 'element-plus'
+import {ArrowRight} from '@element-plus/icons-vue'
 import type {FormInstance, FormRules} from 'element-plus'
 import {AppTable} from '@/components/Table'
 import {Search} from '@/components/Search'
@@ -491,9 +530,9 @@ onMounted(() => {
           <el-dropdown>
             <el-button type="primary">
               {{ t('common.actions.batchAction') }}
-              <el-icon class="el-icon--right">
-                <arrow-right/>
-              </el-icon>
+              <ElIcon class="el-icon--right">
+                <ArrowRight/>
+              </ElIcon>
             </el-button>
             <template #dropdown>
               <el-dropdown-menu>
@@ -580,10 +619,18 @@ VUE;
         $lines = [];
         foreach ($fields as $f) {
             $name = $f['column_name'];
+            $type = $f['data_type'];
+            
+            // 字符串类型使用 like 查询
             if ($f['form_type'] === 'input' || $f['form_type'] === 'textarea') {
                 $lines[] = "            ->when(!empty(\$param['{$name}']), fn(\$q) => \$q->where('{$name}', 'like', \$param['{$name}'] . '%'))";
             } else {
-                $lines[] = "            ->when(!empty(\$param['{$name}']), fn(\$q) => \$q->where('{$name}', \$param['{$name}']))";
+                // 数字类型需要检查 isset 而不是 empty
+                if (in_array($type, ['int', 'bigint', 'tinyint', 'smallint'])) {
+                    $lines[] = "            ->when(isset(\$param['{$name}']) && \$param['{$name}'] !== '', fn(\$q) => \$q->where('{$name}', \$param['{$name}']))";
+                } else {
+                    $lines[] = "            ->when(!empty(\$param['{$name}']), fn(\$q) => \$q->where('{$name}', \$param['{$name}']))";
+                }
             }
         }
         return implode("\n", $lines);
@@ -596,9 +643,9 @@ VUE;
             $name = $f['column_name'];
             // 时间字段特殊处理
             if (str_contains($name, '_at') || str_contains($name, 'time')) {
-                $lines[] = "                '{$name}' => \$item['{$name}']->toDateTimeString(),";
+                $lines[] = "                '{$name}' => \$item->{$name}?->toDateTimeString(),";
             } else {
-                $lines[] = "                '{$name}' => \$item['{$name}'],";
+                $lines[] = "                '{$name}' => \$item->{$name},";
             }
         }
         return implode("\n", $lines);
@@ -624,6 +671,62 @@ VUE;
             if (!empty($rules)) {
                 $lines[] = "            '{$name}' => '" . implode('|', $rules) . "',";
             }
+        }
+        return implode("\n", $lines);
+    }
+
+    /**
+     * 构建 Respect\Validation 验证规则
+     */
+    private function buildRespectValidateRules(array $fields, string $scene): string
+    {
+        $lines = [];
+        foreach ($fields as $f) {
+            $name = $f['column_name'];
+            $label = $f['column_comment'] ?: $name;
+            $type = $f['data_type'];
+            $isRequired = $f['is_nullable'] === 'NO';
+            
+            $rule = '';
+            
+            // 根据数据类型生成规则
+            if (in_array($type, ['int', 'bigint', 'tinyint', 'smallint'])) {
+                if ($scene === 'add' && $isRequired) {
+                    $rule = "v::intVal()->positive()";
+                } else {
+                    $rule = "v::optional(v::intVal()->positive())";
+                }
+            } elseif (in_array($type, ['decimal', 'float', 'double'])) {
+                if ($scene === 'add' && $isRequired) {
+                    $rule = "v::floatVal()";
+                } else {
+                    $rule = "v::optional(v::floatVal())";
+                }
+            } elseif (in_array($type, ['varchar', 'char'])) {
+                $maxLen = $f['max_length'] ?? 255;
+                if ($scene === 'add' && $isRequired) {
+                    $rule = "v::stringType()->length(1, {$maxLen})";
+                } else {
+                    $rule = "v::optional(v::stringType()->length(0, {$maxLen}))";
+                }
+            } elseif (in_array($type, ['text', 'longtext', 'mediumtext'])) {
+                if ($scene === 'add' && $isRequired) {
+                    $rule = "v::stringType()";
+                } else {
+                    $rule = "v::optional(v::stringType())";
+                }
+            } elseif (in_array($type, ['date', 'datetime', 'timestamp'])) {
+                $rule = "v::optional(v::date())";
+            } else {
+                // 默认字符串
+                if ($scene === 'add' && $isRequired) {
+                    $rule = "v::stringType()";
+                } else {
+                    $rule = "v::optional(v::stringType())";
+                }
+            }
+            
+            $lines[] = "            '{$name}' => {$rule}->setName('{$label}'),";
         }
         return implode("\n", $lines);
     }
