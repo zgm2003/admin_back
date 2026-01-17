@@ -174,11 +174,19 @@ class GenModule extends BaseModule
             return 'select';
         }
         
-        // 日期时间字段
+        // 日期时间字段（优先根据数据库类型判断）
+        if ($type === 'date') {
+            return 'date';
+        }
+        if ($type === 'datetime' || $type === 'timestamp') {
+            return 'datetime';
+        }
+        
+        // 如果数据库类型不是日期，再根据字段名判断
         if (str_contains($name, 'time') || str_contains($name, '_at')) {
             return 'datetime';
         }
-        if (str_contains($name, 'date')) {
+        if (str_contains($name, 'date') || str_contains($name, 'birthday')) {
             return 'date';
         }
 

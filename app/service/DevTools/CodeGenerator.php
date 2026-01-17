@@ -30,10 +30,6 @@ class CodeGenerator
     public function preview(): array
     {
         return [
-            'model' => [
-                'path' => "app/model/{$this->domain}/{$this->moduleName}Model.php",
-                'content' => $this->generateModel(),
-            ],
             'controller' => [
                 'path' => "app/controller/{$this->domain}/{$this->moduleName}Controller.php",
                 'content' => $this->generateController(),
@@ -45,6 +41,10 @@ class CodeGenerator
             'dep' => [
                 'path' => "app/dep/{$this->domain}/{$this->moduleName}Dep.php",
                 'content' => $this->generateDep(),
+            ],
+            'model' => [
+                'path' => "app/model/{$this->domain}/{$this->moduleName}Model.php",
+                'content' => $this->generateModel(),
             ],
             'validate' => [
                 'path' => "app/validate/{$this->domain}/{$this->moduleName}Validate.php",
@@ -216,7 +216,7 @@ class {MODULE}Module extends BaseModule
 
     public function list($request): array
     {
-        $param = $this->validate($request, {MODULE}Validate::list());
+        $param = $request->all();
         
         $param['page_size'] = $param['page_size'] ?? 20;
         $param['current_page'] = $param['current_page'] ?? 1;
@@ -670,9 +670,9 @@ VUE;
             $name = $f['column_name'];
             $type = $f['data_type'];
             
-            // 字符串类型使用 like 查询
+            // 字符串类型使用 like 查询（需要 trim 去除空格）
             if ($f['form_type'] === 'input' || $f['form_type'] === 'textarea') {
-                $lines[] = "            ->when(!empty(\$param['{$name}']), fn(\$q) => \$q->where('{$name}', 'like', \$param['{$name}'] . '%'))";
+                $lines[] = "            ->when(!empty(trim(\$param['{$name}'] ?? '')), fn(\$q) => \$q->where('{$name}', 'like', trim(\$param['{$name}']) . '%'))";
             } else {
                 // 数字类型需要检查 isset 而不是 empty
                 if (in_array($type, ['int', 'bigint', 'tinyint', 'smallint'])) {
@@ -743,10 +743,11 @@ VUE;
                     $rule = "v::optional(v::email())";
                 }
             } elseif (str_contains($name, 'phone') || str_contains($name, 'mobile')) {
+                // 使用正则验证手机号（支持中国手机号格式）
                 if ($scene === 'add' && $isRequired) {
-                    $rule = "v::phone()";
+                    $rule = "v::regex('/^1[3-9]\\d{9}$/')";
                 } else {
-                    $rule = "v::optional(v::phone())";
+                    $rule = "v::optional(v::regex('/^1[3-9]\\d{9}$/'))";
                 }
             } elseif (str_contains($name, 'url') || str_contains($name, 'link')) {
                 if ($scene === 'add' && $isRequired) {
@@ -757,10 +758,19 @@ VUE;
             }
             // 根据数据类型生成规则
             elseif (in_array($type, ['int', 'bigint', 'tinyint', 'smallint'])) {
-                if ($scene === 'add' && $isRequired) {
-                    $rule = "v::intVal()->positive()";
+                // sex 字段可以为 0，使用 min(0) 而不是 positive()
+                if ($name === 'sex' || str_contains($name, 'gender')) {
+                    if ($scene === 'add' && $isRequired) {
+                        $rule = "v::intVal()->min(0)";
+                    } else {
+                        $rule = "v::optional(v::intVal()->min(0))";
+                    }
                 } else {
-                    $rule = "v::optional(v::intVal()->positive())";
+                    if ($scene === 'add' && $isRequired) {
+                        $rule = "v::intVal()->positive()";
+                    } else {
+                        $rule = "v::optional(v::intVal()->positive())";
+                    }
                 }
             } elseif (in_array($type, ['decimal', 'float', 'double'])) {
                 if ($scene === 'add' && $isRequired) {
@@ -782,7 +792,12 @@ VUE;
                     $rule = "v::optional(v::stringType())";
                 }
             } elseif (in_array($type, ['date', 'datetime', 'timestamp'])) {
-                $rule = "v::optional(v::date())";
+                // date 类型用 date('Y-m-d')，datetime/timestamp 用 stringType()（因为包含时间）
+                if ($type === 'date') {
+                    $rule = "v::optional(v::date('Y-m-d'))";
+                } else {
+                    $rule = "v::optional(v::stringType())";
+                }
             } else {
                 // 默认字符串
                 if ($scene === 'add' && $isRequired) {
@@ -835,11 +850,11 @@ VUE;
         foreach ($fields as $f) {
             $name = $f['column_name'];
             
-            // 图片字段
+            // 图片字段（无预览功能）
             if ($f['form_type'] === 'image') {
                 $templates[] = <<<TEMPLATE
         <template #cell-{$name}="{ row }">
-          <el-image v-if="row.{$name}" :src="row.{$name}" style="width: 50px; height: 50px" fit="cover" :preview-src-list="[row.{$name}]" />
+          <el-image v-if="row.{$name}" :src="row.{$name}" style="width: 50px; height: 50px" fit="cover" />
         </template>
 TEMPLATE;
             }
@@ -865,7 +880,11 @@ TEMPLATE;
             $label = $f['column_comment'] ?: $name;
             $required = $f['is_nullable'] === 'NO' ? ' required' : '';
             
-            $lines[] = "        <el-col :md=\"12\" :span=\"24\">";
+            // 判断是否需要独占一行（移动端兼容）
+            $isFullWidth = in_array($f['form_type'], ['textarea', 'editor']);
+            $colSpan = $isFullWidth ? ':span="24"' : ':md="12" :span="24"';
+            
+            $lines[] = "        <el-col {$colSpan}>";
             $lines[] = "          <el-form-item label=\"{$label}\" prop=\"{$name}\"{$required}>";
             
             switch ($f['form_type']) {
@@ -877,14 +896,12 @@ TEMPLATE;
                     break;
                 case 'editor':
                     $lines[] = "            <Editor v-model=\"form.{$name}\" />";
-                    $lines[] = "            <!-- TODO: 需要引入 Editor 组件 -->";
                     break;
                 case 'number':
                     $lines[] = "            <el-input-number v-model=\"form.{$name}\" :min=\"0\" style=\"width:100%\"/>";
                     break;
                 case 'select':
                     $lines[] = "            <el-select-v2 v-model=\"form.{$name}\" :options=\"dict.{$name}_arr || []\" style=\"width:100%\"/>";
-                    $lines[] = "            <!-- TODO: 在 init() 中配置 dict.{$name}_arr 选项 -->";
                     break;
                 case 'date':
                     $lines[] = "            <el-date-picker v-model=\"form.{$name}\" type=\"date\" value-format=\"YYYY-MM-DD\" style=\"width:100%\"/>";
@@ -894,7 +911,6 @@ TEMPLATE;
                     break;
                 case 'image':
                     $lines[] = "            <UpImg v-model=\"form.{$name}\" folder-name=\"{$name}\" width=\"80px\" show-input/>";
-                    $lines[] = "            <!-- TODO: 需要引入 UpImg 组件 -->";
                     break;
                 default:
                     $lines[] = "            <el-input v-model=\"form.{$name}\" clearable/>";
@@ -911,13 +927,32 @@ TEMPLATE;
         $lines = [];
         foreach ($fields as $f) {
             $name = $f['column_name'];
-            if (in_array($f['data_type'], ['int', 'bigint', 'tinyint'])) {
-                $default = '0';
-            } elseif ($f['form_type'] === 'select') {
-                $default = "''";
+            
+            // 根据字段类型和名称设置合理的默认值
+            if ($f['form_type'] === 'select') {
+                // select 类型：status/is_ 默认为 1，sex 默认为 0，其他默认为空或 1
+                if (str_contains($name, 'status') || str_contains($name, 'is_')) {
+                    $default = '1';
+                } elseif ($name === 'sex' || str_contains($name, 'gender')) {
+                    $default = '0';
+                } elseif ($name === 'type' || str_contains($name, 'level') || str_contains($name, 'category')) {
+                    $default = '1';  // type 等分类字段默认选第一个选项
+                } else {
+                    $default = "''";
+                }
+            } elseif (in_array($f['data_type'], ['int', 'bigint', 'tinyint'])) {
+                // 数字类型，如果是 status 或 is_ 开头默认为 1，sex 默认为 0，否则为 0
+                if (str_contains($name, 'status') || str_contains($name, 'is_')) {
+                    $default = '1';
+                } elseif ($name === 'sex' || str_contains($name, 'gender')) {
+                    $default = '0';
+                } else {
+                    $default = '0';
+                }
             } else {
                 $default = "''";
             }
+            
             $lines[] = "  {$name}: {$default},";
         }
         return implode("\n", $lines);
@@ -942,22 +977,8 @@ TEMPLATE;
         $parts = explode('_', $this->tableName);
         $className = implode('', array_map('ucfirst', $parts)) . 'Model';
         
-        // 检查常见位置
-        $possiblePaths = [
-            "app\\model\\{$this->domain}\\{$className}",
-            "app\\model\\{$className}",
-        ];
-
-        foreach ($possiblePaths as $path) {
-            if (class_exists($path)) {
-                return [
-                    'import' => "use {$path};",
-                    'name' => $className,
-                ];
-            }
-        }
-
-        // 默认返回路径（即使不存在，生成后可以手动创建）
+        // 直接返回标准路径（因为 Model 会生成在这个位置）
+        // 不使用 class_exists() 检查，因为在生成阶段 Model 文件还不存在
         return [
             'import' => "use app\\model\\{$this->domain}\\{$className};",
             'name' => $className,
