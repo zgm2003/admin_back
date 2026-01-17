@@ -30,6 +30,10 @@ class CodeGenerator
     public function preview(): array
     {
         return [
+            'model' => [
+                'path' => "app/model/{$this->domain}/{$this->moduleName}Model.php",
+                'content' => $this->generateModel(),
+            ],
             'controller' => [
                 'path' => "app/controller/{$this->domain}/{$this->moduleName}Controller.php",
                 'content' => $this->generateController(),
@@ -104,6 +108,33 @@ class CodeGenerator
             'created' => $created,
             'skipped' => $skipped,
         ];
+    }
+
+    // ==================== 生成方法 ====================
+
+    /**
+     * 生成 Model
+     */
+    private function generateModel(): string
+    {
+        $code = <<<'PHP'
+<?php
+
+namespace app\model\{DOMAIN};
+
+use support\Model;
+
+class {MODULE}Model extends Model
+{
+    public $table = '{TABLE_NAME}';
+}
+PHP;
+
+        return str_replace(
+            ['{DOMAIN}', '{MODULE}', '{TABLE_NAME}'],
+            [$this->domain, $this->moduleName, $this->tableName],
+            $code
+        );
     }
 
     /**
@@ -659,12 +690,9 @@ VUE;
         $lines = [];
         foreach ($fields as $f) {
             $name = $f['column_name'];
-            // 时间字段特殊处理
-            if (str_contains($name, '_at') || str_contains($name, 'time')) {
-                $lines[] = "                '{$name}' => \$item->{$name}?->toDateTimeString(),";
-            } else {
-                $lines[] = "                '{$name}' => \$item->{$name},";
-            }
+            // 直接返回原始值，不做类型转换
+            // 数据库返回的日期时间字符串可以直接给前端使用
+            $lines[] = "                '{$name}' => \$item->{$name},";
         }
         return implode("\n", $lines);
     }
