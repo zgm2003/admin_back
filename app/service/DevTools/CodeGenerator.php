@@ -395,9 +395,26 @@ TS;
 
         $searchFieldsCode = $this->buildVueSearchFields($searchFields);
         $columnsCode = $this->buildVueColumns($listFields);
+        $cellTemplates = $this->buildVueCellTemplates($listFields);
         $formItemsCode = $this->buildVueFormItems($formFields);
         $formDataCode = $this->buildVueFormData($formFields);
         $formRulesCode = $this->buildVueFormRules($formFields);
+        
+        // 检测需要的组件导入
+        $needsEditor = false;
+        $needsUpImg = false;
+        foreach ($formFields as $f) {
+            if ($f['form_type'] === 'editor') $needsEditor = true;
+            if ($f['form_type'] === 'image') $needsUpImg = true;
+        }
+        
+        $extraImports = '';
+        if ($needsEditor) {
+            $extraImports .= "\nimport {Editor} from '@/components/Editor'";
+        }
+        if ($needsUpImg) {
+            $extraImports .= "\nimport UpImg from '@/components/UpImg'";
+        }
 
         return <<<VUE
 <script setup lang="ts">
@@ -412,7 +429,7 @@ import {AppTable} from '@/components/Table'
 import {Search} from '@/components/Search'
 import type {SearchField} from '@/components/Search/types'
 import {useUserStore} from '@/store/user'
-import {useTable} from '@/hooks/useTable'
+import {useTable} from '@/hooks/useTable'{$extraImports}
 
 const {t} = useI18n()
 const isMobile = useIsMobile()
@@ -541,6 +558,7 @@ onMounted(() => {
             </template>
           </el-dropdown>
         </template>
+{$cellTemplates}
         <template #cell-actions="{ row }">
           <el-button type="primary" text @click="edit(row)" v-if="userStore.can('{$this->moduleNameLower}.edit')">{{ t('common.actions.edit') }}</el-button>
           <el-button type="danger" text @click="confirmDel(row)" v-if="userStore.can('{$this->moduleNameLower}.del')">{{ t('common.actions.del') }}</el-button>
@@ -689,8 +707,28 @@ VUE;
             
             $rule = '';
             
+            // 特殊字段验证
+            if (str_contains($name, 'email')) {
+                if ($scene === 'add' && $isRequired) {
+                    $rule = "v::email()";
+                } else {
+                    $rule = "v::optional(v::email())";
+                }
+            } elseif (str_contains($name, 'phone') || str_contains($name, 'mobile')) {
+                if ($scene === 'add' && $isRequired) {
+                    $rule = "v::phone()";
+                } else {
+                    $rule = "v::optional(v::phone())";
+                }
+            } elseif (str_contains($name, 'url') || str_contains($name, 'link')) {
+                if ($scene === 'add' && $isRequired) {
+                    $rule = "v::url()";
+                } else {
+                    $rule = "v::optional(v::url())";
+                }
+            }
             // 根据数据类型生成规则
-            if (in_array($type, ['int', 'bigint', 'tinyint', 'smallint'])) {
+            elseif (in_array($type, ['int', 'bigint', 'tinyint', 'smallint'])) {
                 if ($scene === 'add' && $isRequired) {
                     $rule = "v::intVal()->positive()";
                 } else {
@@ -749,9 +787,46 @@ VUE;
         foreach ($fields as $f) {
             $name = $f['column_name'];
             $label = $f['column_comment'] ?: $name;
-            $lines[] = "  {key: '{$name}', label: '{$label}'},";
+            
+            // 长文本字段添加 overflowTooltip
+            if (in_array($f['form_type'], ['textarea', 'editor'])) {
+                $lines[] = "  {key: '{$name}', label: '{$label}', overflowTooltip: true},";
+            } else {
+                $lines[] = "  {key: '{$name}', label: '{$label}'},";
+            }
         }
         return implode("\n", $lines);
+    }
+    
+    /**
+     * 构建自定义列模板
+     */
+    private function buildVueCellTemplates(array $fields): string
+    {
+        $templates = [];
+        foreach ($fields as $f) {
+            $name = $f['column_name'];
+            
+            // 图片字段
+            if ($f['form_type'] === 'image') {
+                $templates[] = <<<TEMPLATE
+        <template #cell-{$name}="{ row }">
+          <el-image v-if="row.{$name}" :src="row.{$name}" style="width: 50px; height: 50px" fit="cover" :preview-src-list="[row.{$name}]" />
+        </template>
+TEMPLATE;
+            }
+            
+            // 状态字段
+            if ($name === 'status') {
+                $templates[] = <<<TEMPLATE
+        <template #cell-status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status_name || row.status }}</el-tag>
+        </template>
+TEMPLATE;
+            }
+        }
+        
+        return implode("\n", $templates);
     }
 
     private function buildVueFormItems(array $fields): string
@@ -766,21 +841,32 @@ VUE;
             $lines[] = "          <el-form-item label=\"{$label}\" prop=\"{$name}\"{$required}>";
             
             switch ($f['form_type']) {
+                case 'password':
+                    $lines[] = "            <el-input v-model=\"form.{$name}\" type=\"password\" show-password clearable/>";
+                    break;
                 case 'textarea':
                     $lines[] = "            <el-input v-model=\"form.{$name}\" type=\"textarea\" :rows=\"3\" clearable/>";
                     break;
+                case 'editor':
+                    $lines[] = "            <Editor v-model=\"form.{$name}\" />";
+                    $lines[] = "            <!-- TODO: 需要引入 Editor 组件 -->";
+                    break;
                 case 'number':
-                    $lines[] = "            <el-input-number v-model=\"form.{$name}\" :min=\"0\"/>";
+                    $lines[] = "            <el-input-number v-model=\"form.{$name}\" :min=\"0\" style=\"width:100%\"/>";
                     break;
                 case 'select':
-                    $lines[] = "            <el-select-v2 v-model=\"form.{$name}\" :options=\"[]\" style=\"width:100%\"/>";
-                    $lines[] = "            <!-- TODO: 配置选项 -->";
+                    $lines[] = "            <el-select-v2 v-model=\"form.{$name}\" :options=\"dict.{$name}_arr || []\" style=\"width:100%\"/>";
+                    $lines[] = "            <!-- TODO: 在 init() 中配置 dict.{$name}_arr 选项 -->";
                     break;
                 case 'date':
-                    $lines[] = "            <el-date-picker v-model=\"form.{$name}\" type=\"date\" style=\"width:100%\"/>";
+                    $lines[] = "            <el-date-picker v-model=\"form.{$name}\" type=\"date\" value-format=\"YYYY-MM-DD\" style=\"width:100%\"/>";
                     break;
                 case 'datetime':
-                    $lines[] = "            <el-date-picker v-model=\"form.{$name}\" type=\"datetime\" style=\"width:100%\"/>";
+                    $lines[] = "            <el-date-picker v-model=\"form.{$name}\" type=\"datetime\" value-format=\"YYYY-MM-DD HH:mm:ss\" style=\"width:100%\"/>";
+                    break;
+                case 'image':
+                    $lines[] = "            <UpImg v-model=\"form.{$name}\" folder-name=\"{$name}\" width=\"80px\" show-input/>";
+                    $lines[] = "            <!-- TODO: 需要引入 UpImg 组件 -->";
                     break;
                 default:
                     $lines[] = "            <el-input v-model=\"form.{$name}\" clearable/>";

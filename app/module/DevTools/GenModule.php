@@ -51,9 +51,23 @@ class GenModule extends BaseModule
         
         // 为每个字段添加默认配置
         foreach ($columns as &$col) {
-            $col['show_in_list'] = !in_array($col['column_name'], ['password', 'deleted_at', 'is_del']);
-            $col['show_in_search'] = in_array($col['column_name'], ['name', 'title', 'username', 'email', 'status']);
-            $col['show_in_form'] = !in_array($col['column_name'], ['id', 'created_at', 'updated_at', 'deleted_at', 'is_del']);
+            $name = $col['column_name'];
+            
+            // 列表显示：排除敏感字段、系统字段、长文本
+            $col['show_in_list'] = !in_array($name, [
+                'password', 'deleted_at', 'is_del', 'content', 'description', 'remark'
+            ]);
+            
+            // 搜索条件：只有明确的"名称"类字段才默认开启
+            $col['show_in_search'] = in_array($name, [
+                'name', 'title', 'username', 'email', 'nickname'
+            ]);
+            
+            // 表单显示：排除主键、时间戳、软删除标记
+            $col['show_in_form'] = !in_array($name, [
+                'id', 'created_at', 'updated_at', 'deleted_at', 'is_del'
+            ]);
+            
             $col['form_type'] = $this->guessFormType($col);
             $col['dict_type'] = $this->guessDictType($col);
         }
@@ -128,29 +142,55 @@ class GenModule extends BaseModule
     {
         $name = $col['column_name'];
         $type = $col['data_type'];
+        $comment = $col['column_comment'] ?? '';
 
-        // 根据字段名猜测
-        if (str_contains($name, 'content') || str_contains($name, 'desc') || str_contains($name, 'remark')) {
+        // 密码字段
+        if (str_contains($name, 'password')) {
+            return 'password';
+        }
+        
+        // 图片字段
+        if (str_contains($name, 'image') || str_contains($name, 'avatar') || 
+            str_contains($name, 'logo') || str_contains($name, 'icon') ||
+            str_contains($name, 'cover') || str_contains($name, 'photo')) {
+            return 'image';
+        }
+        
+        // 富文本字段
+        if (str_contains($name, 'content') && in_array($type, ['text', 'longtext', 'mediumtext'])) {
+            return 'editor';
+        }
+        
+        // 文本域字段
+        if (str_contains($name, 'desc') || str_contains($name, 'remark') || 
+            str_contains($name, 'note') || str_contains($name, 'intro')) {
             return 'textarea';
         }
-        if (str_contains($name, 'status') || str_contains($name, 'type') || str_contains($name, 'is_')) {
+        
+        // 下拉选择字段
+        if (str_contains($name, 'status') || str_contains($name, 'type') || 
+            str_contains($name, 'is_') || str_contains($name, 'sex') ||
+            str_contains($name, 'gender') || str_contains($name, 'level')) {
             return 'select';
         }
+        
+        // 日期时间字段
         if (str_contains($name, 'time') || str_contains($name, '_at')) {
             return 'datetime';
         }
         if (str_contains($name, 'date')) {
             return 'date';
         }
-        if (str_contains($name, 'image') || str_contains($name, 'avatar') || str_contains($name, 'logo')) {
-            return 'image';
-        }
 
         // 根据数据类型猜测
         if (in_array($type, ['text', 'longtext', 'mediumtext'])) {
             return 'textarea';
         }
-        if (in_array($type, ['int', 'bigint', 'tinyint', 'smallint'])) {
+        if (in_array($type, ['int', 'bigint', 'tinyint', 'smallint', 'decimal', 'float', 'double'])) {
+            // 如果是 tinyint(1) 可能是布尔值
+            if ($type === 'tinyint' && isset($col['max_length']) && $col['max_length'] == 1) {
+                return 'select';
+            }
             return 'number';
         }
 
