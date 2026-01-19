@@ -11,6 +11,6 @@ class OperationLogController extends Controller
     public function init(Request $request) { return $this->run([OperationLogModule::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([OperationLogModule::class, 'list'], $request); }
 
-    /** @Permission("operationLog.del") */
+    /** @Permission("system_operationLog_del") */
     public function del(Request $request) { return $this->run([OperationLogModule::class, 'del'], $request); }
 }

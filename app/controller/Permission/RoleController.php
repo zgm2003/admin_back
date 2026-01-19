@@ -11,15 +11,15 @@ class RoleController extends Controller
     public function init(Request $request) { return $this->run([RoleModule::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([RoleModule::class, 'list'], $request); }
 
-    /** @OperationLog("角色新增") @Permission("role.add") */
+    /** @OperationLog("角色新增") @Permission("permission_role_add") */
     public function add(Request $request) { return $this->run([RoleModule::class, 'add'], $request); }
 
-    /** @OperationLog("角色删除") @Permission("role.del") */
+    /** @OperationLog("角色删除") @Permission("permission_role_del") */
     public function del(Request $request) { return $this->run([RoleModule::class, 'del'], $request); }
 
-    /** @OperationLog("角色修改") @Permission("role.edit") */
+    /** @OperationLog("角色修改") @Permission("permission_role_edit") */
     public function edit(Request $request) { return $this->run([RoleModule::class, 'edit'], $request); }
 
-    /** @OperationLog("设置默认角色") @Permission("role.setDefault") */
+    /** @OperationLog("设置默认角色") @Permission("permission_role_setDefault") */
     public function default(Request $request) { return $this->run([RoleModule::class, 'setDefault'], $request); }
 }

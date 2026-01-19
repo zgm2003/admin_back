@@ -13,9 +13,9 @@ class UsersListController extends Controller
     public function batchEdit(Request $request) { return $this->run([UsersListModule::class, 'batchEdit'], $request); }
     public function export(Request $request) { return $this->run([UsersListModule::class, 'export'], $request); }
 
-    /** @OperationLog("用户编辑") @Permission("user.edit") */
+    /** @OperationLog("用户编辑") @Permission("user_userManager_edit") */
     public function edit(Request $request) { return $this->run([UsersListModule::class, 'edit'], $request); }
 
-    /** @OperationLog("用户删除") @Permission("user.del") */
+    /** @OperationLog("用户删除") @Permission("user_userManager_del") */
     public function del(Request $request) { return $this->run([UsersListModule::class, 'del'], $request); }
 }

@@ -11,13 +11,13 @@ class UploadRuleController extends Controller
     public function init(Request $request) { return $this->run([UploadRuleModule::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([UploadRuleModule::class, 'list'], $request); }
 
-    /** @OperationLog("上传规则新增") @Permission("uploadRule.add") */
+    /** @OperationLog("上传规则新增") @Permission("system_uploadConfig_ruleAdd") */
     public function add(Request $request) { return $this->run([UploadRuleModule::class, 'add'], $request); }
 
-    /** @OperationLog("上传规则编辑") @Permission("uploadRule.edit") */
+    /** @OperationLog("上传规则编辑") @Permission("system_uploadConfig_ruleEdit") */
     public function edit(Request $request) { return $this->run([UploadRuleModule::class, 'edit'], $request); }
 
-    /** @OperationLog("上传规则删除") @Permission("uploadRule.del") */
+    /** @OperationLog("上传规则删除") @Permission("system_uploadConfig_ruleDel") */
     public function del(Request $request) { return $this->run([UploadRuleModule::class, 'del'], $request); }
 }
 
