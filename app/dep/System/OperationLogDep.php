@@ -3,13 +3,13 @@
 namespace app\dep\System;
 
 use app\dep\BaseDep;
+use app\enum\CommonEnum;
 use app\model\System\OperationLogModel;
 use Carbon\Carbon;
 use support\Model;
 
 /**
  * 操作日志 Dep
- * 注意：此表没有 is_del 字段，使用物理删除
  */
 class OperationLogDep extends BaseDep
 {
@@ -26,6 +26,7 @@ class OperationLogDep extends BaseDep
     public function list(array $param)
     {
         return $this->model
+            ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['action']), fn($q) => $q->where('action', 'like', "%{$param['action']}%"))
             ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', $param['user_id']))
             ->when(!empty($param['date']) && is_array($param['date']) && count($param['date']) === 2, function ($q) use ($param) {
@@ -35,24 +36,5 @@ class OperationLogDep extends BaseDep
             })
             ->orderBy('id', 'desc')
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
-    }
-
-    // ==================== 写入方法 ====================
-
-    /**
-     * 覆盖父类方法：此表使用物理删除
-     */
-    public function delete($ids): int
-    {
-        $ids = is_array($ids) ? $ids : [$ids];
-        return $this->model->whereIn('id', $ids)->delete();
-    }
-
-    /**
-     * 覆盖父类方法：此表没有 is_del 字段
-     */
-    public function get(int $id)
-    {
-        return $this->find($id);
     }
 }
