@@ -158,6 +158,12 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/Gen/columns', [controller\DevTools\GenController::class, 'columns']);
     Route::post('/DevTools/Gen/preview', [controller\DevTools\GenController::class, 'preview']);
     Route::post('/DevTools/Gen/generate', [controller\DevTools\GenController::class, 'generate']);
+
+    // WebSocket 绑定与推送
+    Route::post('/WebSocket/bind', [controller\System\WebSocketController::class, 'bind']);
+    Route::post('/WebSocket/onlineCount', [controller\System\WebSocketController::class, 'onlineCount']);
+    Route::post('/WebSocket/pushToUser', [controller\System\WebSocketController::class, 'pushToUser']);
+    Route::post('/WebSocket/broadcast', [controller\System\WebSocketController::class, 'broadcast']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

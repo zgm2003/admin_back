@@ -9,9 +9,9 @@ use app\dep\User\UserProfileDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\service\ExportService;
 use support\Cache;
 use app\validate\User\UsersListValidate;
+use Webman\RedisQueue\Client as RedisQueue;
 
 class UsersListModule extends BaseModule
 {
@@ -171,8 +171,16 @@ class UsersListModule extends BaseModule
                 'role' => $resRole->name ?? '',
             ];
         })->toArray();
-        $exportService = new ExportService();
-        $url = $exportService->export($headers, $data, 'users_export');
-        return self::success(['url' => $url]);
+
+        // 丢队列异步处理
+        RedisQueue::send('export-task', [
+            'user_id' => $request->userId,
+            'headers' => $headers,
+            'data' => $data,
+            'prefix' => 'users_export',
+            'title' => '用户列表导出',
+        ]);
+
+        return self::success(['message' => '导出任务已提交，完成后将通知您']);
     }
 }
