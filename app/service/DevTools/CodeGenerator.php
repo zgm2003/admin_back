@@ -156,20 +156,20 @@ class {MODULE}Controller extends Controller
     public function init(Request $request) { return $this->run([{MODULE}Module::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([{MODULE}Module::class, 'list'], $request); }
 
-    /** @OperationLog("{MENU_NAME}新增") @Permission("{MODULE_LOWER}.add") */
+    /** @OperationLog("{MENU_NAME}新增") @Permission("{DOMAIN_LOWER}_{MODULE_LOWER}_add") */
     public function add(Request $request) { return $this->run([{MODULE}Module::class, 'add'], $request); }
 
-    /** @OperationLog("{MENU_NAME}编辑") @Permission("{MODULE_LOWER}.edit") */
+    /** @OperationLog("{MENU_NAME}编辑") @Permission("{DOMAIN_LOWER}_{MODULE_LOWER}_edit") */
     public function edit(Request $request) { return $this->run([{MODULE}Module::class, 'edit'], $request); }
 
-    /** @OperationLog("{MENU_NAME}删除") @Permission("{MODULE_LOWER}.del") */
+    /** @OperationLog("{MENU_NAME}删除") @Permission("{DOMAIN_LOWER}_{MODULE_LOWER}_del") */
     public function del(Request $request) { return $this->run([{MODULE}Module::class, 'del'], $request); }
 }
 PHP;
 
         return str_replace(
-            ['{DOMAIN}', '{MODULE}', '{MODULE_LOWER}', '{MENU_NAME}'],
-            [$this->domain, $this->moduleName, $this->moduleNameLower, $this->config['menu_name']],
+            ['{DOMAIN}', '{DOMAIN_LOWER}', '{MODULE}', '{MODULE_LOWER}', '{MENU_NAME}'],
+            [$this->domain, $this->domainLower, $this->moduleName, $this->moduleNameLower, $this->config['menu_name']],
             $code
         );
     }
