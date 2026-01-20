@@ -105,11 +105,12 @@ class UploadModule extends BaseModule
                 'tmpSecretKey' => $response->Credentials->TmpSecretKey,
                 'sessionToken' => $response->Credentials->Token,
             ],
-            'expiredTime' => (int)$response->ExpiredTime,
-            'startTime'   => time(),
-            'bucket'      => $bucket,
-            'region'      => $region,
-            'uploadPath'  => "{$folder}/",
+            'expiredTime'   => (int)$response->ExpiredTime,
+            'startTime'     => time(),
+            'bucket'        => $bucket,
+            'region'        => $region,
+            'uploadPath'    => "{$folder}/",
+            'bucket_domain' => $setting['bucket_domain'] ?? '',
         ];
     }
 
