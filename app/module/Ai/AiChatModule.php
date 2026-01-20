@@ -408,10 +408,6 @@ class AiChatModule extends BaseModule
             'conversation_id' => $conversationId,
             'role' => AiEnum::ROLE_ASSISTANT,
             'content' => $content,
-            'prompt_tokens' => $usage['prompt_tokens'] ?? null,
-            'completion_tokens' => $usage['completion_tokens'] ?? null,
-            'total_tokens' => $usage['total_tokens'] ?? null,
-            'model_snapshot' => $modelCode,
             'meta_json' => $metaJson,
             'is_del' => CommonEnum::NO,
         ]);

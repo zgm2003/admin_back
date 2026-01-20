@@ -42,13 +42,7 @@ class AiMessageModule extends BaseModule
                 'conversation_id' => $item->conversation_id,
                 'role' => $item->role,
                 'content' => $item->content,
-                'prompt_tokens' => $item->prompt_tokens,
-                'completion_tokens' => $item->completion_tokens,
-                'total_tokens' => $item->total_tokens,
-                'cost' => $item->cost,
-                'model_snapshot' => $item->model_snapshot,
                 'meta_json' => $item->meta_json,
-                'status' => $item->status,
                 'created_at' => $item->created_at?->toDateTimeString(),
             ];
         });
