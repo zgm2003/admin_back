@@ -25,26 +25,38 @@ class QueueMonitorModule extends BaseModule
         ['group' => 'slow', 'name' => 'generate_conversation_title', 'label' => 'AI标题生成'],
     ];
 
+    /** @var array 队列名称缓存（用于快速验证） */
+    private ?array $queueNames = null;
+
     /**
      * 获取所有队列状态
+     * 使用 Pipeline 批量查询 Redis，避免 N+1 问题
      */
     public function list($request): array
     {
-        $list = [];
-        
+        // 使用 pipeline 批量获取所有队列状态
+        $pipe = Redis::pipeline();
         foreach ($this->queues as $queue) {
             $name = $queue['name'];
-            
+            $pipe->lLen("{$name}_waiting");
+            $pipe->zCard("{$name}_delayed");
+            $pipe->lLen("{$name}_failed");
+        }
+        $results = $pipe->exec();
+
+        $list = [];
+        foreach ($this->queues as $i => $queue) {
+            $offset = $i * 3;
             $list[] = [
-                'name' => $name,
+                'name' => $queue['name'],
                 'label' => $queue['label'],
                 'group' => $queue['group'],
-                'waiting' => (int) Redis::lLen("{$name}_waiting"),
-                'delayed' => (int) Redis::zCard("{$name}_delayed"),
-                'failed' => (int) Redis::lLen("{$name}_failed"),
+                'waiting' => (int)($results[$offset] ?? 0),
+                'delayed' => (int)($results[$offset + 1] ?? 0),
+                'failed' => (int)($results[$offset + 2] ?? 0),
             ];
         }
-        
+
         return self::success($list);
     }
 
@@ -167,11 +179,9 @@ class QueueMonitorModule extends BaseModule
      */
     private function isValidQueue(string $name): bool
     {
-        foreach ($this->queues as $queue) {
-            if ($queue['name'] === $name) {
-                return true;
-            }
+        if ($this->queueNames === null) {
+            $this->queueNames = array_column($this->queues, 'name');
         }
-        return false;
+        return in_array($name, $this->queueNames, true);
     }
 }
