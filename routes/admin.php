@@ -166,6 +166,12 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/QueueMonitor/clear', [controller\DevTools\QueueMonitorController::class, 'clear']);
     Route::post('/DevTools/QueueMonitor/clearFailed', [controller\DevTools\QueueMonitorController::class, 'clearFailed']);
 
+    // 导出任务管理
+    Route::post('/DevTools/ExportTask/init', [controller\DevTools\ExportTaskController::class, 'init']);
+    Route::post('/DevTools/ExportTask/list', [controller\DevTools\ExportTaskController::class, 'list']);
+    Route::post('/DevTools/ExportTask/del', [controller\DevTools\ExportTaskController::class, 'del']);
+    Route::post('/DevTools/ExportTask/batchDel', [controller\DevTools\ExportTaskController::class, 'batchDel']);
+
     // WebSocket 绑定与推送
     Route::post('/WebSocket/bind', [controller\System\WebSocketController::class, 'bind']);
     Route::post('/WebSocket/onlineCount', [controller\System\WebSocketController::class, 'onlineCount']);

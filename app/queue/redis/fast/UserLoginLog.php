@@ -8,7 +8,7 @@ use Webman\RedisQueue\Consumer;
 class UserLoginLog implements Consumer
 {
     // 要消费的队列名
-    public $queue = 'user-login-log';
+    public $queue = 'user_login_log';
 
     // 连接名，对应 plugin/webman/redis-queue/redis.php 里的连接`
     public $connection = 'default';

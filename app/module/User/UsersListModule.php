@@ -3,6 +3,7 @@
 namespace app\module\User;
 
 use app\dep\AddressDep;
+use app\dep\DevTools\ExportTaskDep;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UserProfileDep;
@@ -11,14 +12,14 @@ use app\module\BaseModule;
 use app\service\DictService;
 use support\Cache;
 use app\validate\User\UsersListValidate;
-use Webman\RedisQueue\Client as RedisQueue;
 
 class UsersListModule extends BaseModule
 {
     protected UsersDep $usersDep;
     protected RoleDep $roleDep;
     protected AddressDep $addressDep;
-    protected UserProfileDep $userProfileDep;  // export 还需要
+    protected UserProfileDep $userProfileDep;
+    protected ExportTaskDep $exportTaskDep;
 
     public function __construct()
     {
@@ -26,6 +27,7 @@ class UsersListModule extends BaseModule
         $this->roleDep = new RoleDep();
         $this->addressDep = new AddressDep();
         $this->userProfileDep = new UserProfileDep();
+        $this->exportTaskDep = new ExportTaskDep();
     }
 
     public function init($request)
@@ -172,14 +174,7 @@ class UsersListModule extends BaseModule
             ];
         })->toArray();
 
-        // 丢队列异步处理
-        RedisQueue::send('export-task', [
-            'user_id' => $request->userId,
-            'headers' => $headers,
-            'data' => $data,
-            'prefix' => 'users_export',
-            'title' => '用户列表导出',
-        ]);
+        $this->exportTaskDep->submit($request->userId, '用户列表导出', $headers, $data, 'users_export');
 
         return self::success(['message' => '导出任务已提交，完成后将通知您']);
     }

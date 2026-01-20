@@ -8,7 +8,7 @@ use Webman\RedisQueue\Consumer;
 class TestTest implements Consumer
 {
     // 要消费的队列名
-    public $queue = 'test-test';
+    public $queue = 'test_test';
 
     // 连接名，对应 plugin/webman/redis-queue/redis.php 里的连接`
     public $connection = 'default';

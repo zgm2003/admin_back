@@ -285,7 +285,7 @@ class AuthModule extends BaseModule
 
         if (isValidEmail($account)) {
             $code = rand(100000, 999999);
-            \Webman\RedisQueue\Redis::send('email-send', [
+            \Webman\RedisQueue\Redis::send('email_send', [
                 'email' => $account,
                 'theme' => $theme,
                 'code' => $code,
@@ -375,7 +375,7 @@ class AuthModule extends BaseModule
     private function logLoginAttempt(?int $userId, string $loginAccount, string $loginType, $request, int $isSuccess, string $reason = ''): void
     {
         $platformHeader = $request->header('platform', 'admin');
-        \Webman\RedisQueue\Redis::send('user-login-log', [
+        \Webman\RedisQueue\Redis::send('user_login_log', [
             'user_id' => $userId,
             'login_account' => $loginAccount,
             'login_type' => $loginType,
