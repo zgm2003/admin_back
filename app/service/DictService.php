@@ -13,7 +13,6 @@ use app\enum\PermissionEnum;
 use app\enum\UploadConfigEnum;
 use app\enum\SystemEnum;
 use app\enum\AiEnum;
-use app\enum\ExportTaskEnum;
 use support\Cache;
 
 
@@ -208,11 +207,6 @@ class DictService
                 'label' => $item->name,
             ];
         });
-        return $this;
-    }
-
-    public function setExportTaskStatusArr(){
-        $this->dict['statusArr'] = $this->enumToDict(ExportTaskEnum::$statusArr);
         return $this;
     }
 

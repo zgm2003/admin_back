@@ -25,6 +25,8 @@ class ExportTaskDep extends BaseDep
             ->where('user_id', $param['user_id'])
             ->where('is_del', CommonEnum::NO)
             ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
+            ->when(!empty($param['title']), fn($q) => $q->where('title', 'like', $param['title'] . '%'))
+            ->when(!empty($param['file_name']), fn($q) => $q->where('file_name', 'like', $param['file_name'] . '%'))
             ->orderBy('id', 'desc')
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
@@ -101,5 +103,21 @@ class ExportTaskDep extends BaseDep
             ->where('expire_at', '<', date('Y-m-d H:i:s'))
             ->where('is_del', CommonEnum::NO)
             ->update(['is_del' => CommonEnum::YES]);
+    }
+
+    /**
+     * 统计各状态数量
+     */
+    public function countByStatus(array $param): array
+    {
+        return $this->query()
+            ->where('user_id', $param['user_id'])
+            ->where('is_del', CommonEnum::NO)
+            ->when(!empty($param['title']), fn($q) => $q->where('title', 'like', $param['title'] . '%'))
+            ->when(!empty($param['file_name']), fn($q) => $q->where('file_name', 'like', $param['file_name'] . '%'))
+            ->selectRaw('status, COUNT(*) as num')
+            ->groupBy('status')
+            ->pluck('num', 'status')
+            ->toArray();
     }
 }

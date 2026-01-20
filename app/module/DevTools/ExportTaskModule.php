@@ -5,7 +5,6 @@ namespace app\module\DevTools;
 use app\dep\DevTools\ExportTaskDep;
 use app\enum\ExportTaskEnum;
 use app\module\BaseModule;
-use app\service\DictService;
 use app\validate\DevTools\ExportTaskValidate;
 
 /**
@@ -21,12 +20,18 @@ class ExportTaskModule extends BaseModule
     }
 
     /**
-     * 初始化
+     * 状态统计
      */
-    public function init($request): array
+    public function statusCount($request): array
     {
-        $data['dict'] = (new DictService())->setExportTaskStatusArr()->getDict();
-        return self::success($data);
+        $param = $request->all();
+        $param['user_id'] = $request->userId;
+        $counts = $this->exportTaskDep->countByStatus($param);
+        $list = [];
+        foreach (ExportTaskEnum::$statusArr as $val => $label) {
+            $list[] = ['label' => $label, 'value' => $val, 'num' => $counts[$val] ?? 0];
+        }
+        return self::success($list);
     }
 
     /**
