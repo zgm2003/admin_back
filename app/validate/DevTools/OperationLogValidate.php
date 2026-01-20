@@ -1,6 +1,6 @@
 <?php
 
-namespace app\validate\System;
+namespace app\validate\DevTools;
 
 use Respect\Validation\Validator as v;
 
@@ -23,4 +23,3 @@ class OperationLogValidate
         ];
     }
 }
-

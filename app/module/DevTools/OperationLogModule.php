@@ -1,14 +1,11 @@
 <?php
 
-namespace app\module\System;
+namespace app\module\DevTools;
 
-//导入部分
-use app\dep\System\OperationLogDep;
+use app\dep\DevTools\OperationLogDep;
 use app\dep\User\UsersDep;
-use app\enum\CommonEnum;
 use app\module\BaseModule;
-use app\service\DictService;
-use app\validate\System\OperationLogValidate;
+use app\validate\DevTools\OperationLogValidate;
 
 class OperationLogModule extends BaseModule
 {
@@ -27,7 +24,6 @@ class OperationLogModule extends BaseModule
         return self::success();
     }
 
-
     public function del($request)
     {
         $param = $this->validate($request, OperationLogValidate::del());
@@ -36,6 +32,7 @@ class OperationLogModule extends BaseModule
 
         return self::success();
     }
+
     public function list($request)
     {
         $param = $request->all();
@@ -59,7 +56,6 @@ class OperationLogModule extends BaseModule
                 'response_data' => $item['response_data'],
                 'is_success' => $item['is_success'],
                 'created_at' => $item['created_at']->toDateTimeString(),
-
             ];
         });
         $data['page'] = [
@@ -71,8 +67,4 @@ class OperationLogModule extends BaseModule
 
         return self::paginate($data['list'], $data['page']);
     }
-
-
-
 }
-

@@ -2,7 +2,7 @@
 
 namespace app\queue\redis\fast;
 
-use app\dep\System\OperationLogDep;
+use app\dep\DevTools\OperationLogDep;
 use Webman\RedisQueue\Consumer;
 
 class OperationLog implements Consumer

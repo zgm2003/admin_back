@@ -1,10 +1,10 @@
 <?php
 
-namespace app\dep\System;
+namespace app\dep\DevTools;
 
 use app\dep\BaseDep;
 use app\enum\CommonEnum;
-use app\model\System\OperationLogModel;
+use app\model\DevTools\OperationLogModel;
 use Carbon\Carbon;
 use support\Model;
 

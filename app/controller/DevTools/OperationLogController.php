@@ -1,9 +1,9 @@
 <?php
 
-namespace app\controller\System;
+namespace app\controller\DevTools;
 
 use app\controller\Controller;
-use app\module\System\OperationLogModule;
+use app\module\DevTools\OperationLogModule;
 use support\Request;
 
 class OperationLogController extends Controller
@@ -11,6 +11,6 @@ class OperationLogController extends Controller
     public function init(Request $request) { return $this->run([OperationLogModule::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([OperationLogModule::class, 'list'], $request); }
 
-    /** @Permission("system_operationLog_del") */
+    /** @Permission("devTools_operationLog_del") */
     public function del(Request $request) { return $this->run([OperationLogModule::class, 'del'], $request); }
 }

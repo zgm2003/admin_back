@@ -64,9 +64,9 @@ Route::group('/api/admin', function () {
     Route::post('/UserSession/batchKick', [controller\User\UserSessionController::class, 'batchKick']);
 
     //操作日志管理
-    Route::post('/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
-    Route::post('/OperationLog/list', [controller\System\OperationLogController::class, 'list']);
-    Route::post('/OperationLog/del', [controller\System\OperationLogController::class, 'del']);
+    Route::post('/DevTools/OperationLog/init', [controller\DevTools\OperationLogController::class, 'init']);
+    Route::post('/DevTools/OperationLog/list', [controller\DevTools\OperationLogController::class, 'list']);
+    Route::post('/DevTools/OperationLog/del', [controller\DevTools\OperationLogController::class, 'del']);
 
     //用户登录日志管理
     Route::post('/UsersLoginLog/init', [controller\User\UsersLoginLogController::class, 'init']);
@@ -158,6 +158,13 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/Gen/columns', [controller\DevTools\GenController::class, 'columns']);
     Route::post('/DevTools/Gen/preview', [controller\DevTools\GenController::class, 'preview']);
     Route::post('/DevTools/Gen/generate', [controller\DevTools\GenController::class, 'generate']);
+
+    // 队列监控
+    Route::post('/DevTools/QueueMonitor/list', [controller\DevTools\QueueMonitorController::class, 'list']);
+    Route::post('/DevTools/QueueMonitor/failedList', [controller\DevTools\QueueMonitorController::class, 'failedList']);
+    Route::post('/DevTools/QueueMonitor/retry', [controller\DevTools\QueueMonitorController::class, 'retry']);
+    Route::post('/DevTools/QueueMonitor/clear', [controller\DevTools\QueueMonitorController::class, 'clear']);
+    Route::post('/DevTools/QueueMonitor/clearFailed', [controller\DevTools\QueueMonitorController::class, 'clearFailed']);
 
     // WebSocket 绑定与推送
     Route::post('/WebSocket/bind', [controller\System\WebSocketController::class, 'bind']);
