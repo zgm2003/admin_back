@@ -301,6 +301,7 @@ class AuthModule extends BaseModule
         }
 
         self::throw('请输入正确的邮箱或手机号');
+        return [];
     }
 
     /**
