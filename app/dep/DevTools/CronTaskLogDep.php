@@ -4,6 +4,7 @@ namespace app\dep\DevTools;
 
 use app\dep\BaseDep;
 use app\model\DevTools\CronTaskLogModel;
+use Carbon\Carbon;
 use support\Model;
 
 class CronTaskLogDep extends BaseDep
@@ -54,6 +55,11 @@ class CronTaskLogDep extends BaseDep
             ->when(!empty($param['task_id']), fn($q) => $q->where('task_id', $param['task_id']))
             ->when(!empty($param['task_name']), fn($q) => $q->where('task_name', $param['task_name']))
             ->when(!empty($param['status']), fn($q) => $q->where('status', $param['status']))
+            ->when(!empty($param['date']) && is_array($param['date']) && count($param['date']) === 2, function ($q) use ($param) {
+                $start = Carbon::parse($param['date'][0])->startOfDay()->toDateTimeString();
+                $end = Carbon::parse($param['date'][1])->endOfDay()->toDateTimeString();
+                $q->whereBetween('start_time', [$start, $end]);
+            })
             ->orderBy('id', 'desc')
             ->paginate($param['page_size'] ?? 20, $columns, 'page', $param['current_page'] ?? 1);
     }

@@ -74,7 +74,7 @@ class CronTaskDep extends BaseDep
         $columns = ['id', 'name', 'title', 'description', 'cron', 'cron_readable', 'handler', 'status', 'created_at', 'updated_at'];
         return $this->model
             ->select($columns)
-            ->when(!empty($param['title']), fn($q) => $q->where('title', 'like', '%' . $param['title'] . '%'))
+            ->when(!empty($param['title']), fn($q) => $q->where('title', 'like', $param['title'] . '%'))
             ->when(!empty($param['status']), fn($q) => $q->where('status', $param['status']))
             ->where('is_del', CommonEnum::NO)
             ->orderBy('id', 'asc')

@@ -51,6 +51,7 @@ class CronTaskValidate
     {
         return [
             'task_id'      => v::intVal()->positive()->setName('task_id'),
+            'date'         => v::optional(v::arrayType())->setName('date'),
             'current_page' => v::optional(v::intVal()->positive())->setName('current_page'),
             'page_size'    => v::optional(v::intVal()->between(1, 100))->setName('page_size'),
         ];
