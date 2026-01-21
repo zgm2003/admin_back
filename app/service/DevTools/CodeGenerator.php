@@ -444,7 +444,7 @@ TS;
             $extraImports .= "\nimport {Editor} from '@/components/Editor'";
         }
         if ($needsUpImg) {
-            $extraImports .= "\nimport UpImg from '@/components/UpImg'";
+            $extraImports .= "\nimport { UpImg } from '@/components/UpImg'";
         }
 
         return <<<VUE
