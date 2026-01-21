@@ -172,6 +172,14 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/ExportTask/del', [controller\DevTools\ExportTaskController::class, 'del']);
     Route::post('/DevTools/ExportTask/batchDel', [controller\DevTools\ExportTaskController::class, 'batchDel']);
 
+    // 定时任务管理
+    Route::post('/DevTools/CronTask/list', [controller\DevTools\CronTaskController::class, 'list']);
+    Route::post('/DevTools/CronTask/add', [controller\DevTools\CronTaskController::class, 'add']);
+    Route::post('/DevTools/CronTask/edit', [controller\DevTools\CronTaskController::class, 'edit']);
+    Route::post('/DevTools/CronTask/del', [controller\DevTools\CronTaskController::class, 'del']);
+    Route::post('/DevTools/CronTask/status', [controller\DevTools\CronTaskController::class, 'status']);
+    Route::post('/DevTools/CronTask/logs', [controller\DevTools\CronTaskController::class, 'logs']);
+
     // WebSocket 绑定与推送
     Route::post('/WebSocket/bind', [controller\System\WebSocketController::class, 'bind']);
     Route::post('/WebSocket/onlineCount', [controller\System\WebSocketController::class, 'onlineCount']);
