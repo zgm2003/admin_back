@@ -3,6 +3,7 @@
 namespace app\module\DevTools;
 
 use app\module\BaseModule;
+use app\service\System\SettingService;
 use support\Redis;
 
 /**
@@ -18,28 +19,102 @@ class QueueMonitorModule extends BaseModule
     const WAITING_PREFIX = '{redis-queue}-waiting';
     const DELAYED_KEY = '{redis-queue}-delayed';
     const FAILED_KEY = '{redis-queue}-failed';
+    const SETTING_KEY_QUEUES = 'devtools_queue_monitor_queues';
 
     /**
-     * 队列配置
+     * 队列配置默认值（仅作兜底，优先读系统设置 JSON：devtools_queue_monitor_queues）
+     * 说明：
+     * 1) 运行时先读系统设置（启用且合法的 JSON），失败/缺失时才回退到此默认列表
+     * 2) 系统设置格式要求见 normalizeQueues()，运维可直接在线修改，无需发版
      */
-    private array $queues = [
+    private array $defaultQueues = [
         ['group' => 'fast', 'name' => 'operation_log', 'label' => '操作日志'],
         ['group' => 'fast', 'name' => 'user_login_log', 'label' => '登录日志'],
         ['group' => 'slow', 'name' => 'email_send', 'label' => '邮件发送'],
         ['group' => 'slow', 'name' => 'export_task', 'label' => '导出任务'],
         ['group' => 'slow', 'name' => 'generate_conversation_title', 'label' => 'AI标题生成'],
+        ['group' => 'slow', 'name' => 'generate_conversation_content', 'label' => 'AI内容生成'],
     ];
 
     private ?array $queueNames = null;
+    private ?array $queues = null;
+
+    /**
+     * 获取队列配置（优先系统设置 JSON，失败则 fallback 默认）
+     * - 系统设置 key: devtools_queue_monitor_queues，类型 JSON (value_type=4)
+     * - 结构: [ { "group": "fast|slow", "name": "queue_name", "label": "展示名" }, ... ]
+     * - 如果未配置/被禁用/解析失败：回退 defaultQueues，避免监控页空白
+     */
+    private function getQueues(): array
+    {
+        if ($this->queues !== null) {
+            return $this->queues;
+        }
+
+        $cfg = SettingService::get(self::SETTING_KEY_QUEUES, null);
+        $queues = is_array($cfg) ? $this->normalizeQueues($cfg) : [];
+        if (empty($queues)) {
+            $queues = $this->defaultQueues;
+        }
+
+        $this->queues = $queues;
+        return $queues;
+    }
+
+    /**
+     * 规范化并校验队列配置
+     * 期望格式: [ {group,name,label}, ... ]
+     * 校验规则：
+     * - name 必填且去重
+     * - group 仅允许 fast/slow，非法值降级为 slow，空值默认 slow
+     * - label 为空则使用 name
+     */
+    private function normalizeQueues(array $raw): array
+    {
+        $out = [];
+        $seen = [];
+        foreach ($raw as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $name = isset($item['name']) ? trim((string)$item['name']) : '';
+            if ($name === '') {
+                continue;
+            }
+            if (isset($seen[$name])) {
+                continue;
+            }
+            $group = isset($item['group']) ? trim((string)$item['group']) : '';
+            $label = isset($item['label']) ? trim((string)$item['label']) : '';
+
+            // 最小约束：name 必填；group/label 可缺省
+            if ($group === '') {
+                $group = 'slow';
+            }
+            if ($label === '') {
+                $label = $name;
+            }
+
+            // group 只允许 fast/slow，其它值降级到 slow
+            if (!in_array($group, ['fast', 'slow'], true)) {
+                $group = 'slow';
+            }
+
+            $seen[$name] = true;
+            $out[] = ['group' => $group, 'name' => $name, 'label' => $label];
+        }
+        return $out;
+    }
 
     /**
      * 获取所有队列状态
      */
     public function list($request): array
     {
+        $queues = $this->getQueues();
         // 批量获取 waiting 队列长度
         $pipe = Redis::pipeline();
-        foreach ($this->queues as $queue) {
+        foreach ($queues as $queue) {
             $pipe->lLen(self::WAITING_PREFIX . $queue['name']);
         }
         $waitingResults = $pipe->exec();
@@ -51,7 +126,7 @@ class QueueMonitorModule extends BaseModule
         $delayedCounts = $this->countDelayedByQueue();
 
         $list = [];
-        foreach ($this->queues as $i => $queue) {
+        foreach ($queues as $i => $queue) {
             $list[] = [
                 'name' => $queue['name'],
                 'label' => $queue['label'],
@@ -100,6 +175,7 @@ class QueueMonitorModule extends BaseModule
      */
     public function failedList($request): array
     {
+        $this->getQueues(); // 触发加载配置
         $param = $request->all();
         $queueName = $param['queue'] ?? '';
         
@@ -143,6 +219,7 @@ class QueueMonitorModule extends BaseModule
      */
     public function retry($request): array
     {
+        $this->getQueues(); // 触发加载配置
         $param = $request->all();
         $queueName = $param['queue'] ?? '';
         $index = $param['index'] ?? null;
@@ -178,6 +255,7 @@ class QueueMonitorModule extends BaseModule
      */
     public function clear($request): array
     {
+        $this->getQueues(); // 触发加载配置
         $param = $request->all();
         $queueName = $param['queue'] ?? '';
         
@@ -196,6 +274,7 @@ class QueueMonitorModule extends BaseModule
      */
     public function clearFailed($request): array
     {
+        $this->getQueues(); // 触发加载配置
         $param = $request->all();
         $queueName = $param['queue'] ?? '';
         
@@ -222,7 +301,7 @@ class QueueMonitorModule extends BaseModule
     private function isValidQueue(string $name): bool
     {
         if ($this->queueNames === null) {
-            $this->queueNames = array_column($this->queues, 'name');
+            $this->queueNames = array_column($this->getQueues(), 'name');
         }
         return in_array($name, $this->queueNames, true);
     }
