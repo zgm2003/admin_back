@@ -13,6 +13,7 @@ use app\enum\PermissionEnum;
 use app\enum\UploadConfigEnum;
 use app\enum\SystemEnum;
 use app\enum\AiEnum;
+use app\enum\CronEnum;
 use support\Cache;
 
 
@@ -207,6 +208,11 @@ class DictService
                 'label' => $item->name,
             ];
         });
+        return $this;
+    }
+
+    public function setCronPresetArr(){
+        $this->dict['cron_preset_arr'] = $this->enumToDict(CronEnum::$presetArr);
         return $this;
     }
 

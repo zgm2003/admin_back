@@ -6,6 +6,7 @@ use app\dep\DevTools\CronTaskDep;
 use app\dep\DevTools\CronTaskLogDep;
 use app\module\BaseModule;
 use app\enum\CommonEnum;
+use app\service\DictService;
 use app\validate\DevTools\CronTaskValidate;
 
 /**
@@ -20,6 +21,18 @@ class CronTaskModule extends BaseModule
     {
         $this->cronTaskDep = new CronTaskDep();
         $this->cronTaskLogDep = new CronTaskLogDep();
+    }
+
+    /**
+     * 初始化数据
+     */
+    public function init(): array
+    {
+        $dictService = new DictService();
+        $data['dict'] = $dictService
+            ->setCronPresetArr()
+            ->getDict();
+        return self::success($data);
     }
 
     /**

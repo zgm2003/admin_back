@@ -3,7 +3,6 @@
 namespace app\process;
 
 use app\dep\Ai\AiRunsDep;
-use Workerman\Crontab\Crontab;
 
 /**
  * AI Run 超时检测定时任务
@@ -16,12 +15,6 @@ class AiRunTimeoutTask extends BaseCronTask
     protected function getTaskName(): string
     {
         return 'ai_run_timeout';
-    }
-
-    public function onWorkerStart(): void
-    {
-        // 每分钟检查一次超时的 Run
-        new Crontab('0 * * * * *', fn() => $this->runWithLog());
     }
 
     protected function handle(): ?string

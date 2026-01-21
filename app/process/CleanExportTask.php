@@ -3,7 +3,6 @@
 namespace app\process;
 
 use app\dep\DevTools\ExportTaskDep;
-use Workerman\Crontab\Crontab;
 
 /**
  * 清理过期导出任务
@@ -24,12 +23,6 @@ class CleanExportTask extends BaseCronTask
     protected function getTaskName(): string
     {
         return 'clean_export';
-    }
-
-    public function onWorkerStart(): void
-    {
-        // 每天凌暨1点执行清理
-        new Crontab('0 0 1 * * *', fn() => $this->runWithLog());
     }
 
     protected function handle(): ?string

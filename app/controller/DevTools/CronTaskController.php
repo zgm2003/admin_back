@@ -11,6 +11,8 @@ use support\Request;
  */
 class CronTaskController extends Controller
 {
+    public function init(Request $request) { return $this->run([CronTaskModule::class, 'init'], $request); }
+    
     public function list(Request $request) { return $this->run([CronTaskModule::class, 'list'], $request); }
     
     /** @OperationLog("新增定时任务") @Permission("devTools_cronTask_add") */

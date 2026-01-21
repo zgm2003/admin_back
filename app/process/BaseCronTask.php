@@ -4,6 +4,7 @@ namespace app\process;
 
 use app\dep\DevTools\CronTaskDep;
 use app\dep\DevTools\CronTaskLogDep;
+use Workerman\Crontab\Crontab;
 
 /**
  * 定时任务基类
@@ -30,6 +31,18 @@ abstract class BaseCronTask
      * @return string|null 执行结果描述
      */
     abstract protected function handle(): ?string;
+
+    /**
+     * Worker 启动时注册定时任务
+     */
+    public function onWorkerStart(): void
+    {
+        $task = $this->cronTaskDep->findByName($this->getTaskName());
+        if (!$task || empty($task->cron)) {
+            return;
+        }
+        new Crontab($task->cron, fn() => $this->runWithLog());
+    }
 
     /**
      * 执行任务（带日志记录）

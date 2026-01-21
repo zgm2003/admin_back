@@ -173,6 +173,7 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/ExportTask/batchDel', [controller\DevTools\ExportTaskController::class, 'batchDel']);
 
     // 定时任务管理
+    Route::post('/DevTools/CronTask/init', [controller\DevTools\CronTaskController::class, 'init']);
     Route::post('/DevTools/CronTask/list', [controller\DevTools\CronTaskController::class, 'list']);
     Route::post('/DevTools/CronTask/add', [controller\DevTools\CronTaskController::class, 'add']);
     Route::post('/DevTools/CronTask/edit', [controller\DevTools\CronTaskController::class, 'edit']);
