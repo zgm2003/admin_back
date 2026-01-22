@@ -6,6 +6,7 @@ use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UserProfileDep;
 use app\dep\User\UsersDep;
+use app\dep\User\UsersQuickEntryDep;
 use app\enum\CommonEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
@@ -24,6 +25,7 @@ class ProfileModule extends BaseModule
     protected RoleDep $roleDep;
     protected PermissionDep $permissionDep;
     protected UserProfileDep $userProfileDep;
+    protected UsersQuickEntryDep $usersQuickEntryDep;
     protected PermissionService $permissionService;
 
     public function __construct()
@@ -32,6 +34,7 @@ class ProfileModule extends BaseModule
         $this->roleDep = new RoleDep();
         $this->permissionDep = new PermissionDep();
         $this->userProfileDep = new UserProfileDep();
+        $this->usersQuickEntryDep = new UsersQuickEntryDep();
         $this->permissionService = new PermissionService();
     }
 
@@ -57,7 +60,10 @@ class ProfileModule extends BaseModule
 
         Cache::set('auth_perm_uid_' . $user->id, $perm['buttonCodes'], 300);
 
-        return self::success(array_merge($base, $perm));
+        // 获取用户快捷入口配置
+        $quickEntry = $this->usersQuickEntryDep->listByUserId($user->id);
+
+        return self::success(array_merge($base, $perm, ['quick_entry' => $quickEntry]));
     }
 
     /**

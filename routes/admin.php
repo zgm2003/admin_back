@@ -74,6 +74,9 @@ Route::group('/api/admin', function () {
     Route::post('/UsersLoginLog/list', [controller\User\UsersLoginLogController::class, 'list']);
     Route::post('/UsersLoginLog/listCursor', [controller\User\UsersLoginLogController::class, 'listCursor']);
 
+    //用户快捷入口
+    Route::post('/UsersQuickEntry/add', [controller\User\UsersQuickEntryController::class, 'add']);
+    Route::post('/UsersQuickEntry/del', [controller\User\UsersQuickEntryController::class, 'del']);
 
     //上传规则
     Route::post('/UploadRule/init', [controller\System\UploadRuleController::class, 'init']);
