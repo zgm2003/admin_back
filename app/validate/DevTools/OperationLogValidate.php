@@ -22,4 +22,15 @@ class OperationLogValidate
             'action'       => v::optional(v::stringType()),
         ];
     }
+
+    public static function listCursor(): array
+    {
+        return [
+            'page_size' => v::optional(v::intVal()->min(1)->max(100)),
+            'cursor'    => v::optional(v::intVal()),
+            'user_id'   => v::optional(v::intVal()),
+            'action'    => v::optional(v::stringType()),
+            'date'      => v::optional(v::arrayType()),
+        ];
+    }
 }

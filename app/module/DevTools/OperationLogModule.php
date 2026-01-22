@@ -67,4 +67,35 @@ class OperationLogModule extends BaseModule
 
         return self::paginate($data['list'], $data['page']);
     }
+
+    /**
+     * 游标分页列表（深分页优化）
+     */
+    public function listCursor($request)
+    {
+        $param = $this->validate($request, OperationLogValidate::listCursor());
+        $param['page_size'] = $param['page_size'] ?? 20;
+
+        $result = $this->operationLogDep->listByCursor($param);
+        
+        // 批量预加载用户数据
+        $userIds = $result['list']->pluck('user_id')->unique()->toArray();
+        $userMap = $this->usersDep->getMap($userIds);
+
+        $list = $result['list']->map(function ($item) use ($userMap) {
+            $resUser = $userMap->get($item['user_id']);
+            return [
+                'id' => $item['id'],
+                'user_name' => $resUser->username ?? 'Unknown',
+                'user_email' => $resUser->email ?? '',
+                'action' => $item['action'],
+                'request_data' => $item['request_data'],
+                'response_data' => $item['response_data'],
+                'is_success' => $item['is_success'],
+                'created_at' => $item['created_at']->toDateTimeString(),
+            ];
+        });
+
+        return self::cursorPaginate($list, $result['next_cursor'], $result['has_more']);
+    }
 }

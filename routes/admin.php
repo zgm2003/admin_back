@@ -66,6 +66,7 @@ Route::group('/api/admin', function () {
     //操作日志管理
     Route::post('/DevTools/OperationLog/init', [controller\DevTools\OperationLogController::class, 'init']);
     Route::post('/DevTools/OperationLog/list', [controller\DevTools\OperationLogController::class, 'list']);
+    Route::post('/DevTools/OperationLog/listCursor', [controller\DevTools\OperationLogController::class, 'listCursor']);
     Route::post('/DevTools/OperationLog/del', [controller\DevTools\OperationLogController::class, 'del']);
 
     //用户登录日志管理
