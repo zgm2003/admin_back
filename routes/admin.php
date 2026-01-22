@@ -72,6 +72,7 @@ Route::group('/api/admin', function () {
     //用户登录日志管理
     Route::post('/UsersLoginLog/init', [controller\User\UsersLoginLogController::class, 'init']);
     Route::post('/UsersLoginLog/list', [controller\User\UsersLoginLogController::class, 'list']);
+    Route::post('/UsersLoginLog/listCursor', [controller\User\UsersLoginLogController::class, 'listCursor']);
 
 
     //上传规则
