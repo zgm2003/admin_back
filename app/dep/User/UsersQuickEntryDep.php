@@ -33,19 +33,6 @@ class UsersQuickEntryDep extends BaseDep
     }
 
     /**
-     * 获取用户的 permission_id 列表
-     */
-    public function getPermissionIdsByUserId(int $userId): array
-    {
-        return $this->model
-            ->where('user_id', $userId)
-            ->where('is_del', CommonEnum::NO)
-            ->orderBy('sort', 'asc')
-            ->pluck('permission_id')
-            ->toArray();
-    }
-
-    /**
      * 检查用户是否已添加某个权限
      */
     public function existsByUserAndPermission(int $userId, int $permissionId): bool

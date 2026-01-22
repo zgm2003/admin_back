@@ -19,4 +19,11 @@ class UsersQuickEntryValidate
             'id' => v::intVal()->setName('ID'),
         ];
     }
+
+    public static function sort(): array
+    {
+        return [
+            'items' => v::arrayType()->setName('排序项'),
+        ];
+    }
 }

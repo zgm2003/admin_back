@@ -56,4 +56,16 @@ class UsersQuickEntryModule extends BaseModule
 
         return self::success();
     }
+
+    /**
+     * 更新排序
+     */
+    public function sort($request): array
+    {
+        $param = $this->validate($request, UsersQuickEntryValidate::sort());
+        
+        $this->usersQuickEntryDep->updateSort($param['items']);
+
+        return self::success();
+    }
 }
