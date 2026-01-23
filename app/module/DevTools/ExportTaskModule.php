@@ -51,7 +51,7 @@ class ExportTaskModule extends BaseModule
                 'id' => $item->id,
                 'title' => $item->title,
                 'file_name' => $item->file_name,
-                'file_url' => $item->file_url,
+                'file_url' => $this->getFullUrl($item->file_url),
                 'file_size_text' => $this->formatFileSize($item->file_size),
                 'row_count' => $item->row_count,
                 'status' => $item->status,
@@ -101,5 +101,18 @@ class ExportTaskModule extends BaseModule
         if ($size < 1024) return $size . ' B';
         if ($size < 1024 * 1024) return round($size / 1024, 2) . ' KB';
         return round($size / (1024 * 1024), 2) . ' MB';
+    }
+
+    /**
+     * 拼接完整 URL
+     */
+    private function getFullUrl(?string $url): ?string
+    {
+        if (!$url) return null;
+        // 已经是完整 URL
+        if (str_starts_with($url, 'http')) return $url;
+        // 相对路径拼接 APP_URL
+        $appUrl = rtrim(getenv('APP_URL') ?: '', '/');
+        return $appUrl . $url;
     }
 }
