@@ -52,4 +52,16 @@ class TauriVersionDep extends BaseDep
     {
         return $this->model->where('id', $id)->delete();
     }
+
+    /**
+     * 根据条件获取版本记录
+     */
+    public function getByCondition(array $condition)
+    {
+        $query = $this->model;
+        foreach ($condition as $field => $value) {
+            $query = $query->where($field, $value);
+        }
+        return $query->first();
+    }
 }

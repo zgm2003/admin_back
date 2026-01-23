@@ -193,6 +193,8 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/TauriVersion/add', [controller\DevTools\TauriVersionController::class, 'add']);
     Route::post('/DevTools/TauriVersion/setLatest', [controller\DevTools\TauriVersionController::class, 'setLatest']);
     Route::post('/DevTools/TauriVersion/del', [controller\DevTools\TauriVersionController::class, 'del']);
+    Route::post('/DevTools/TauriVersion/forceUpdate', [controller\DevTools\TauriVersionController::class, 'forceUpdate']);
+    Route::post('/DevTools/TauriVersion/checkForceUpdate', [controller\DevTools\TauriVersionController::class, 'checkForceUpdate']);
     Route::post('/DevTools/TauriVersion/updateJson', [controller\DevTools\TauriVersionController::class, 'updateJson']);
 
     // WebSocket 绑定与推送

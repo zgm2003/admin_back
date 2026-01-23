@@ -50,6 +50,7 @@ class TauriVersionModule extends BaseModule
             'file_size' => $item->file_size,
             'file_size_text' => $this->formatFileSize($item->file_size),
             'is_latest' => $item->is_latest,
+            'force_update' => $item->force_update,
             'created_at' => $item->created_at->toDateTimeString(),
             'updated_at' => $item->updated_at->toDateTimeString(),
         ]);
@@ -68,6 +69,7 @@ class TauriVersionModule extends BaseModule
     public function add($request): array
     {
         $param = $this->validate($request, TauriVersionValidate::add());
+        $param['force_update'] = $param['force_update'] ?? CommonEnum::NO;
         $param['is_latest'] = CommonEnum::NO;
         $id = $this->dep->add($param);
         return self::success(['id' => $id]);
@@ -106,6 +108,22 @@ class TauriVersionModule extends BaseModule
     }
 
     /**
+     * 切换强制更新状态
+     */
+    public function forceUpdate($request): array
+    {
+        $param = $this->validate($request, TauriVersionValidate::forceUpdate());
+        $version = $this->dep->find($param['id']);
+        self::throwIf(!$version, '版本不存在');
+        
+        $this->withTransaction(function () use ($param, $version) {
+            $this->dep->update($param['id'], ['force_update' => $param['force_update']]);
+        });
+        
+        return self::success();
+    }
+
+    /**
      * 获取 update.json 内容（公开接口）
      */
     public function updateJson($request): array
@@ -129,6 +147,38 @@ class TauriVersionModule extends BaseModule
             ]
         ];
         return self::success($json);
+    }
+
+    /**
+     * 检查版本是否需要强制更新
+     */
+    public function checkForceUpdate($request): array
+    {
+        $param = $this->validate($request, TauriVersionValidate::checkForceUpdate());
+        $version = $param['version'];
+        $platform = $param['platform'] ?? 'windows-x86_64';
+        
+        $versionRecord = $this->dep->getByCondition([
+            'version' => $version,
+            'platform' => $platform
+        ]);
+        
+        if (!$versionRecord) {
+            return self::error('版本不存在');
+        }
+        
+        $isForceUpdate = $versionRecord->force_update === CommonEnum::YES;
+        
+        return self::success([
+            'version' => $version,
+            'platform' => $platform,
+            'is_force_update' => $isForceUpdate,
+            'force_update_info' => $isForceUpdate ? [
+                'latest_version' => $this->dep->getLatest($platform)?->version,
+                'notes' => $versionRecord->notes,
+                'file_url' => $versionRecord->file_url,
+            ] : null
+        ]);
     }
 
     /**

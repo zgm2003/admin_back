@@ -23,5 +23,13 @@ class TauriVersionController extends Controller
     /** @OperationLog("删除版本") @Permission("devTools_tauriVersion_del") */
     public function del(Request $request) { return $this->run([TauriVersionModule::class, 'del'], $request); }
 
+    /** @OperationLog("切换强制更新") @Permission("devTools_tauriVersion_forceUpdate") */
+    public function forceUpdate(Request $request) { return $this->run([TauriVersionModule::class, 'forceUpdate'], $request); }
+
+    /**
+     * 检查版本是否需要强制更新
+     */
+    public function checkForceUpdate(Request $request) { return $this->run([TauriVersionModule::class, 'checkForceUpdate'], $request); }
+
     public function updateJson(Request $request) { return $this->run([TauriVersionModule::class, 'updateJson'], $request); }
 }

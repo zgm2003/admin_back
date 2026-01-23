@@ -3,6 +3,7 @@
 namespace app\validate\DevTools;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 use app\enum\UploadConfigEnum;
 
 class TauriVersionValidate
@@ -25,6 +26,7 @@ class TauriVersionValidate
             'signature' => v::stringType()->notEmpty()->setName('签名'),
             'platform'  => v::in(array_keys(UploadConfigEnum::$tauriPlatformArr))->setName('平台'),
             'file_size' => v::optional(v::intVal()),
+            'force_update' => v::optional(v::intVal()->in([0, 1])),
         ];
     }
 
@@ -39,6 +41,22 @@ class TauriVersionValidate
     {
         return [
             'id' => v::intVal()->setName('ID'),
+        ];
+    }
+
+    public static function forceUpdate(): array
+    {
+        return [
+            'id' => v::intVal()->setName('ID'),
+            'force_update' => v::intVal()->in([CommonEnum::YES, CommonEnum::NO])->setName('强制更新'),
+        ];
+    }
+
+    public static function checkForceUpdate(): array
+    {
+        return [
+            'version' => v::notEmpty()->setName('版本号'),
+            'platform' => v::optional(v::stringType())->setName('平台'),
         ];
     }
 }
