@@ -4,6 +4,7 @@ namespace app\module;
 
 use app\dep\System\UploadSettingDep;
 use app\lib\Crypto\KeyVault;
+use app\enum\UploadConfigEnum;
 use AlibabaCloud\Client\AlibabaCloud;
 use TencentCloud\Sts\V20180813\Models\GetFederationTokenRequest;
 use TencentCloud\Sts\V20180813\StsClient;
@@ -13,22 +14,13 @@ use TencentCloud\Common\Profile\HttpProfile;
 
 class UploadModule extends BaseModule
 {
-    private $allowedFolders = [
-        'avatar',
-        'upload',
-        'file',
-        'image',
-        'article',
-        'ai_chat_images'
-    ];
-
     public function getUploadToken($request)
     {
         $folder = trim((string)$request->input('folderName', ''));
 
         self::throwIf(
             $folder === ''
-            || !in_array($folder, $this->allowedFolders, true)
+            || !array_key_exists($folder, UploadConfigEnum::$folderArr)
             || str_contains($folder, '..'),
             'folderName 非法'
         );

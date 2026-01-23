@@ -216,6 +216,11 @@ class DictService
         return $this;
     }
 
+    public function setTauriPlatformArr(){
+        $this->dict['tauri_platform_arr'] = $this->enumToDict(UploadConfigEnum::$tauriPlatformArr);
+        return $this;
+    }
+
     public function enumToDict($enum)
     {
         $res = [];

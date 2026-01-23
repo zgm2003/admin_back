@@ -1,0 +1,55 @@
+<?php
+
+namespace app\dep\DevTools;
+
+use app\dep\BaseDep;
+use app\model\DevTools\TauriVersionModel;
+use app\enum\CommonEnum;
+use support\Model;
+
+/**
+ * Tauri 版本管理数据层
+ */
+class TauriVersionDep extends BaseDep
+{
+    protected function createModel(): Model
+    {
+        return new TauriVersionModel();
+    }
+
+    /**
+     * 获取版本列表
+     */
+    public function list(array $param)
+    {
+        return $this->model
+            ->when(!empty($param['platform']), fn($q) => $q->where('platform', $param['platform']))
+            ->orderBy('id', 'desc')
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
+    }
+
+    /**
+     * 获取最新版本
+     */
+    public function getLatest(string $platform = 'windows-x86_64')
+    {
+        return $this->model->where('platform', $platform)->where('is_latest', CommonEnum::YES)->first();
+    }
+
+    /**
+     * 设置为最新版本
+     */
+    public function setLatest(int $id, string $platform): int
+    {
+        $this->model->where('platform', $platform)->update(['is_latest' => CommonEnum::NO]);
+        return $this->model->where('id', $id)->update(['is_latest' => CommonEnum::YES]);
+    }
+
+    /**
+     * 真删除版本（这个表不用软删除）
+     */
+    public function hardDelete(int $id): int
+    {
+        return $this->model->where('id', $id)->delete();
+    }
+}

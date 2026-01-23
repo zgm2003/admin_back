@@ -76,4 +76,34 @@ class UploadConfigEnum
 //        self::DRIVER_S3    => 'AWS S3',
 //        self::DRIVER_QINIU => '七年云 Kodo',
     ];
+
+    // 上传文件夹白名单
+    const FOLDER_AVATAR = 'avatar';
+    const FOLDER_UPLOAD = 'upload';
+    const FOLDER_FILE = 'file';
+    const FOLDER_IMAGE = 'image';
+    const FOLDER_ARTICLE = 'article';
+    const FOLDER_AI_CHAT_IMAGES = 'ai_chat_images';
+    const FOLDER_RELEASES = 'releases';
+    public static $folderArr = [
+        self::FOLDER_AVATAR => 'avatar',
+        self::FOLDER_UPLOAD => 'upload',
+        self::FOLDER_FILE => 'file',
+        self::FOLDER_IMAGE => 'image',
+        self::FOLDER_ARTICLE => 'article',
+        self::FOLDER_AI_CHAT_IMAGES => 'ai_chat_images',
+        self::FOLDER_RELEASES => 'releases',
+    ];
+
+    // Tauri 平台类型
+    const PLATFORM_WINDOWS = 'windows-x86_64';
+    const PLATFORM_MACOS_X64 = 'darwin-x86_64';
+    const PLATFORM_MACOS_ARM = 'darwin-aarch64';
+    const PLATFORM_LINUX = 'linux-x86_64';
+    public static $tauriPlatformArr = [
+        self::PLATFORM_WINDOWS => 'Windows x64',
+        self::PLATFORM_MACOS_X64 => 'macOS x64',
+        self::PLATFORM_MACOS_ARM => 'macOS ARM',
+        self::PLATFORM_LINUX => 'Linux x64',
+    ];
 }

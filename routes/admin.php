@@ -187,6 +187,14 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/CronTask/status', [controller\DevTools\CronTaskController::class, 'status']);
     Route::post('/DevTools/CronTask/logs', [controller\DevTools\CronTaskController::class, 'logs']);
 
+    // Tauri 版本管理
+    Route::post('/DevTools/TauriVersion/init', [controller\DevTools\TauriVersionController::class, 'init']);
+    Route::post('/DevTools/TauriVersion/list', [controller\DevTools\TauriVersionController::class, 'list']);
+    Route::post('/DevTools/TauriVersion/add', [controller\DevTools\TauriVersionController::class, 'add']);
+    Route::post('/DevTools/TauriVersion/setLatest', [controller\DevTools\TauriVersionController::class, 'setLatest']);
+    Route::post('/DevTools/TauriVersion/del', [controller\DevTools\TauriVersionController::class, 'del']);
+    Route::post('/DevTools/TauriVersion/updateJson', [controller\DevTools\TauriVersionController::class, 'updateJson']);
+
     // WebSocket 绑定与推送
     Route::post('/WebSocket/bind', [controller\System\WebSocketController::class, 'bind']);
     Route::post('/WebSocket/onlineCount', [controller\System\WebSocketController::class, 'onlineCount']);
