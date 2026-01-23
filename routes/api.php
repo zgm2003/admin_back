@@ -30,6 +30,8 @@ Route::group('/api', function () {
     Route::post('/Users/sendCode', [controller\User\UsersController::class, 'sendCode']);
     Route::post('/Users/forgetPassword', [controller\User\UsersController::class, 'forgetPassword']);
 
+    // Tauri 客户端初始化（公开接口）
+    Route::post('/TauriVersion/clientInit', [controller\DevTools\TauriVersionController::class, 'clientInit']);
 });
 
 Route::group('/api', function () {

@@ -124,6 +124,35 @@ class TauriVersionModule extends BaseModule
     }
 
     /**
+     * 客户端初始化（公开接口）
+     * 根据版本和平台返回必要信息
+     */
+    public function clientInit($request): array
+    {
+        $param = $this->validate($request, TauriVersionValidate::checkForceUpdate());
+        $version = $param['version'];
+        $platform = $param['platform'] ?? 'windows-x86_64';
+        
+        $record = $this->dep->getByCondition([
+            'version' => $version,
+            'platform' => $platform
+        ]);
+        
+        if (!$record) {
+            return self::success([]);
+        }
+        
+        return self::success([
+            'version' => $record->version,
+            'platform' => $record->platform,
+            'is_latest' => $record->is_latest === CommonEnum::YES,
+            'force_update' => $record->force_update === CommonEnum::YES,
+            'notes' => $record->notes,
+            'file_url' => $record->file_url,
+        ]);
+    }
+
+    /**
      * 获取 update.json 内容（公开接口）
      */
     public function updateJson($request): array
@@ -147,38 +176,6 @@ class TauriVersionModule extends BaseModule
             ]
         ];
         return self::success($json);
-    }
-
-    /**
-     * 检查版本是否需要强制更新
-     */
-    public function checkForceUpdate($request): array
-    {
-        $param = $this->validate($request, TauriVersionValidate::checkForceUpdate());
-        $version = $param['version'];
-        $platform = $param['platform'] ?? 'windows-x86_64';
-        
-        $versionRecord = $this->dep->getByCondition([
-            'version' => $version,
-            'platform' => $platform
-        ]);
-        
-        if (!$versionRecord) {
-            return self::error('版本不存在');
-        }
-        
-        $isForceUpdate = $versionRecord->force_update === CommonEnum::YES;
-        
-        return self::success([
-            'version' => $version,
-            'platform' => $platform,
-            'is_force_update' => $isForceUpdate,
-            'force_update_info' => $isForceUpdate ? [
-                'latest_version' => $this->dep->getLatest($platform)?->version,
-                'notes' => $versionRecord->notes,
-                'file_url' => $versionRecord->file_url,
-            ] : null
-        ]);
     }
 
     /**

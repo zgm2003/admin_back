@@ -13,6 +13,7 @@ class TauriVersionController extends Controller
 {
     public function init(Request $request) { return $this->run([TauriVersionModule::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([TauriVersionModule::class, 'list'], $request); }
+    public function clientInit(Request $request) { return $this->run([TauriVersionModule::class, 'clientInit'], $request); }
 
     /** @OperationLog("发布版本") @Permission("devTools_tauriVersion_add") */
     public function add(Request $request) { return $this->run([TauriVersionModule::class, 'add'], $request); }
@@ -25,11 +26,6 @@ class TauriVersionController extends Controller
 
     /** @OperationLog("切换强制更新") @Permission("devTools_tauriVersion_forceUpdate") */
     public function forceUpdate(Request $request) { return $this->run([TauriVersionModule::class, 'forceUpdate'], $request); }
-
-    /**
-     * 检查版本是否需要强制更新
-     */
-    public function checkForceUpdate(Request $request) { return $this->run([TauriVersionModule::class, 'checkForceUpdate'], $request); }
 
     public function updateJson(Request $request) { return $this->run([TauriVersionModule::class, 'updateJson'], $request); }
 }

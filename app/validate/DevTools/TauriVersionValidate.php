@@ -26,7 +26,7 @@ class TauriVersionValidate
             'signature' => v::stringType()->notEmpty()->setName('签名'),
             'platform'  => v::in(array_keys(UploadConfigEnum::$tauriPlatformArr))->setName('平台'),
             'file_size' => v::optional(v::intVal()),
-            'force_update' => v::optional(v::intVal()->in([0, 1])),
+            'force_update' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO])),
         ];
     }
 
