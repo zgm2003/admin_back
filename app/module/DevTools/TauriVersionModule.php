@@ -76,6 +76,28 @@ class TauriVersionModule extends BaseModule
     }
 
     /**
+     * 编辑版本
+     */
+    public function edit($request): array
+    {
+        $param = $this->validate($request, TauriVersionValidate::edit());
+        $version = $this->dep->find($param['id']);
+        self::throwIf(!$version, '版本不存在');
+        
+        $updateData = array_filter([
+            'version' => $param['version'] ?? null,
+            'notes' => $param['notes'] ?? null,
+            'file_url' => $param['file_url'] ?? null,
+            'signature' => $param['signature'] ?? null,
+            'file_size' => $param['file_size'] ?? null,
+            'force_update' => $param['force_update'] ?? null,
+        ], fn($v) => $v !== null);
+        
+        $this->dep->update($param['id'], $updateData);
+        return self::success();
+    }
+
+    /**
      * 设为最新版本（自动生成 update.json）
      */
     public function setLatest($request): array
@@ -116,20 +138,17 @@ class TauriVersionModule extends BaseModule
         $version = $this->dep->find($param['id']);
         self::throwIf(!$version, '版本不存在');
         
-        $this->withTransaction(function () use ($param, $version) {
-            $this->dep->update($param['id'], ['force_update' => $param['force_update']]);
-        });
-        
+        $this->dep->update($param['id'], ['force_update' => $param['force_update']]);
         return self::success();
     }
 
     /**
      * 客户端初始化（公开接口）
-     * 根据版本和平台返回必要信息
+     * 返回当前版本是否需要强制更新
      */
     public function clientInit($request): array
     {
-        $param = $this->validate($request, TauriVersionValidate::checkForceUpdate());
+        $param = $this->validate($request, TauriVersionValidate::clientInit());
         $version = $param['version'];
         $platform = $param['platform'] ?? 'windows-x86_64';
         
@@ -139,16 +158,11 @@ class TauriVersionModule extends BaseModule
         ]);
         
         if (!$record) {
-            return self::success([]);
+            return self::success(['force_update' => false]);
         }
         
         return self::success([
-            'version' => $record->version,
-            'platform' => $record->platform,
-            'is_latest' => $record->is_latest === CommonEnum::YES,
             'force_update' => $record->force_update === CommonEnum::YES,
-            'notes' => $record->notes,
-            'file_url' => $record->file_url,
         ]);
     }
 

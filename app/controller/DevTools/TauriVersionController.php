@@ -18,6 +18,9 @@ class TauriVersionController extends Controller
     /** @OperationLog("发布版本") @Permission("devTools_tauriVersion_add") */
     public function add(Request $request) { return $this->run([TauriVersionModule::class, 'add'], $request); }
 
+    /** @OperationLog("编辑版本") @Permission("devTools_tauriVersion_edit") */
+    public function edit(Request $request) { return $this->run([TauriVersionModule::class, 'edit'], $request); }
+
     /** @OperationLog("设为最新版本") @Permission("devTools_tauriVersion_setLatest") */
     public function setLatest(Request $request) { return $this->run([TauriVersionModule::class, 'setLatest'], $request); }
 

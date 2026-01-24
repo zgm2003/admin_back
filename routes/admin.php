@@ -191,6 +191,7 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/TauriVersion/init', [controller\DevTools\TauriVersionController::class, 'init']);
     Route::post('/DevTools/TauriVersion/list', [controller\DevTools\TauriVersionController::class, 'list']);
     Route::post('/DevTools/TauriVersion/add', [controller\DevTools\TauriVersionController::class, 'add']);
+    Route::post('/DevTools/TauriVersion/edit', [controller\DevTools\TauriVersionController::class, 'edit']);
     Route::post('/DevTools/TauriVersion/setLatest', [controller\DevTools\TauriVersionController::class, 'setLatest']);
     Route::post('/DevTools/TauriVersion/del', [controller\DevTools\TauriVersionController::class, 'del']);
     Route::post('/DevTools/TauriVersion/forceUpdate', [controller\DevTools\TauriVersionController::class, 'forceUpdate']);

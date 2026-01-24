@@ -97,13 +97,9 @@ class UploadConfigEnum
 
     // Tauri 平台类型
     const PLATFORM_WINDOWS = 'windows-x86_64';
-    const PLATFORM_MACOS_X64 = 'darwin-x86_64';
-    const PLATFORM_MACOS_ARM = 'darwin-aarch64';
-    const PLATFORM_LINUX = 'linux-x86_64';
+    const PLATFORM_MACOS = 'darwin-x86_64';
     public static $tauriPlatformArr = [
-        self::PLATFORM_WINDOWS => 'Windows x64',
-        self::PLATFORM_MACOS_X64 => 'macOS x64',
-        self::PLATFORM_MACOS_ARM => 'macOS ARM',
-        self::PLATFORM_LINUX => 'Linux x64',
+        self::PLATFORM_WINDOWS => 'Windows',
+        self::PLATFORM_MACOS => 'macOS',
     ];
 }

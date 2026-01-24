@@ -30,6 +30,19 @@ class TauriVersionValidate
         ];
     }
 
+    public static function edit(): array
+    {
+        return [
+            'id'        => v::intVal()->setName('ID'),
+            'version'   => v::optional(v::stringType()->length(1, 20)),
+            'notes'     => v::optional(v::stringType()->length(0, 1000)),
+            'file_url'  => v::optional(v::stringType()->url()),
+            'signature' => v::optional(v::stringType()),
+            'file_size' => v::optional(v::intVal()),
+            'force_update' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO])),
+        ];
+    }
+
     public static function setLatest(): array
     {
         return [
@@ -52,7 +65,7 @@ class TauriVersionValidate
         ];
     }
 
-    public static function checkForceUpdate(): array
+    public static function clientInit(): array
     {
         return [
             'version' => v::notEmpty()->setName('版本号'),
