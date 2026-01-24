@@ -69,6 +69,14 @@ class TauriVersionModule extends BaseModule
     public function add($request): array
     {
         $param = $this->validate($request, TauriVersionValidate::add());
+        
+        // 检查版本+平台是否已存在
+        $exists = $this->dep->getByCondition([
+            'version' => $param['version'],
+            'platform' => $param['platform']
+        ]);
+        self::throwIf($exists, '该版本已存在');
+        
         $param['force_update'] = $param['force_update'] ?? CommonEnum::NO;
         $param['is_latest'] = CommonEnum::NO;
         $id = $this->dep->add($param);
@@ -83,6 +91,16 @@ class TauriVersionModule extends BaseModule
         $param = $this->validate($request, TauriVersionValidate::edit());
         $version = $this->dep->find($param['id']);
         self::throwIf(!$version, '版本不存在');
+        
+        // 如果修改了版本号，检查是否与其他记录冲突
+        $newVersion = $param['version'] ?? $version->version;
+        if ($newVersion !== $version->version) {
+            $exists = $this->dep->getByCondition([
+                'version' => $newVersion,
+                'platform' => $version->platform
+            ]);
+            self::throwIf($exists, '该版本已存在');
+        }
         
         // 只提取允许更新的字段
         $allowFields = ['version', 'notes', 'file_url', 'signature', 'file_size', 'force_update'];
