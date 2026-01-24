@@ -84,15 +84,9 @@ class TauriVersionModule extends BaseModule
         $version = $this->dep->find($param['id']);
         self::throwIf(!$version, '版本不存在');
         
-        $updateData = array_filter([
-            'version' => $param['version'] ?? null,
-            'notes' => $param['notes'] ?? null,
-            'file_url' => $param['file_url'] ?? null,
-            'signature' => $param['signature'] ?? null,
-            'file_size' => $param['file_size'] ?? null,
-            'force_update' => $param['force_update'] ?? null,
-        ], fn($v) => $v !== null);
-        
+        // 只提取允许更新的字段
+        $allowFields = ['version', 'notes', 'file_url', 'signature', 'file_size', 'force_update'];
+        $updateData = array_intersect_key($param, array_flip($allowFields));
         $this->dep->update($param['id'], $updateData);
         return self::success();
     }
@@ -135,10 +129,9 @@ class TauriVersionModule extends BaseModule
     public function forceUpdate($request): array
     {
         $param = $this->validate($request, TauriVersionValidate::forceUpdate());
-        $version = $this->dep->find($param['id']);
-        self::throwIf(!$version, '版本不存在');
-        
-        $this->dep->update($param['id'], ['force_update' => $param['force_update']]);
+        // 直接更新，通过影响行数判断是否存在
+        $affected = $this->dep->update($param['id'], ['force_update' => $param['force_update']]);
+        self::throwIf(!$affected, '版本不存在');
         return self::success();
     }
 

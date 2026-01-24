@@ -55,9 +55,11 @@ class ExportService
         $writer = new Xlsx($spreadsheet);
         $writer->save($filePath);
 
-        // 返回下载 URL（只存相对路径，前端动态拼接完整地址）
+        // 返回下载 URL（拼接完整地址）
+        $appUrl = rtrim(getenv('APP_URL') ?: '', '/');
+        $relativeUrl = '/export/' . $dateDir . '/' . $fileName;
         return [
-            'url' => '/export/' . $dateDir . '/' . $fileName,
+            'url' => $appUrl . $relativeUrl,
             'file_name' => $fileName,
             'file_size' => filesize($filePath),
             'row_count' => count($data),
