@@ -14,6 +14,7 @@ use app\enum\UploadConfigEnum;
 use app\enum\SystemEnum;
 use app\enum\AiEnum;
 use app\enum\CronEnum;
+use app\enum\NotificationEnum;
 use support\Cache;
 
 
@@ -218,6 +219,21 @@ class DictService
 
     public function setTauriPlatformArr(){
         $this->dict['tauri_platform_arr'] = $this->enumToDict(UploadConfigEnum::$tauriPlatformArr);
+        return $this;
+    }
+
+    public function setNotificationTypeArr(){
+        $this->dict['notification_type_arr'] = $this->enumToDict(NotificationEnum::$typeArr);
+        return $this;
+    }
+
+    public function setNotificationLevelArr(){
+        $this->dict['notification_level_arr'] = $this->enumToDict(NotificationEnum::$levelArr);
+        return $this;
+    }
+
+    public function setNotificationTargetTypeArr(){
+        $this->dict['notification_target_type_arr'] = $this->enumToDict(NotificationEnum::$targetTypeArr);
         return $this;
     }
 

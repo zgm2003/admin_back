@@ -4,6 +4,7 @@ namespace app\service\System;
 
 use app\dep\System\NotificationDep;
 use app\enum\CommonEnum;
+use app\enum\NotificationEnum;
 use GatewayWorker\Lib\Gateway;
 
 /**
@@ -12,15 +13,15 @@ use GatewayWorker\Lib\Gateway;
  */
 class NotificationService
 {
-    // 通知类型
+    // 通知类型（字符串，用于 notifications 表）
     const TYPE_INFO = 'info';
     const TYPE_SUCCESS = 'success';
     const TYPE_WARNING = 'warning';
     const TYPE_ERROR = 'error';
     
-    // 通知级别
-    const LEVEL_NORMAL = 'normal';   // 静默，只更新角标
-    const LEVEL_URGENT = 'urgent';   // 紧急，弹 Toast
+    // 通知级别（字符串，用于 notifications 表）
+    const LEVEL_NORMAL = 'normal';
+    const LEVEL_URGENT = 'urgent';
 
     /**
      * 发送通知给指定用户
@@ -35,7 +36,7 @@ class NotificationService
 
         // 写入数据库
         $notificationDep = new NotificationDep();
-        $notification = $notificationDep->create([
+        $notificationId = $notificationDep->add([
             'user_id' => $userId,
             'title' => $title,
             'content' => $content,
@@ -51,7 +52,7 @@ class NotificationService
             Gateway::sendToUid($userId, json_encode([
                 'type' => 'notification',
                 'data' => [
-                    'id' => $notification->id,
+                    'id' => $notificationId,
                     'title' => $title,
                     'content' => $content,
                     'notification_type' => $type,
@@ -64,7 +65,7 @@ class NotificationService
             \support\Log::warning("[NotificationService] WebSocket 推送失败: " . $e->getMessage());
         }
 
-        return $notification->id;
+        return $notificationId;
     }
 
     /** 发送紧急通知（会弹 Toast） */

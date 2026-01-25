@@ -68,6 +68,14 @@ class UsersDep extends BaseDep
         return $this->model->select(['id', 'username', 'email'])->get();
     }
 
+    /**
+     * 获取用户总数
+     */
+    public function countAll(): int
+    {
+        return $this->model->where('is_del', CommonEnum::NO)->count();
+    }
+
     // ==================== 列表查询 ====================
 
     /**

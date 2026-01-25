@@ -55,14 +55,6 @@ class NotificationDep extends BaseDep
     }
 
     /**
-     * 创建通知
-     */
-    public function create(array $data): Model
-    {
-        return $this->model->create($data);
-    }
-
-    /**
      * 删除通知（带用户校验）
      */
     public function deleteByUser(int $id, int $userId): int

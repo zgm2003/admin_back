@@ -208,6 +208,14 @@ Route::group('/api/admin', function () {
     Route::post('/Notification/unreadCount', [controller\System\NotificationController::class, 'unreadCount']);
     Route::post('/Notification/read', [controller\System\NotificationController::class, 'read']);
     Route::post('/Notification/del', [controller\System\NotificationController::class, 'del']);
+
+    // 通知任务管理
+    Route::post('/NotificationTask/init', [controller\System\NotificationTaskController::class, 'init']);
+    Route::post('/NotificationTask/statusCount', [controller\System\NotificationTaskController::class, 'statusCount']);
+    Route::post('/NotificationTask/list', [controller\System\NotificationTaskController::class, 'list']);
+    Route::post('/NotificationTask/add', [controller\System\NotificationTaskController::class, 'add']);
+    Route::post('/NotificationTask/del', [controller\System\NotificationTaskController::class, 'del']);
+    Route::post('/NotificationTask/cancel', [controller\System\NotificationTaskController::class, 'cancel']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

@@ -85,4 +85,8 @@ return [
     'ai_run_timeout' => [
         'handler' => app\process\AiRunTimeoutTask::class,
     ],
+    // 通知任务调度器
+    'notification_task_scheduler' => [
+        'handler' => app\process\NotificationTaskScheduler::class,
+    ],
 ];
