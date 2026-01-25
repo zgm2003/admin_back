@@ -77,7 +77,7 @@ class NotificationTaskModule extends BaseModule
                 'status_text' => NotificationEnum::$statusArr[$item->status] ?? '未知',
                 'total_count' => $item->total_count,
                 'sent_count' => $item->sent_count,
-                'send_at' => $item->send_at?->toDateTimeString(),
+                'send_at' => $item->send_at,
                 'error_msg' => $item->error_msg,
                 'created_at' => $item->created_at->toDateTimeString(),
             ];
