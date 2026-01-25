@@ -3,6 +3,7 @@
 namespace app\process;
 
 use app\dep\System\NotificationTaskDep;
+use app\enum\NotificationEnum;
 use Webman\RedisQueue\Client as RedisQueue;
 
 /**
@@ -27,6 +28,8 @@ class NotificationTaskScheduler extends BaseCronTask
 
         $count = 0;
         foreach ($tasks as $task) {
+            // 先更新状态为「发送中」，防止重复入队
+            $notificationTaskDep->updateStatus($task['id'], NotificationEnum::STATUS_SENDING);
             RedisQueue::send('notification_task', ['task_id' => $task['id']]);
             $count++;
         }
