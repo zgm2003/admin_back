@@ -77,20 +77,18 @@ class UploadConfigEnum
 //        self::DRIVER_QINIU => '七年云 Kodo',
     ];
 
-    // 上传文件夹白名单
-    const FOLDER_AVATAR = 'avatar';
-    const FOLDER_UPLOAD = 'upload';
-    const FOLDER_FILE = 'file';
-    const FOLDER_IMAGE = 'image';
-    const FOLDER_ARTICLE = 'article';
+        // 上传文件夹白名单（统一复数）
+    const FOLDER_AVATARS = 'avatars';
+    const FOLDER_IMAGES = 'images';
+    const FOLDER_VIDEOS = 'videos';
+    const FOLDER_COVER_IMAGES = 'cover_images';
     const FOLDER_AI_CHAT_IMAGES = 'ai_chat_images';
     const FOLDER_RELEASES = 'releases';
     public static $folderArr = [
-        self::FOLDER_AVATAR => 'avatar',
-        self::FOLDER_UPLOAD => 'upload',
-        self::FOLDER_FILE => 'file',
-        self::FOLDER_IMAGE => 'image',
-        self::FOLDER_ARTICLE => 'article',
+        self::FOLDER_AVATARS => 'avatars',
+        self::FOLDER_IMAGES => 'images',
+        self::FOLDER_VIDEOS => 'videos',
+        self::FOLDER_COVER_IMAGES => 'cover_images',
         self::FOLDER_AI_CHAT_IMAGES => 'ai_chat_images',
         self::FOLDER_RELEASES => 'releases',
     ];

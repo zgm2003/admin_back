@@ -433,18 +433,18 @@ TS;
         
         // 检测需要的组件导入
         $needsEditor = false;
-        $needsUpImg = false;
+        $needsUpMedia = false;
         foreach ($formFields as $f) {
             if ($f['form_type'] === 'editor') $needsEditor = true;
-            if ($f['form_type'] === 'image') $needsUpImg = true;
+            if ($f['form_type'] === 'image') $needsUpMedia = true;
         }
         
         $extraImports = '';
         if ($needsEditor) {
             $extraImports .= "\nimport {Editor} from '@/components/Editor'";
         }
-        if ($needsUpImg) {
-            $extraImports .= "\nimport { UpImg } from '@/components/UpImg'";
+        if ($needsUpMedia) {
+            $extraImports .= "\nimport { UpMedia } from '@/components/UpMedia'";
         }
 
         return <<<VUE
@@ -910,7 +910,7 @@ TEMPLATE;
                     $lines[] = "            <el-date-picker v-model=\"form.{$name}\" type=\"datetime\" value-format=\"YYYY-MM-DD HH:mm:ss\" style=\"width:100%\"/>";
                     break;
                 case 'image':
-                    $lines[] = "            <UpImg v-model=\"form.{$name}\" folder-name=\"{$name}\" width=\"80px\" show-input/>";
+                    $lines[] = "            <UpMedia v-model=\"form.{$name}\" folder-name=\"{$name}s\" width=\"80px\" show-input/>";
                     break;
                 default:
                     $lines[] = "            <el-input v-model=\"form.{$name}\" clearable/>";
