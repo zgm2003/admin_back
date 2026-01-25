@@ -19,34 +19,18 @@ class ExportTask implements Consumer
     {
         $taskId = $data['task_id'];
         $userId = $data['user_id'];
-        $headers = $data['headers'];
-        $rows = $data['data'];
-        $prefix = $data['prefix'] ?? 'export';
         $title = $data['title'] ?? '数据导出';
 
-        $this->log('开始导出', ['task_id' => $taskId, 'rows' => count($rows)]);
-        $dep = new ExportTaskDep();
+        $this->log('开始导出', ['task_id' => $taskId, 'rows' => count($data['data'])]);
 
-        try {
-            $result = (new ExportService())->export($headers, $rows, $prefix);
-            $dep->updateSuccess($taskId, $result);
-            
-            // 发送通知：导出完成
-            NotificationService::sendUrgent(
-                $userId,
-                $title . ' - 导出完成',
-                '点击查看并下载导出文件',
-                [
-                    'type' => NotificationService::TYPE_SUCCESS,
-                    'link' => '/devTools/exportTask'
-                ]
-            );
-            $this->log('导出成功', ['task_id' => $taskId, 'url' => $result['url']]);
-        } catch (\Throwable $e) {
-            $dep->updateFailed($taskId, $e->getMessage());
-            $this->log('导出失败', ['task_id' => $taskId, 'error' => $e->getMessage()]);
-            throw $e;
-        }
+        $result = (new ExportService())->export($data['headers'], $data['data'], $data['prefix'] ?? 'export');
+        (new ExportTaskDep())->updateSuccess($taskId, $result);
+        
+        NotificationService::sendUrgent($userId, $title . ' - 导出完成', '点击查看并下载导出文件', [
+            'type' => NotificationService::TYPE_SUCCESS,
+            'link' => '/devTools/exportTask'
+        ]);
+        $this->log('导出成功', ['task_id' => $taskId, 'url' => $result['url']]);
     }
 
     public function onConsumeFailure(\Throwable $e, $package)
