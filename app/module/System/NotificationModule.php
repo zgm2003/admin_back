@@ -16,20 +16,16 @@ class NotificationModule extends BaseModule
     }
 
     /**
-     * 获取通知列表
+     * 获取通知列表（游标分页）
      */
     public function list($request): array
     {
         $param = $this->validate($request, NotificationValidate::list());
-        $userId = $request->userId;
-        $dep = $this->notificationDep;
+        $param['page_size'] = $param['page_size'] ?? 20;
         
-        $param['page_size'] = $param['page_size'] ?? 10;
-        $param['current_page'] = $param['current_page'] ?? 1;
+        $res = $this->notificationDep->listByUser($request->userId, $param);
         
-        $res = $dep->list($userId, $param);
-        
-        $list = collect($res->items())->map(fn($item) => [
+        $list = $res['list']->map(fn($item) => [
             'id' => $item->id,
             'title' => $item->title,
             'content' => $item->content,
@@ -40,14 +36,11 @@ class NotificationModule extends BaseModule
             'created_at' => $item->created_at?->format('Y-m-d H:i:s'),
         ])->toArray();
         
-        $page = [
-            'page_size' => (int)$param['page_size'],
-            'current_page' => (int)$param['current_page'],
-            'total_page' => $res->lastPage(),
-            'total' => $res->total(),
-        ];
-        
-        return self::paginate($list, $page);
+        return self::success([
+            'list' => $list,
+            'next_cursor' => $res['next_cursor'],
+            'has_more' => $res['has_more'],
+        ]);
     }
 
     /**

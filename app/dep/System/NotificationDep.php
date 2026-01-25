@@ -15,17 +15,16 @@ class NotificationDep extends BaseDep
     }
 
     /**
-     * 获取用户通知列表（分页）
+     * 获取用户通知列表（游标分页）
      */
-    public function list(int $userId, array $param)
+    public function listByUser(int $userId, array $param): array
     {
-        return $this->model
-            ->where('user_id', $userId)
-            ->where('is_del', CommonEnum::NO)
-            ->when(isset($param['is_read']) && $param['is_read'] !== '', 
-                fn($q) => $q->where('is_read', $param['is_read']))
-            ->orderBy('id', 'desc')
-            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
+        return $this->listCursor(
+            $param,
+            fn($q) => $q->where('user_id', $userId)
+                ->when(isset($param['is_read']) && $param['is_read'] !== '', 
+                    fn($q) => $q->where('is_read', $param['is_read']))
+        );
     }
 
     /**
