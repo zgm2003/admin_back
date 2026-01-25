@@ -202,6 +202,12 @@ Route::group('/api/admin', function () {
     Route::post('/WebSocket/onlineCount', [controller\System\WebSocketController::class, 'onlineCount']);
     Route::post('/WebSocket/pushToUser', [controller\System\WebSocketController::class, 'pushToUser']);
     Route::post('/WebSocket/broadcast', [controller\System\WebSocketController::class, 'broadcast']);
+
+    // 通知管理
+    Route::post('/Notification/list', [controller\System\NotificationController::class, 'list']);
+    Route::post('/Notification/unreadCount', [controller\System\NotificationController::class, 'unreadCount']);
+    Route::post('/Notification/read', [controller\System\NotificationController::class, 'read']);
+    Route::post('/Notification/del', [controller\System\NotificationController::class, 'del']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

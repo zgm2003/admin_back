@@ -4,7 +4,7 @@ namespace app\queue\redis\slow;
 
 use app\dep\DevTools\ExportTaskDep;
 use app\service\ExportService;
-use GatewayWorker\Lib\Gateway;
+use app\service\NotificationService;
 use Webman\RedisQueue\Consumer;
 
 /**
@@ -30,15 +30,17 @@ class ExportTask implements Consumer
         try {
             $result = (new ExportService())->export($headers, $rows, $prefix);
             $dep->updateSuccess($taskId, $result);
-            $this->notifyUser($userId, [
-                'type' => 'export_complete',
-                'data' => [
-                    'task_id' => $taskId,
-                    'title' => $title,
-                    'url' => $result['url'],
-                    'message' => '导出完成，点击下载'
+            
+            // 发送通知：导出完成
+            NotificationService::sendUrgent(
+                $userId,
+                $title . ' - 导出完成',
+                '点击查看并下载导出文件',
+                [
+                    'type' => NotificationService::TYPE_SUCCESS,
+                    'link' => '/devTools/exportTask'
                 ]
-            ]);
+            );
             $this->log('导出成功', ['task_id' => $taskId, 'url' => $result['url']]);
         } catch (\Throwable $e) {
             $dep->updateFailed($taskId, $e->getMessage());
@@ -58,28 +60,18 @@ class ExportTask implements Consumer
             (new ExportTaskDep())->updateFailed($taskId, '重试次数耗尽: ' . $e->getMessage());
         }
         if ($userId) {
-            $this->notifyUser($userId, [
-                'type' => 'export_failed',
-                'data' => [
-                    'task_id' => $taskId,
-                    'title' => $title,
-                    'message' => '导出失败: ' . $e->getMessage()
+            // 发送通知：导出失败
+            NotificationService::sendUrgent(
+                $userId,
+                $title . ' - 导出失败',
+                '导出任务失败，请重试',
+                [
+                    'type' => NotificationService::TYPE_ERROR,
+                    'link' => '/devTools/exportTask'
                 ]
-            ]);
+            );
         }
         $this->log('队列消费最终失败', ['task_id' => $taskId, 'error' => $e->getMessage()]);
-    }
-
-    private function notifyUser(int $userId, array $message): void
-    {
-        try {
-            Gateway::$registerAddress = '127.0.0.1:1236';
-            if (Gateway::isUidOnline($userId)) {
-                Gateway::sendToUid($userId, json_encode($message));
-            }
-        } catch (\Throwable $e) {
-            $this->log('WebSocket推送失败', ['error' => $e->getMessage()]);
-        }
     }
 
     private function log($msg, $context = [])
