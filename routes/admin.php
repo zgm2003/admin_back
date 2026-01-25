@@ -159,6 +159,15 @@ Route::group('/api/admin', function () {
     Route::post('/AiRun/statsByAgent', [controller\Ai\AiRunController::class, 'statsByAgent']);
     Route::post('/AiRun/statsByUser', [controller\Ai\AiRunController::class, 'statsByUser']);
 
+    // AI 提示词管理
+    Route::post('/AiPrompt/list', [controller\Ai\AiPromptController::class, 'list']);
+    Route::post('/AiPrompt/detail', [controller\Ai\AiPromptController::class, 'detail']);
+    Route::post('/AiPrompt/add', [controller\Ai\AiPromptController::class, 'add']);
+    Route::post('/AiPrompt/edit', [controller\Ai\AiPromptController::class, 'edit']);
+    Route::post('/AiPrompt/del', [controller\Ai\AiPromptController::class, 'del']);
+    Route::post('/AiPrompt/toggleFavorite', [controller\Ai\AiPromptController::class, 'toggleFavorite']);
+    Route::post('/AiPrompt/use', [controller\Ai\AiPromptController::class, 'use']);
+
     // 代码生成器
     Route::post('/DevTools/Gen/tables', [controller\DevTools\GenController::class, 'tables']);
     Route::post('/DevTools/Gen/columns', [controller\DevTools\GenController::class, 'columns']);
