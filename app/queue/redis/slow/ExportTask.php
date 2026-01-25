@@ -4,7 +4,7 @@ namespace app\queue\redis\slow;
 
 use app\dep\DevTools\ExportTaskDep;
 use app\service\ExportService;
-use app\service\NotificationService;
+use app\service\System\NotificationService;
 use Webman\RedisQueue\Consumer;
 
 /**

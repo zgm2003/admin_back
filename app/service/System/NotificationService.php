@@ -1,6 +1,6 @@
 <?php
 
-namespace app\service;
+namespace app\service\System;
 
 use app\dep\System\NotificationDep;
 use app\enum\CommonEnum;
@@ -24,12 +24,6 @@ class NotificationService
 
     /**
      * 发送通知给指定用户
-     *
-     * @param int $userId 用户ID
-     * @param string $title 标题
-     * @param string $content 内容
-     * @param array $options 可选参数 [type, level, link]
-     * @return int 通知ID
      */
     public static function send(int $userId, string $title, string $content = '', array $options = []): int
     {
@@ -48,8 +42,8 @@ class NotificationService
             'type' => $type,
             'level' => $level,
             'link' => $link,
-            'is_read' => CommonEnum::NO,  // 未读
-            'is_del' => CommonEnum::NO,   // 未删除
+            'is_read' => CommonEnum::NO,
+            'is_del' => CommonEnum::NO,
         ]);
 
         // WebSocket 推送
@@ -73,39 +67,27 @@ class NotificationService
         return $notification->id;
     }
 
-    /**
-     * 发送紧急通知（会弹 Toast）
-     */
+    /** 发送紧急通知（会弹 Toast） */
     public static function sendUrgent(int $userId, string $title, string $content = '', array $options = []): int
     {
-        $options['level'] = self::LEVEL_URGENT;
-        return self::send($userId, $title, $content, $options);
+        return self::send($userId, $title, $content, ['level' => self::LEVEL_URGENT] + $options);
     }
 
-    /**
-     * 发送成功通知
-     */
+    /** 发送成功通知 */
     public static function sendSuccess(int $userId, string $title, string $content = '', array $options = []): int
     {
-        $options['type'] = self::TYPE_SUCCESS;
-        return self::send($userId, $title, $content, $options);
+        return self::send($userId, $title, $content, ['type' => self::TYPE_SUCCESS] + $options);
     }
 
-    /**
-     * 发送警告通知
-     */
+    /** 发送警告通知 */
     public static function sendWarning(int $userId, string $title, string $content = '', array $options = []): int
     {
-        $options['type'] = self::TYPE_WARNING;
-        return self::send($userId, $title, $content, $options);
+        return self::send($userId, $title, $content, ['type' => self::TYPE_WARNING] + $options);
     }
 
-    /**
-     * 发送错误通知
-     */
+    /** 发送错误通知 */
     public static function sendError(int $userId, string $title, string $content = '', array $options = []): int
     {
-        $options['type'] = self::TYPE_ERROR;
-        return self::send($userId, $title, $content, $options);
+        return self::send($userId, $title, $content, ['type' => self::TYPE_ERROR] + $options);
     }
 }

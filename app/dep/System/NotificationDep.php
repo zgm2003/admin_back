@@ -40,27 +40,18 @@ class NotificationDep extends BaseDep
     }
 
     /**
-     * 标记单条已读
+     * 标记已读（传id标记单条，不传标记全部）
      */
-    public function markRead(int $id, int $userId): int
+    public function markRead(int $userId, ?int $id = null): int
     {
-        return $this->model
-            ->where('id', $id)
-            ->where('user_id', $userId)
-            ->where('is_del', CommonEnum::NO)
-            ->update(['is_read' => CommonEnum::YES]);
-    }
-
-    /**
-     * 标记全部已读
-     */
-    public function markAllRead(int $userId): int
-    {
-        return $this->model
+        $query = $this->model
             ->where('user_id', $userId)
             ->where('is_read', CommonEnum::NO)
-            ->where('is_del', CommonEnum::NO)
-            ->update(['is_read' => CommonEnum::YES]);
+            ->where('is_del', CommonEnum::NO);
+        
+        if ($id) $query->where('id', $id);
+        
+        return $query->update(['is_read' => CommonEnum::YES]);
     }
 
     /**

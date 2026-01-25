@@ -58,15 +58,7 @@ class NotificationModule extends BaseModule
     public function read($request): array
     {
         $param = $this->validate($request, NotificationValidate::read());
-        $userId = $request->userId;
-        $dep = $this->notificationDep;
-        
-        if (!empty($param['id'])) {
-            $dep->markRead((int)$param['id'], $userId);
-        } else {
-            $dep->markAllRead($userId);
-        }
-        
+        $this->notificationDep->markRead($request->userId, $param['id'] ?? null);
         return self::success();
     }
 
