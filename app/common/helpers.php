@@ -3,6 +3,17 @@ use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use Monolog\Formatter\LineFormatter;
 
+if (!function_exists('get_trace_id')) {
+    /**
+     * 获取当前请求的 trace_id
+     */
+    function get_trace_id(): string
+    {
+        $request = request();
+        return $request->traceId ?? '-';
+    }
+}
+
 if (!function_exists('log_daily')) {
     function log_daily($name = 'webman')
     {

@@ -14,6 +14,7 @@
 
 return [
     '' => [
+        app\middleware\TraceId::class,
         app\middleware\AccessControl::class
     ]
 
