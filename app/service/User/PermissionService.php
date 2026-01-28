@@ -21,9 +21,16 @@ class PermissionService
     /**
      * ⭐ 权限计算唯一事实源
      * 返回：menus / router / buttonCodes
+     * @param mixed $user 用户对象
+     * @param string $platform 平台标识（admin/app）
      */
-    public function buildPermissionContextByUser($user): array
+    public function buildPermissionContextByUser($user, string $platform): array
     {
+        // 平台必须是合法值
+        if (!in_array($platform, PermissionEnum::ALLOWED_PLATFORMS, true)) {
+            throw new \InvalidArgumentException('无效的平台标识: ' . $platform);
+        }
+
         $role = $this->roleDep->find($user->role_id);
         $leafIds = json_decode($role->permission_id ?? '', true);
 
@@ -37,6 +44,10 @@ class PermissionService
 
         // 1. 获取全量权限数据 (建议Dep层做缓存)
         $allPerms = $this->permissionDep->getAllPermissions();
+        
+        // 1.1 按平台过滤（直接字符串比较）
+        $allPerms = array_filter($allPerms, fn($p) => ($p['platform'] ?? '') === $platform);
+        
         $permMap  = array_column($allPerms, null, 'id');
 
         // 2. 高效计算有效权限ID (叶子节点向上回溯 + 路径缓存)

@@ -11,6 +11,7 @@ class PermissionValidate
     public static function add(): array
     {
         return [
+            'platform'  => v::stringType()->in(PermissionEnum::ALLOWED_PLATFORMS)->setName('平台'),
             'type'      => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('类型'),
             'name'      => v::length(1, 64)->setName('名称'),
             'parent_id' => v::optional(v::intVal()),
@@ -28,6 +29,7 @@ class PermissionValidate
     {
         return [
             'id'        => v::intVal()->setName('ID'),
+            'platform'  => v::stringType()->in(PermissionEnum::ALLOWED_PLATFORMS)->setName('平台'),
             'type'      => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('类型'),
             'name'      => v::length(1, 64)->setName('名称'),
             'parent_id' => v::optional(v::intVal()),
@@ -60,8 +62,9 @@ class PermissionValidate
     public static function list(): array
     {
         return [
-            'page_size'    => v::optional(v::intVal()),
-            'current_page' => v::optional(v::intVal()),
+            'platform'     => v::stringType()->in(PermissionEnum::ALLOWED_PLATFORMS)->setName('平台'),
+            'name'         => v::optional(v::stringType()),
+            'path'         => v::optional(v::stringType()),
         ];
     }
 

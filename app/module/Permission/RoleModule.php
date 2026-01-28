@@ -5,6 +5,7 @@ namespace app\module\Permission;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
+use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\Permission\RoleValidate;
@@ -58,11 +59,13 @@ class RoleModule extends BaseModule
         
         $dep->delete($ids);
 
-        // Clear cache for users with these roles
+        // Clear cache for users with these roles (all platforms)
         $usersDep = new UsersDep();
         $userIds = $usersDep->getIdsByRoleIds($ids);
         foreach ($userIds as $uid) {
-            Cache::delete('auth_perm_uid_' . $uid);
+            foreach (PermissionEnum::ALLOWED_PLATFORMS as $platform) {
+                Cache::delete('auth_perm_uid_' . $uid . '_' . $platform);
+            }
         }
 
         return self::success();
@@ -80,11 +83,13 @@ class RoleModule extends BaseModule
         ];
         $dep->update($param['id'], $data);
 
-        // Clear cache for users with this role
+        // Clear cache for users with this role (all platforms)
         $usersDep = new UsersDep();
         $userIds = $usersDep->getIdsByRoleIds([$param['id']]);
         foreach ($userIds as $uid) {
-            Cache::delete('auth_perm_uid_' . $uid);
+            foreach (PermissionEnum::ALLOWED_PLATFORMS as $platform) {
+                Cache::delete('auth_perm_uid_' . $uid . '_' . $platform);
+            }
         }
 
         return self::success();

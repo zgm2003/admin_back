@@ -78,13 +78,16 @@ class DictService
         $dep = new PermissionDep();
         $allPermissions = $dep->getAllPermissions();
         
-        // 转换为树形结构
+        // 转换为树形结构，label 加上平台标识，保留 platform 字段供前端过滤
         $resCategory = array_map(function ($item) {
+            $platform = $item['platform'] ?? '';
+            $platformTag = $platform ? '[' . (PermissionEnum::$platformArr[$platform] ?? $platform) . '] ' : '';
             return [
                 'id' => $item['id'],
-                'label' => $item['name'],
+                'label' => $platformTag . $item['name'],
                 'value' => $item['id'],
                 'parent_id' => $item['parent_id'],
+                'platform' => $platform,  // 保留平台字段供前端过滤
             ];
         }, $allPermissions);
         $tree = listToTree($resCategory, -1);
@@ -143,6 +146,10 @@ class DictService
     }
     public function setPermissionTypeArr(){
         $this->dict['permission_type_arr'] = $this->enumToDict(PermissionEnum::$typeArr);
+        return $this;
+    }
+    public function setPermissionPlatformArr(){
+        $this->dict['permission_platform_arr'] = $this->enumToDict(PermissionEnum::$platformArr);
         return $this;
     }
     public function setCommonStatusArr(){

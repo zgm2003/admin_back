@@ -56,9 +56,13 @@ class ProfileModule extends BaseModule
             'role_name' => $role->name ?? '',
         ];
 
-        $perm = $this->permissionService->buildPermissionContextByUser($user);
+        // 根据平台过滤权限（admin/app，已由 CheckToken 校验）
+        $platform = $request->platform;
+        $perm = $this->permissionService->buildPermissionContextByUser($user, $platform);
 
-        Cache::set('auth_perm_uid_' . $user->id, $perm['buttonCodes'], 300);
+        // 按钮权限缓存key按平台隔离
+        $cacheKey = 'auth_perm_uid_' . $user->id . '_' . $platform;
+        Cache::set($cacheKey, $perm['buttonCodes'], 300);
 
         // 获取用户快捷入口配置
         $quickEntry = $this->usersQuickEntryDep->listByUserId($user->id);

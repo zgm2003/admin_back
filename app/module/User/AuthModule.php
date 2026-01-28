@@ -8,6 +8,7 @@ use app\dep\User\UsersDep;
 use app\dep\User\UserSessionsDep;
 use app\enum\CommonEnum;
 use app\enum\EmailEnum;
+use app\enum\PermissionEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
 use app\service\DictService;
@@ -333,7 +334,14 @@ class AuthModule extends BaseModule
      */
     private function createSession(int $userId, string $loginAccount, $request, string $loginType = 'email'): array
     {
-        $platformHeader = $request->header('platform', 'admin');
+        $platformHeader = $request->header('platform');
+        
+        // 平台强制校验
+        self::throwIf(
+            !$platformHeader || !in_array($platformHeader, PermissionEnum::ALLOWED_PLATFORMS, true),
+            '无效的平台标识，必须为 admin 或 app'
+        );
+        
         $deviceId = $request->header('device-id', '');
 
         $tokens = TokenService::generateTokenPair();
@@ -375,7 +383,7 @@ class AuthModule extends BaseModule
 
     private function logLoginAttempt(?int $userId, string $loginAccount, string $loginType, $request, int $isSuccess, string $reason = ''): void
     {
-        $platformHeader = $request->header('platform', 'admin');
+        $platformHeader = $request->header('platform') ?? '';
         \Webman\RedisQueue\Redis::send('user_login_log', [
             'user_id' => $userId,
             'login_account' => $loginAccount,

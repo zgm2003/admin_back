@@ -21,8 +21,9 @@ class CheckPermission implements MiddlewareInterface
             return $handler($request);
         }
 
-        // 已经由 CheckToken 保证 userId 存在
-        $cacheKey = 'auth_perm_uid_' . $request->userId;
+        // 已经由 CheckToken 保证 userId 和 platform 存在
+        $platform = $request->platform;
+        $cacheKey = 'auth_perm_uid_' . $request->userId . '_' . $platform;
         $buttonCodes = Cache::get($cacheKey);
 
         if (!is_array($buttonCodes)) {
@@ -35,8 +36,8 @@ class CheckPermission implements MiddlewareInterface
                 $user = $usersDep->find($request->userId);
                 
                 if ($user) {
-                    // 重新计算权限
-                    $perm = $permissionService->buildPermissionContextByUser($user);
+                    // 重新计算权限（按平台过滤）
+                    $perm = $permissionService->buildPermissionContextByUser($user, $platform);
                     $buttonCodes = $perm['buttonCodes'];
                     
                     // 重新写入缓存

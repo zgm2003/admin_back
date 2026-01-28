@@ -44,6 +44,54 @@ class PermissionDep extends BaseDep
     }
 
     /**
+     * 根据平台+code查询（唯一性检查）
+     */
+    public function findByPlatformCode(string $platform, string $code, ?int $excludeId = null)
+    {
+        return $this->model
+            ->where('platform', $platform)
+            ->where('code', $code)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->first();
+    }
+
+    /**
+     * 根据平台+path查询（唯一性检查）
+     */
+    public function findByPlatformPath(string $platform, string $path, ?int $excludeId = null)
+    {
+        return $this->model
+            ->where('platform', $platform)
+            ->where('path', $path)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->first();
+    }
+
+    /**
+     * 根据平台+i18n_key查询（唯一性检查）
+     */
+    public function findByPlatformI18nKey(string $platform, string $i18nKey, ?int $excludeId = null)
+    {
+        return $this->model
+            ->where('platform', $platform)
+            ->where('i18n_key', $i18nKey)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->first();
+    }
+
+    /**
+     * 根据ID查找平台（用于校验parent_id同平台）
+     */
+    public function getPlatformById(int $id): ?string
+    {
+        $row = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->first();
+        return $row ? $row->platform : null;
+    }
+
+    /**
      * 根据父分类名称查询
      */
     public function findByParentCategory(string $name)
@@ -142,6 +190,7 @@ class PermissionDep extends BaseDep
     public function list(array $param)
     {
         return $this->model
+            ->where('platform', $param['platform'])
             ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', "%{$param['name']}%"))
             ->when(!empty($param['path']), fn($q) => $q->where('path', 'like', "%{$param['path']}%"))
             ->where('is_del', CommonEnum::NO)

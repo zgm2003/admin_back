@@ -4,6 +4,7 @@ namespace app\middleware;
 
 use app\dep\User\UserSessionsDep;
 use app\enum\ErrorCodeEnum;
+use app\enum\PermissionEnum;
 use app\service\System\SettingService;
 use app\service\User\TokenService;
 use Carbon\Carbon;
@@ -103,11 +104,18 @@ class CheckToken
             ]);
         }
 
-        // 4.1 安全策略校验
+        // 4.1 平台强制校验（必须为 admin 或 app）
         $currentPlatform = $request->header('platform');
+        if (!$currentPlatform || !in_array($currentPlatform, PermissionEnum::ALLOWED_PLATFORMS, true)) {
+            return json([
+                'code' => ErrorCodeEnum::PARAM_ERROR,
+                'msg'  => '无效的平台标识，必须为 admin 或 app',
+                'data' => []
+            ]);
+        }
         
         // 4.2 Load policy
-        $policyConfig = SettingService::getAuthPolicy($session['platform'] ?: 'default');
+        $policyConfig = SettingService::getAuthPolicy($session['platform']);
         
         // 4.3 Bind Platform
         if (!empty($policyConfig['bind_platform'])) {
@@ -136,6 +144,7 @@ class CheckToken
         // 5.1 挂载信息
         $request->userId = (int)$session['user_id'];
         $request->sessionId = (int)$session['id'];
+        $request->platform = $session['platform'];
 
         // 6.2 🛡️ single_session_per_platform 策略（立刻生效）
         if (!empty($policyConfig['single_session_per_platform'])) {
