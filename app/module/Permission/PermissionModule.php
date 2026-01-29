@@ -7,6 +7,7 @@ use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\Permission\PermissionValidate;
+use support\Redis;
 
 class PermissionModule extends BaseModule
 {
@@ -351,7 +352,21 @@ class PermissionModule extends BaseModule
         
         PermissionDep::clearCache();
         DictService::clearPermissionCache();
+        self::clearAllUserPermCache();
         
         return self::success();
+    }
+
+    /**
+     * 清除所有用户权限缓存 auth_perm_uid_*
+     * 后台管理系统用户量有限，直接用 keys + del
+     */
+    public static function clearAllUserPermCache(): void
+    {
+        $redis = Redis::connection('cache');
+        $keys = $redis->keys('cache:auth_perm_uid_*');
+        if (!empty($keys)) {
+            $redis->del(...$keys);
+        }
     }
 }

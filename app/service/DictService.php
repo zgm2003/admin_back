@@ -25,7 +25,6 @@ class DictService
     // Redis 缓存Key
     const CACHE_KEY_PERMISSION_TREE = 'dict_permission_tree';
     const CACHE_KEY_ADDRESS_TREE = 'dict_address_tree';
-    const CACHE_TTL = 300; // 5分钟
 
     /**
      * 清除所有缓存
@@ -92,7 +91,7 @@ class DictService
         }, $allPermissions);
         $tree = listToTree($resCategory, -1);
         
-        Cache::set(self::CACHE_KEY_PERMISSION_TREE, $tree, self::CACHE_TTL);
+        Cache::set(self::CACHE_KEY_PERMISSION_TREE, $tree); // 永久缓存
         $this->dict['permission_tree'] = $tree;
         
         return $this;

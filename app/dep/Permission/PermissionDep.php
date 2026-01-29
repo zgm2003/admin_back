@@ -12,7 +12,6 @@ use support\Model;
 class PermissionDep extends BaseDep
 {
     const CACHE_KEY_ALL = 'perm_all_permissions';
-    const CACHE_TTL = 300; // 5分钟
 
     protected function createModel(): Model
     {
@@ -169,7 +168,7 @@ class PermissionDep extends BaseDep
             ->get()
             ->toArray();
 
-        Cache::set(self::CACHE_KEY_ALL, $permissions, self::CACHE_TTL);
+        Cache::set(self::CACHE_KEY_ALL, $permissions); // 永久缓存
 
         return $permissions;
     }
