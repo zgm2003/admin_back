@@ -193,8 +193,8 @@ class PermissionDep extends BaseDep
             ->where('platform', $param['platform'])
             ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', "%{$param['name']}%"))
             ->when(!empty($param['path']), fn($q) => $q->where('path', 'like', "%{$param['path']}%"))
+            ->when(!empty($param['type']), fn($q) => $q->where('type', $param['type']))
             ->where('is_del', CommonEnum::NO)
-            ->orderBy('parent_id')
             ->orderBy('sort')
             ->orderBy('id')
             ->get();

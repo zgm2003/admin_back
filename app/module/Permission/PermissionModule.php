@@ -89,9 +89,11 @@ class PermissionModule extends BaseModule
             $this->permissionDep->add($data);
             
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
-            foreach (['parent_id', 'code'] as $f) {
-                self::throwIf(empty($param[$f]), "{$f} 不能为空");
+            // H5/APP 平台按钮无需父级
+            if ($platform !== PermissionEnum::PLATFORM_APP) {
+                self::throwIf(empty($param['parent_id']), 'parent_id 不能为空');
             }
+            self::throwIf(empty($param['code']), 'code 不能为空');
             
             // 唯一性检查：platform + code
             $exist = $this->permissionDep->findByPlatformCode($platform, $param['code']);
@@ -175,9 +177,8 @@ class PermissionModule extends BaseModule
             $this->permissionDep->update($id, $data);
             
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
-            foreach (['parent_id', 'code'] as $f) {
-                self::throwIf(empty($param[$f]), "{$f} 不能为空");
-            }
+            self::throwIf(empty($param['parent_id']), 'parent_id 不能为空');
+            self::throwIf(empty($param['code']), 'code 不能为空');
             
             // 唯一性检查：platform + code（排除自己）
             $exist = $this->permissionDep->findByPlatformCode($platform, $param['code'], $id);
@@ -251,6 +252,96 @@ class PermissionModule extends BaseModule
         $data['menu_tree'] = listToTree($data['list']->toArray(), -1);
 
         return self::success($data['menu_tree']);
+    }
+
+    /**
+     * APP/H5/小程序 按钮权限列表（扁平化）
+     */
+    public function appButtonList($request)
+    {
+        $param = $this->validate($request, PermissionValidate::list());
+        $param['type'] = PermissionEnum::TYPE_BUTTON;
+        
+        $resList = $this->permissionDep->list($param);
+        
+        $data = $resList->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+                'status' => $item->status,
+                'code' => $item->code,
+                'sort' => $item->sort,
+                'platform' => $item->platform,
+                'platform_name' => PermissionEnum::$platformArr[$item->platform] ?? $item->platform,
+            ];
+        });
+        
+        return self::success($data->toArray());
+    }
+
+    /**
+     * APP/H5/小程序 按钮权限新增
+     */
+    public function appButtonAdd($request)
+    {
+        $param = $this->validate($request, PermissionValidate::add());
+        $platform = $param['platform'];
+        
+        // 只允许非 PC 后台平台
+        self::throwIf($platform === PermissionEnum::PLATFORM_ADMIN, '请使用 PC 后台权限管理');
+        self::throwIf(empty($param['code']), 'code 不能为空');
+        
+        // 唯一性检查：platform + code
+        $exist = $this->permissionDep->findByPlatformCode($platform, $param['code']);
+        self::throwIf($exist, '该平台下权限标识已存在');
+        
+        $data = [
+            'name' => $param['name'],
+            'parent_id' => -1,
+            'code' => $param['code'],
+            'type' => PermissionEnum::TYPE_BUTTON,
+            'platform' => $platform,
+            'sort' => $param['sort'] ?? 1,
+        ];
+        $this->permissionDep->add($data);
+        
+        PermissionDep::clearCache();
+        DictService::clearPermissionCache();
+        
+        return self::success();
+    }
+
+    /**
+     * APP/H5/小程序 按钮权限编辑
+     */
+    public function appButtonEdit($request)
+    {
+        $param = $this->validate($request, PermissionValidate::edit());
+        $platform = $param['platform'];
+        $id = $param['id'];
+        
+        // 只允许非 PC 后台平台
+        self::throwIf($platform === PermissionEnum::PLATFORM_ADMIN, '请使用 PC 后台权限管理');
+        self::throwIf(empty($param['code']), 'code 不能为空');
+        
+        // 唯一性检查：platform + code（排除自己）
+        $exist = $this->permissionDep->findByPlatformCode($platform, $param['code'], $id);
+        self::throwIf($exist, '该平台下权限标识已存在');
+        
+        $data = [
+            'name' => $param['name'],
+            'parent_id' => -1,
+            'code' => $param['code'],
+            'type' => PermissionEnum::TYPE_BUTTON,
+            'platform' => $platform,
+            'sort' => $param['sort'] ?? 1,
+        ];
+        $this->permissionDep->update($id, $data);
+        
+        PermissionDep::clearCache();
+        DictService::clearPermissionCache();
+        
+        return self::success();
     }
 
     public function status($request)

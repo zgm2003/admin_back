@@ -4,6 +4,7 @@ namespace app\module\User;
 
 use app\dep\User\UserSessionsDep;
 use app\module\BaseModule;
+use app\enum\PermissionEnum;
 use support\Redis;
 
 /**
@@ -30,6 +31,7 @@ class UserSessionModule extends BaseModule
         $now = date('Y-m-d H:i:s');
         $data = $paginator->getCollection()->map(function ($item) use ($now) {
             $item->status = $item->revoked_at ? 'revoked' : ($item->refresh_expires_at <= $now ? 'expired' : 'active');
+            $item->platform_name = PermissionEnum::$platformArr[$item->platform] ?? $item->platform;
             return $item;
         });
 

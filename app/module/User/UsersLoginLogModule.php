@@ -7,6 +7,7 @@ use app\dep\User\UsersDep;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\enum\SystemEnum;
+use app\enum\PermissionEnum;
 use app\validate\User\UsersLoginLogValidate;
 
 class UsersLoginLogModule extends BaseModule
@@ -64,6 +65,7 @@ class UsersLoginLogModule extends BaseModule
                 'login_type' => $item['login_type'],
                 'login_type_name' => SystemEnum::$loginTypeArr[$item['login_type']] ?? '',
                 'platform' => $item['platform'],
+                'platform_name' => PermissionEnum::$platformArr[$item['platform']] ?? $item['platform'],
                 'ip' => $item['ip'],
                 'ua' => $item['ua'],
                 'is_success' => $item['is_success'],
@@ -111,6 +113,7 @@ class UsersLoginLogModule extends BaseModule
                 'login_type' => $item['login_type'],
                 'login_type_name' => SystemEnum::$loginTypeArr[$item['login_type']] ?? '',
                 'platform' => $item['platform'],
+                'platform_name' => PermissionEnum::$platformArr[$item['platform']] ?? $item['platform'],
                 'ip' => $item['ip'],
                 'ua' => $item['ua'],
                 'is_success' => $item['is_success'],

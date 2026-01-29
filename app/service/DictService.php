@@ -188,7 +188,7 @@ class DictService
     }
 
     public function setPlatformArr(){
-        $this->dict['platformArr'] = $this->enumToDict(CommonEnum::$platformArr);
+        $this->dict['platformArr'] = $this->enumToDict(PermissionEnum::$platformArr);
         return $this;
     }
 

@@ -13,11 +13,6 @@ class CommonEnum
 
     const DB_DEFAULT_TIME = '2000-01-01 00:00:00';
 
-    const PLATFORM_admin = 'admin';
-    const PLATFORM_APP = 'app';
-    const PLATFORM_H5 = 'h5';
-    const PLATFORM_MINI = 'mini';
-
     // 性别常量
     const SEX_UNKNOWN = 0;
     const SEX_MALE = 1;
@@ -38,10 +33,4 @@ class CommonEnum
         self::SEX_FEMALE => "女",
     ];
 
-    public static $platformArr = [
-        self::PLATFORM_admin => "admin",
-        self::PLATFORM_APP => "app",
-        self::PLATFORM_H5 => "h5",
-        self::PLATFORM_MINI => "mini",
-    ];
 }

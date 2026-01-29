@@ -201,7 +201,16 @@ class UserSessionsDep extends BaseDep
             }
         }
 
-        $query->orderByDesc('user_sessions.last_seen_at');
+        // 排序：活跃 > 过期 > 已撤销，同状态按最后活跃时间降序
+        $now = date('Y-m-d H:i:s');
+        $query->orderByRaw("
+            CASE 
+                WHEN user_sessions.revoked_at IS NULL AND user_sessions.refresh_expires_at > ? THEN 1
+                WHEN user_sessions.revoked_at IS NULL AND user_sessions.refresh_expires_at <= ? THEN 2
+                ELSE 3
+            END ASC
+        ", [$now, $now])
+        ->orderByDesc('user_sessions.last_seen_at');
 
         return $query->paginate($pageSize, ['*'], 'page', $currentPage);
     }
