@@ -15,13 +15,12 @@ class PermissionModule extends BaseModule
 
     public function __construct()
     {
-        $this->permissionDep = new PermissionDep();
+        $this->permissionDep = $this->dep(PermissionDep::class);
     }
 
     public function init($request)
     {
-        $dictService = new DictService();
-        $data['dict'] = $dictService
+        $data['dict'] = $this->svc(DictService::class)
             ->setPermissionTree()
             ->setPermissionTypeArr()
             ->setPermissionPlatformArr()

@@ -23,17 +23,16 @@ class UsersListModule extends BaseModule
 
     public function __construct()
     {
-        $this->usersDep = new UsersDep();
-        $this->roleDep = new RoleDep();
-        $this->addressDep = new AddressDep();
-        $this->userProfileDep = new UserProfileDep();
-        $this->exportTaskDep = new ExportTaskDep();
+        $this->usersDep = $this->dep(UsersDep::class);
+        $this->roleDep = $this->dep(RoleDep::class);
+        $this->addressDep = $this->dep(AddressDep::class);
+        $this->userProfileDep = $this->dep(UserProfileDep::class);
+        $this->exportTaskDep = $this->dep(ExportTaskDep::class);
     }
 
     public function init($request)
     {
-        $dictService = new DictService();
-        $dict = $dictService
+        $dict = $this->svc(DictService::class)
             ->setRoleArr()
             ->setAuthAdressTree()
             ->setSexArr()

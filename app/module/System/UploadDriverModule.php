@@ -16,12 +16,12 @@ class UploadDriverModule extends BaseModule
 
     public function __construct()
     {
-        $this->uploadDriverDep = new UploadDriverDep();
+        $this->uploadDriverDep = $this->dep(UploadDriverDep::class);
     }
 
-    public function init($request){
-        $dictService = new DictService();
-        $data['dict'] = $dictService
+    public function init($request)
+    {
+        $data['dict'] = $this->svc(DictService::class)
             ->setUploadDriverArr()
             ->getDict();
         return self::success($data);

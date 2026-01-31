@@ -19,8 +19,8 @@ class NotificationTaskModule extends BaseModule
 
     public function __construct()
     {
-        $this->notificationTaskDep = new NotificationTaskDep();
-        $this->usersDep = new UsersDep();
+        $this->notificationTaskDep = $this->dep(NotificationTaskDep::class);
+        $this->usersDep = $this->dep(UsersDep::class);
     }
 
     /**
@@ -28,8 +28,7 @@ class NotificationTaskModule extends BaseModule
      */
     public function init(): array
     {
-        $dictService = new DictService();
-        $data['dict'] = $dictService
+        $data['dict'] = $this->svc(DictService::class)
             ->setNotificationTypeArr()
             ->setNotificationLevelArr()
             ->setNotificationTargetTypeArr()

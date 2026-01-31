@@ -15,13 +15,12 @@ class SystemSettingModule extends BaseModule
 
     public function __construct()
     {
-        $this->systemSettingDep = new SystemSettingDep();
+        $this->systemSettingDep = $this->dep(SystemSettingDep::class);
     }
 
     public function init($request)
     {
-        $dictService = new DictService();
-        $data['dict'] = $dictService
+        $data['dict'] = $this->svc(DictService::class)
             ->setSystemSettingValueTypeArr()
             ->getDict();
         return self::success($data);

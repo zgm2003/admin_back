@@ -14,12 +14,12 @@ class UploadRuleModule extends BaseModule
 
     public function __construct()
     {
-        $this->uploadRuleDep = new UploadRuleDep();
+        $this->uploadRuleDep = $this->dep(UploadRuleDep::class);
     }
 
-    public function init($request){
-        $dictService = new DictService();
-        $data['dict'] = $dictService
+    public function init($request)
+    {
+        $data['dict'] = $this->svc(DictService::class)
             ->setUploadImageExtArr()
             ->setUploadFileExtArr()
             ->getDict();

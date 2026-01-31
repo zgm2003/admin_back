@@ -32,10 +32,10 @@ class AuthModule extends BaseModule
 
     public function __construct()
     {
-        $this->usersDep = new UsersDep();
-        $this->userSessionsDep = new UserSessionsDep();
-        $this->roleDep = new RoleDep();
-        $this->userProfileDep = new UserProfileDep();
+        $this->usersDep = $this->dep(UsersDep::class);
+        $this->userSessionsDep = $this->dep(UserSessionsDep::class);
+        $this->roleDep = $this->dep(RoleDep::class);
+        $this->userProfileDep = $this->dep(UserProfileDep::class);
     }
 
     /**
@@ -43,8 +43,7 @@ class AuthModule extends BaseModule
      */
     public function getLoginConfig(): array
     {
-        $dictService = new DictService();
-        $dict = $dictService->setLoginTypeArr()->getDict();
+        $dict = $this->svc(DictService::class)->setLoginTypeArr()->getDict();
         return self::success($dict);
     }
 

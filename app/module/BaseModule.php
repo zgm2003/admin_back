@@ -11,6 +11,9 @@ use support\Request;
 
 class BaseModule
 {
+    /** @var array<class-string, object> */
+    private array $instances = [];
+
     // ==================== 状态码常量 ====================
     const CODE_SUCCESS       = ErrorCodeEnum::SUCCESS;
     const CODE_PARAM_ERROR   = ErrorCodeEnum::PARAM_ERROR;
@@ -129,6 +132,25 @@ class BaseModule
         } catch (ValidationException $e) {
             throw new BusinessException($e->getMessage(), self::CODE_PARAM_ERROR);
         }
+    }
+
+    /**
+     * Lazy load dependencies for modules (Dep/Service).
+     */
+    protected function dep(string $class)
+    {
+        if (!isset($this->instances[$class])) {
+            $this->instances[$class] = new $class();
+        }
+        return $this->instances[$class];
+    }
+
+    /**
+     * Alias for service dependencies.
+     */
+    protected function svc(string $class)
+    {
+        return $this->dep($class);
     }
 
     // ==================== 异常转响应 ====================

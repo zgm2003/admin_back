@@ -18,14 +18,14 @@ class UploadSettingModule extends BaseModule
 
     public function __construct()
     {
-        $this->uploadSettingDep = new UploadSettingDep();
-        $this->uploadDriverDep = new UploadDriverDep();
-        $this->uploadRuleDep = new UploadRuleDep();
+        $this->uploadSettingDep = $this->dep(UploadSettingDep::class);
+        $this->uploadDriverDep = $this->dep(UploadDriverDep::class);
+        $this->uploadRuleDep = $this->dep(UploadRuleDep::class);
     }
 
-    public function init($request){
-        $dictService = new DictService();
-        $data['dict'] = $dictService
+    public function init($request)
+    {
+        $data['dict'] = $this->svc(DictService::class)
             ->setCommonStatusArr()
             ->setUploadDriverList()
             ->setUploadRuleList()

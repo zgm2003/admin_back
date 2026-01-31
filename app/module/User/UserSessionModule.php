@@ -16,7 +16,7 @@ class UserSessionModule extends BaseModule
 
     public function __construct()
     {
-        $this->sessionsDep = new UserSessionsDep();
+        $this->sessionsDep = $this->dep(UserSessionsDep::class);
     }
 
     /**

@@ -15,7 +15,7 @@ class UsersQuickEntryModule extends BaseModule
 
     public function __construct()
     {
-        $this->usersQuickEntryDep = new UsersQuickEntryDep();
+        $this->usersQuickEntryDep = $this->dep(UsersQuickEntryDep::class);
     }
 
     /**

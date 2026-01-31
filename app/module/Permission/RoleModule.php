@@ -17,12 +17,12 @@ class RoleModule extends BaseModule
 
     public function __construct()
     {
-        $this->roleDep = new RoleDep();
+        $this->roleDep = $this->dep(RoleDep::class);
     }
 
     public function init($request)
     {
-        $dictService = new DictService();
+        $dictService = $this->svc(DictService::class);
         $data['dict'] = $dictService
             ->setPermissionTree()
             ->getDict();
@@ -59,14 +59,7 @@ class RoleModule extends BaseModule
         
         $dep->delete($ids);
 
-        // Clear cache for users with these roles (all platforms)
-        $usersDep = new UsersDep();
-        $userIds = $usersDep->getIdsByRoleIds($ids);
-        foreach ($userIds as $uid) {
-            foreach (PermissionEnum::ALLOWED_PLATFORMS as $platform) {
-                Cache::delete('auth_perm_uid_' . $uid . '_' . $platform);
-            }
-        }
+        $this->clearPermissionCacheByRoleIds($ids);
 
         return self::success();
     }
@@ -83,14 +76,7 @@ class RoleModule extends BaseModule
         ];
         $dep->update($param['id'], $data);
 
-        // Clear cache for users with this role (all platforms)
-        $usersDep = new UsersDep();
-        $userIds = $usersDep->getIdsByRoleIds([$param['id']]);
-        foreach ($userIds as $uid) {
-            foreach (PermissionEnum::ALLOWED_PLATFORMS as $platform) {
-                Cache::delete('auth_perm_uid_' . $uid . '_' . $platform);
-            }
-        }
+        $this->clearPermissionCacheByRoleIds([(int)$param['id']]);
 
         return self::success();
     }
@@ -145,5 +131,16 @@ class RoleModule extends BaseModule
             self::throw('设置默认角色失败');
         }
         return self::success();
+    }
+
+    private function clearPermissionCacheByRoleIds(array $roleIds): void
+    {
+        $usersDep = $this->dep(UsersDep::class);
+        $userIds = $usersDep->getIdsByRoleIds($roleIds);
+        foreach ($userIds as $uid) {
+            foreach (PermissionEnum::ALLOWED_PLATFORMS as $platform) {
+                Cache::delete('auth_perm_uid_' . $uid . '_' . $platform);
+            }
+        }
     }
 }

@@ -30,12 +30,12 @@ class ProfileModule extends BaseModule
 
     public function __construct()
     {
-        $this->usersDep = new UsersDep();
-        $this->roleDep = new RoleDep();
-        $this->permissionDep = new PermissionDep();
-        $this->userProfileDep = new UserProfileDep();
-        $this->usersQuickEntryDep = new UsersQuickEntryDep();
-        $this->permissionService = new PermissionService();
+        $this->usersDep = $this->dep(UsersDep::class);
+        $this->roleDep = $this->dep(RoleDep::class);
+        $this->permissionDep = $this->dep(PermissionDep::class);
+        $this->userProfileDep = $this->dep(UserProfileDep::class);
+        $this->usersQuickEntryDep = $this->dep(UsersQuickEntryDep::class);
+        $this->permissionService = $this->svc(PermissionService::class);
     }
 
     /**
@@ -76,7 +76,6 @@ class ProfileModule extends BaseModule
     public function initPersonal($request): array
     {
         $param = $request->all();
-        $dictService = new DictService();
 
         $user = $this->usersDep->find($param['user_id']);
         self::throwNotFound($user, '用户不存在');
@@ -100,7 +99,7 @@ class ProfileModule extends BaseModule
             'has_password' => !empty($user->password),
         ];
 
-        $data['dict'] = $dictService
+        $data['dict'] = $this->svc(DictService::class)
             ->setAuthAdressTree()
             ->setSexArr()
             ->setVerifyTypeArr()

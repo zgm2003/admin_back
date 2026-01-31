@@ -12,7 +12,7 @@ class TestModule extends BaseModule
 
     public function __construct()
     {
-        $this->testDep = new TestDep();
+        $this->testDep = $this->dep(TestDep::class);
     }
 
     public function init($request): array

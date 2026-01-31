@@ -12,7 +12,7 @@ class NotificationModule extends BaseModule
 
     public function __construct()
     {
-        $this->notificationDep = new NotificationDep();
+        $this->notificationDep = $this->dep(NotificationDep::class);
     }
 
     /**
