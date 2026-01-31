@@ -5,6 +5,7 @@ namespace app\exception;
 use Webman\Exception\ExceptionHandler;
 use Webman\Http\Request;
 use Webman\Http\Response;
+use Webman\RateLimiter\RateLimitException;
 use Throwable;
 
 /**
@@ -18,6 +19,7 @@ class Handler extends ExceptionHandler
      */
     public $dontReport = [
         BusinessException::class,
+        RateLimitException::class,
     ];
 
     /**
@@ -25,6 +27,11 @@ class Handler extends ExceptionHandler
      */
     public function render(Request $request, Throwable $e): Response
     {
+        // RateLimiter 异常：有自己的 render 方法
+        if ($e instanceof RateLimitException) {
+            return $e->render($request);
+        }
+
         // 业务异常：直接返回错误信息
         if ($e instanceof BusinessException) {
             return json([
