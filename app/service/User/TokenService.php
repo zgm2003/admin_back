@@ -38,6 +38,7 @@ class TokenService
             'access_expires'     => $now->copy()->addSeconds($accessTtl),
             'refresh_expires'    => $now->copy()->addSeconds($refreshTtl),
             'access_ttl'         => $accessTtl,
+            'refresh_ttl'        => $refreshTtl,
             'now'                => $now,
         ];
     }

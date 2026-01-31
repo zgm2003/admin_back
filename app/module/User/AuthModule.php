@@ -406,7 +406,8 @@ class AuthModule extends BaseModule
         return [
             'access_token' => $tokens['access_token'],
             'refresh_token' => $tokens['refresh_token'],
-            'expires_in' => $tokens['access_ttl']
+            'expires_in' => $tokens['access_ttl'],
+            'refresh_expires_in' => $tokens['refresh_ttl'],
         ];
     }
 
