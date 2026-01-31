@@ -57,17 +57,22 @@ class AuthModule extends BaseModule
         $param = $this->validate($request, UsersValidate::login());
 
         $loginType = $param['login_type'];
+        $isNewUser = false;
 
         // 1. 验证阶段
         if ($loginType === SystemEnum::LOGIN_TYPE_PASSWORD) {
             $result = $this->loginByPassword($param, $request);
         } else {
             $result = $this->loginByCode($param, $loginType, $request);
+            $isNewUser = $result['is_new_user'] ?? false;
         }
 
         self::throwIf($result['error'], $result['error'] ?? '登录失败');
 
-        return self::success($this->createSession($result['user']['id'], $param['login_account'], $request, $loginType));
+        $session = $this->createSession($result['user']['id'], $param['login_account'], $request, $loginType);
+        $session['is_new_user'] = $isNewUser;
+
+        return self::success($session);
     }
 
     /**
@@ -142,6 +147,7 @@ class AuthModule extends BaseModule
             ? $this->usersDep->findByEmail($param['login_account'])
             : $this->usersDep->findByPhone($param['login_account']);
 
+        $isNewUser = false;
         // 自动注册
         if (!$user) {
             if (!SettingService::isRegisterEnabled()) {
@@ -151,9 +157,10 @@ class AuthModule extends BaseModule
             if (!$user) {
                 return ['error' => '自动注册失败，请稍后重试', 'user' => null];
             }
+            $isNewUser = true;
         }
 
-        return ['error' => false, 'user' => $user];
+        return ['error' => false, 'user' => $user, 'is_new_user' => $isNewUser];
     }
 
     /**
