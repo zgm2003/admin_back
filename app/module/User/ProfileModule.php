@@ -120,14 +120,8 @@ class ProfileModule extends BaseModule
         $user = $this->usersDep->find($request->userId);
         self::throwNotFound($user, '用户不存在');
 
-        self::throwIf(
-            isset($param['phone']) && trim((string)$param['phone']) !== '' && !isValidPhone($param['phone']),
-            '无效的手机号码'
-        );
-
         $userData = [
             'username' => $param['username'],
-            'phone' => $param['phone'] ?? '',
         ];
 
         $profileData = [

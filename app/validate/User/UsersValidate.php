@@ -79,7 +79,6 @@ class UsersValidate
         return [
             'username' => v::length(1, 50)->setName('用户名'),
             'avatar' => v::optional(v::stringType()),
-            'phone' => v::optional(v::stringType()),
             'sex' => v::intVal()->setName('性别'),
             'birthday' => v::optional(v::stringType())->setName('生日'),
             'address' => v::intVal()->setName('地址'),
