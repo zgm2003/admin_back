@@ -120,7 +120,7 @@ class ProfileModule extends BaseModule
         self::throwNotFound($user, '用户不存在');
 
         self::throwIf(
-            isset($param['phone']) && trim((string)$param['phone']) !== '' && !is_valid_phone_number($param['phone']),
+            isset($param['phone']) && trim((string)$param['phone']) !== '' && !isValidPhone($param['phone']),
             '无效的手机号码'
         );
 
@@ -152,7 +152,7 @@ class ProfileModule extends BaseModule
         $param = $this->validate($request, UsersValidate::updatePhone());
 
         $phone = $param['phone'];
-        self::throwIf(!is_valid_phone_number($phone), '手机号格式不正确');
+        self::throwIf(!isValidPhone($phone), '手机号格式不正确');
 
         $cacheKey = 'phone_code_' . md5($phone);
         $code = Cache::get($cacheKey);

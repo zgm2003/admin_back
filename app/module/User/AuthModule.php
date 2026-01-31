@@ -83,7 +83,7 @@ class AuthModule extends BaseModule
         // 智能判断账号类型
         if (isValidEmail($account)) {
             $user = $this->usersDep->findByEmail($account);
-        } elseif (is_valid_phone_number($account)) {
+        } elseif (isValidPhone($account)) {
             $user = $this->usersDep->findByPhone($account);
         } else {
             return ['error' => '请输入正确的邮箱或手机号', 'user' => null];
@@ -123,7 +123,7 @@ class AuthModule extends BaseModule
             }
             $cacheKey = 'email_code_' . md5($param['login_account']);
         } else {
-            if (!is_valid_phone_number($param['login_account'])) {
+            if (!isValidPhone($param['login_account'])) {
                 return ['error' => '手机号格式不正确', 'user' => null];
             }
             $cacheKey = 'phone_code_' . md5($param['login_account']);
@@ -295,7 +295,7 @@ class AuthModule extends BaseModule
             return self::success([], '验证码发送成功');
         }
 
-        if (is_valid_phone_number($account)) {
+        if (isValidPhone($account)) {
             $code = 123456; // TODO: 接入真实短信服务
             Cache::set('phone_code_' . md5($account), $code, 300);
             return self::success([], '验证码发送成功(测试:123456)');
@@ -307,20 +307,41 @@ class AuthModule extends BaseModule
 
     /**
      * 忘记密码（未登录状态重置密码）
+     * 支持邮箱/手机号两种方式
      */
     public function forgetPassword($request): array
     {
         $param = $this->validate($request, UsersValidate::forgetPassword());
 
-        $cacheKey = 'email_code_' . md5($param['email']);
+        $account = $param['account'];
+        
+        // 确认密码一致性
+        self::throwIf(
+            $param['new_password'] !== $param['confirm_password'],
+            '两次输入的密码不一致'
+        );
+
+        // 判断账号类型并查找用户
+        if (isValidEmail($account)) {
+            $cacheKey = 'email_code_' . md5($account);
+            $user = $this->usersDep->findByEmail($account);
+        } elseif (isValidPhone($account)) {
+            $cacheKey = 'phone_code_' . md5($account);
+            $user = $this->usersDep->findByPhone($account);
+        } else {
+            self::throw('请输入正确的邮箱或手机号');
+            return [];
+        }
+
+        self::throwNotFound($user, '该账号未注册');
+
+        // 验证码校验
         $code = Cache::get($cacheKey);
-        self::throwIf($code != $param['code'], '验证码错误');
+        self::throwIf(!$code || $code != $param['code'], '验证码错误或已失效');
 
-        $user = $this->usersDep->findByEmail($param['email']);
-        self::throwNotFound($user, '用户不存在');
-
+        // 更新密码
         $this->usersDep->update($user->id, [
-            'password' => password_hash($param['newpassword'], PASSWORD_DEFAULT),
+            'password' => password_hash($param['new_password'], PASSWORD_DEFAULT),
         ]);
         Cache::delete($cacheKey);
 

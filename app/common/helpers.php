@@ -33,25 +33,22 @@ if (!function_exists('log_daily')) {
     }
 }
 if (!function_exists('isValidEmail')) {
-    function isValidEmail($email)
+    /**
+     * 验证邮箱格式
+     */
+    function isValidEmail(string $email): bool
     {
-        // 定义电子邮件的正则表达式
-        $regex = '/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/';
-
-        // 检查电子邮件是否符合格式
-        return preg_match($regex, $email) === 1;
+        return preg_match('/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/', $email) === 1;
     }
 }
-if (!function_exists('is_valid_phone_number')) {
-    function is_valid_phone_number($phone_number)
+
+if (!function_exists('isValidPhone')) {
+    /**
+     * 验证手机号格式（中国大陆）
+     */
+    function isValidPhone(string $phone): bool
     {
-        // 正则表达式，这里以中国大陆手机号为例
-        $pattern = '/^1[3-9]\d{9}$/';
-        if (preg_match($pattern, $phone_number)) {
-            return true;
-        } else {
-            return false;
-        }
+        return preg_match('/^1[3-9]\d{9}$/', $phone) === 1;
     }
 }
 if (!function_exists('listToTree')) {

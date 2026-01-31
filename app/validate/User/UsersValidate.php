@@ -67,8 +67,9 @@ class UsersValidate
     public static function forgetPassword(): array
     {
         return [
-            'email' => v::email()->setName('邮箱'),
-            'newpassword' => v::length(6, 64)->setName('新密码'),
+            'account' => v::stringType()->length(1, 120)->setName('账号'),
+            'new_password' => v::length(6, 64)->setName('新密码'),
+            'confirm_password' => v::length(6, 64)->setName('确认密码'),
             'code' => v::digit()->length(6, 6)->setName('验证码'),
         ];
     }
