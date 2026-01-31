@@ -27,6 +27,7 @@ class ProfileModule extends BaseModule
     protected UserProfileDep $userProfileDep;
     protected UsersQuickEntryDep $usersQuickEntryDep;
     protected PermissionService $permissionService;
+    protected DictService $dictService;
 
     public function __construct()
     {
@@ -36,6 +37,7 @@ class ProfileModule extends BaseModule
         $this->userProfileDep = $this->dep(UserProfileDep::class);
         $this->usersQuickEntryDep = $this->dep(UsersQuickEntryDep::class);
         $this->permissionService = $this->svc(PermissionService::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     /**
@@ -99,7 +101,7 @@ class ProfileModule extends BaseModule
             'has_password' => !empty($user->password),
         ];
 
-        $data['dict'] = $this->svc(DictService::class)
+        $data['dict'] = $this->dictService
             ->setAuthAdressTree()
             ->setSexArr()
             ->setVerifyTypeArr()

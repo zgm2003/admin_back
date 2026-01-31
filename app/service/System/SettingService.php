@@ -3,10 +3,11 @@
 namespace app\service\System;
 
 use app\dep\System\SystemSettingDep;
+use app\exception\BusinessException;
 
 /**
  * 系统设置服务 - 统一从数据库读取配置
- * 优先读数据库，fallback 到 config 文件
+ * 负责类型转换、业务逻辑，优先读数据库，fallback 到 config 文件
  */
 class SettingService
 {
@@ -21,12 +22,44 @@ class SettingService
     }
 
     /**
-     * 获取配置值（优先数据库，fallback config 文件）
+     * 获取配置值（带类型转换，优先数据库，fallback config 文件）
      */
     public static function get(string $key, $default = null)
     {
-        $value = self::dep()->getValue($key);
-        return $value !== null ? $value : $default;
+        $raw = self::dep()->getRaw($key);
+        if ($raw === null) {
+            return $default;
+        }
+
+        return self::convertType($raw['setting_value'], $raw['value_type'], $default);
+    }
+
+    /**
+     * 设置配置值（带类型转换）
+     */
+    public static function set(string $key, $value, int $type = 1, string $remark = ''): bool
+    {
+        // 类型转换：将值转为字符串存储
+        $strValue = match ($type) {
+            4 => is_string($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE),
+            3 => $value ? '1' : '0',
+            default => (string)$value,
+        };
+
+        return self::dep()->setRaw($key, $strValue, $type, $remark);
+    }
+
+    /**
+     * 类型转换（业务逻辑）
+     */
+    private static function convertType(string $value, int $type, $default)
+    {
+        return match ($type) {
+            2 => is_numeric($value) ? $value + 0 : $default, // 数字
+            3 => in_array(strtolower($value), ['1', 'true'], true), // 布尔
+            4 => json_decode($value, true) ?? $default, // JSON
+            default => $value, // 字符串
+        };
     }
 
     // ==================== Auth 相关 ====================
@@ -41,28 +74,26 @@ class SettingService
         return (int)self::get('auth.refresh_ttl', config('auth.refresh_ttl', 14 * 24 * 3600));
     }
 
+    /**
+     * 获取平台认证策略（强约束：必须配置，否则拒绝访问）
+     * @throws BusinessException
+     */
     public static function getAuthPolicy(string $platform): array
     {
+        // 优先数据库
         $policy = self::get('auth.policy.' . $platform);
-        if ($policy !== null) {
-            return is_array($policy) ? $policy : [];
+        if ($policy !== null && is_array($policy)) {
+            return $policy;
         }
-        // fallback 到 config 文件
-        return config('auth.policies.' . $platform) ?? self::getDefaultPolicy();
-    }
 
-    public static function getDefaultPolicy(): array
-    {
-        $policy = self::get('auth.default_policy');
-        if ($policy !== null) {
-            return is_array($policy) ? $policy : [];
+        // fallback 到 config 文件
+        $configPolicy = config('auth.policies.' . $platform);
+        if ($configPolicy !== null && is_array($configPolicy)) {
+            return $configPolicy;
         }
-        return config('auth.default_policy', [
-            'bind_platform' => true,
-            'bind_device' => true,
-            'bind_ip' => false,
-            'single_session_per_platform' => false,
-        ]);
+
+        // fail-close：未配置则拒绝访问
+        throw new BusinessException("平台 [{$platform}] 未配置认证策略，拒绝访问", 401);
     }
 
     // ==================== User 相关 ====================

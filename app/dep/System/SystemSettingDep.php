@@ -29,14 +29,14 @@ class SystemSettingDep extends BaseDep
     }
 
     /**
-     * 获取配置值（带缓存和类型转换）
+     * 根据 key 查询原始记录（带缓存）
      */
-    public function getValue(string $key, $default = null)
+    public function getRaw(string $key): ?array
     {
-        $cacheKey = 'sys_setting_' . str_replace('.', '_', $key);
+        $cacheKey = 'sys_setting_raw_' . str_replace('.', '_', $key);
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
-            return $cached;
+            return $cached ?: null;
         }
 
         $row = $this->model
@@ -46,38 +46,27 @@ class SystemSettingDep extends BaseDep
             ->first();
 
         if (!$row) {
-            return $default;
+            Cache::set($cacheKey, false, 86400); // 缓存空结果
+            return null;
         }
 
-        $val = $row->setting_value;
-        switch ((int)$row->value_type) {
-            case 2: // 数字
-                $val = is_numeric($val) ? $val + 0 : $default;
-                break;
-            case 3: // 布尔
-                $val = in_array(strtolower((string)$val), ['1', 'true'], true);
-                break;
-            case 4: // JSON
-                $decoded = json_decode((string)$val, true);
-                $val = is_array($decoded) ? $decoded : $default;
-                break;
-            default: // 字符串
-                $val = (string)$val;
-        }
-
-        Cache::set($cacheKey, $val, 86400);
-        return $val;
+        $data = [
+            'setting_value' => $row->setting_value,
+            'value_type' => (int)$row->value_type,
+        ];
+        Cache::set($cacheKey, $data, 86400);
+        return $data;
     }
 
     /**
-     * 设置配置值
+     * 原始写入（不做类型转换）
      */
-    public function setValue(string $key, $value, int $type = 1, string $remark = ''): bool
+    public function setRaw(string $key, string $value, int $type = 1, string $remark = ''): bool
     {
         $exists = $this->findByKey($key);
         $data = [
             'setting_key' => $key,
-            'setting_value' => $type === 4 ? (is_string($value) ? $value : json_encode($value)) : (string)$value,
+            'setting_value' => $value,
             'value_type' => $type,
             'remark' => $remark,
             'status' => CommonEnum::YES,
@@ -90,7 +79,7 @@ class SystemSettingDep extends BaseDep
             $this->model->insertGetId($data);
         }
 
-        Cache::delete('sys_setting_' . str_replace('.', '_', $key));
+        Cache::delete('sys_setting_raw_' . str_replace('.', '_', $key));
         return true;
     }
 
@@ -120,7 +109,7 @@ class SystemSettingDep extends BaseDep
             ->where('setting_key', $key)
             ->where('is_del', CommonEnum::NO)
             ->update(['is_del' => CommonEnum::YES]);
-        Cache::delete('sys_setting_' . str_replace('.', '_', $key));
+        Cache::delete('sys_setting_raw_' . str_replace('.', '_', $key));
     }
 
     /**
@@ -132,7 +121,7 @@ class SystemSettingDep extends BaseDep
             ->where('setting_key', $key)
             ->where('is_del', CommonEnum::NO)
             ->update(['status' => $status]);
-        Cache::delete('sys_setting_' . str_replace('.', '_', $key));
+        Cache::delete('sys_setting_raw_' . str_replace('.', '_', $key));
     }
 
     /**
@@ -145,7 +134,7 @@ class SystemSettingDep extends BaseDep
             return false;
         }
         $this->model->where('id', $id)->update($data);
-        Cache::delete('sys_setting_' . str_replace('.', '_', $row->setting_key));
+        Cache::delete('sys_setting_raw_' . str_replace('.', '_', $row->setting_key));
         return true;
     }
 
@@ -159,7 +148,7 @@ class SystemSettingDep extends BaseDep
         $this->model->whereIn('id', $ids)->update(['is_del' => CommonEnum::YES]);
         foreach ($rows as $r) {
             if (!empty($r['setting_key'])) {
-                Cache::delete('sys_setting_' . str_replace('.', '_', $r['setting_key']));
+                Cache::delete('sys_setting_raw_' . str_replace('.', '_', $r['setting_key']));
             }
         }
         return true;
@@ -175,7 +164,7 @@ class SystemSettingDep extends BaseDep
             return false;
         }
         $this->model->where('id', $id)->update(['status' => $status]);
-        Cache::delete('sys_setting_' . str_replace('.', '_', $row->setting_key));
+        Cache::delete('sys_setting_raw_' . str_replace('.', '_', $row->setting_key));
         return true;
     }
 }

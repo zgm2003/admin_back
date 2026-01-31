@@ -7,7 +7,6 @@ use app\enum\CommonEnum;
 use app\enum\ExportTaskEnum;
 use app\model\DevTools\ExportTaskModel;
 use support\Model;
-use Webman\RedisQueue\Client as RedisQueue;
 
 class ExportTaskDep extends BaseDep
 {
@@ -32,11 +31,11 @@ class ExportTaskDep extends BaseDep
     }
 
     /**
-     * 提交导出任务（创建记录 + 入队）
+     * 创建导出任务记录（纯数据写入）
      */
-    public function submit(int $userId, string $title, array $headers, array $data, string $prefix = 'export'): int
+    public function create(int $userId, string $title): int
     {
-        $taskId = $this->add([
+        return $this->add([
             'user_id' => $userId,
             'title' => $title,
             'status' => ExportTaskEnum::STATUS_PENDING,
@@ -44,17 +43,6 @@ class ExportTaskDep extends BaseDep
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
-
-        RedisQueue::send('export_task', [
-            'task_id' => $taskId,
-            'user_id' => $userId,
-            'headers' => $headers,
-            'data' => $data,
-            'title' => $title,
-            'prefix' => $prefix,
-        ]);
-
-        return $taskId;
     }
 
     /**

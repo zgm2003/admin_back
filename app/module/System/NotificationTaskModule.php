@@ -8,6 +8,7 @@ use app\enum\NotificationEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\System\NotificationTaskValidate;
+use Webman\RedisQueue\Client as RedisQueue;
 
 /**
  * 通知任务管理模块
@@ -16,11 +17,13 @@ class NotificationTaskModule extends BaseModule
 {
     private NotificationTaskDep $notificationTaskDep;
     private UsersDep $usersDep;
+    private DictService $dictService;
 
     public function __construct()
     {
         $this->notificationTaskDep = $this->dep(NotificationTaskDep::class);
         $this->usersDep = $this->dep(UsersDep::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     /**
@@ -28,7 +31,7 @@ class NotificationTaskModule extends BaseModule
      */
     public function init(): array
     {
-        $data['dict'] = $this->svc(DictService::class)
+        $data['dict'] = $this->dictService
             ->setNotificationTypeArr()
             ->setNotificationLevelArr()
             ->setNotificationTargetTypeArr()
@@ -100,7 +103,8 @@ class NotificationTaskModule extends BaseModule
         // 计算目标用户数
         $totalCount = $this->calculateTotalCount($param['target_type'], $param['target_ids'] ?? []);
 
-        $taskId = $this->notificationTaskDep->submit([
+        // Module 层编排：写表 + 判断是否入队
+        $taskData = [
             'title' => $param['title'],
             'content' => $param['content'] ?? '',
             'type' => $param['type'] ?? NotificationEnum::TYPE_INFO,
@@ -112,7 +116,13 @@ class NotificationTaskModule extends BaseModule
             'total_count' => $totalCount,
             'send_at' => $param['send_at'] ?: null,
             'created_by' => $request->userId,
-        ]);
+        ];
+        $taskId = $this->notificationTaskDep->create($taskData);
+
+        // 立即发送（无定时）则入队
+        if (empty($param['send_at'])) {
+            RedisQueue::send('notification_task', ['task_id' => $taskId]);
+        }
 
         return self::success(['id' => $taskId]);
     }

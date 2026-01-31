@@ -7,20 +7,23 @@ use app\enum\CommonEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
 use app\service\DictService;
+use app\service\System\SettingService;
 use app\validate\System\SystemSettingValidate;
 
 class SystemSettingModule extends BaseModule
 {
     protected SystemSettingDep $systemSettingDep;
+    protected DictService $dictService;
 
     public function __construct()
     {
         $this->systemSettingDep = $this->dep(SystemSettingDep::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     public function init($request)
     {
-        $data['dict'] = $this->svc(DictService::class)
+        $data['dict'] = $this->dictService
             ->setSystemSettingValueTypeArr()
             ->getDict();
         return self::success($data);
@@ -66,7 +69,7 @@ class SystemSettingModule extends BaseModule
             $j = json_decode((string)$param['value'], true);
             self::throwIf(!is_array($j), 'JSON 类型需为合法 JSON');
         }
-        $this->systemSettingDep->setValue($param['key'], $param['value'], (int)$param['type'], $param['remark'] ?? '');
+        SettingService::set($param['key'], $param['value'], (int)$param['type'], $param['remark'] ?? '');
         return self::success();
     }
 

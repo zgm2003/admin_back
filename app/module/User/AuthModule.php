@@ -29,6 +29,7 @@ class AuthModule extends BaseModule
     protected UserSessionsDep $userSessionsDep;
     protected RoleDep $roleDep;
     protected UserProfileDep $userProfileDep;
+    protected DictService $dictService;
 
     public function __construct()
     {
@@ -36,6 +37,7 @@ class AuthModule extends BaseModule
         $this->userSessionsDep = $this->dep(UserSessionsDep::class);
         $this->roleDep = $this->dep(RoleDep::class);
         $this->userProfileDep = $this->dep(UserProfileDep::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     /**
@@ -43,7 +45,7 @@ class AuthModule extends BaseModule
      */
     public function getLoginConfig(): array
     {
-        $dict = $this->svc(DictService::class)->setLoginTypeArr()->getDict();
+        $dict = $this->dictService->setLoginTypeArr()->getDict();
         return self::success($dict);
     }
 

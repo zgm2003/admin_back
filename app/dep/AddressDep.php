@@ -60,38 +60,7 @@ class AddressDep extends BaseDep
     }
 
     /**
-     * 根据 district_id 构建完整地址路径（省-市-区）
-     */
-    public function buildAddressPath(int $districtId): string
-    {
-        if (!$districtId) {
-            return '';
-        }
-
-        $map = $this->getAllMap();
-        $parts = [];
-        $currentId = $districtId;
-        $visited = []; // 防止死循环
-
-        while (isset($map[$currentId]) && !isset($visited[$currentId])) {
-            $visited[$currentId] = true;
-            $node = $map[$currentId];
-            // Redis 反序列化后是数组
-            $name = is_array($node) ? $node['name'] : $node->name;
-            $parentId = is_array($node) ? $node['parent_id'] : $node->parent_id;
-
-            array_unshift($parts, $name);
-            if ($parentId === -1) {
-                break;
-            }
-            $currentId = $parentId;
-        }
-
-        return implode('-', $parts);
-    }
-
-    /**
-     * 覆盖父类方法：此表没有 is_del 字段
+     * 视盖父类方法：此表没有 is_del 字段
      */
     public function get(int $id)
     {

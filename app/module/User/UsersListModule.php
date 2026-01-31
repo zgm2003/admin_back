@@ -2,37 +2,40 @@
 
 namespace app\module\User;
 
-use app\dep\AddressDep;
 use app\dep\DevTools\ExportTaskDep;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UserProfileDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
+use app\service\AddressService;
 use app\service\DictService;
 use support\Cache;
 use app\validate\User\UsersListValidate;
+use Webman\RedisQueue\Client as RedisQueue;
 
 class UsersListModule extends BaseModule
 {
     protected UsersDep $usersDep;
     protected RoleDep $roleDep;
-    protected AddressDep $addressDep;
     protected UserProfileDep $userProfileDep;
     protected ExportTaskDep $exportTaskDep;
+    protected AddressService $addressService;
+    protected DictService $dictService;
 
     public function __construct()
     {
         $this->usersDep = $this->dep(UsersDep::class);
         $this->roleDep = $this->dep(RoleDep::class);
-        $this->addressDep = $this->dep(AddressDep::class);
         $this->userProfileDep = $this->dep(UserProfileDep::class);
         $this->exportTaskDep = $this->dep(ExportTaskDep::class);
+        $this->addressService = $this->svc(AddressService::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     public function init($request)
     {
-        $dict = $this->svc(DictService::class)
+        $dict = $this->dictService
             ->setRoleArr()
             ->setAuthAdressTree()
             ->setSexArr()
@@ -88,9 +91,9 @@ class UsersListModule extends BaseModule
         $data['list'] = $resList->map(function ($item) use ($roleMap) {
             $resRole = $roleMap->get($item->role_id);
             
-            // 地址路径构建（使用内存缓存）
+            // 地址路径构建（使用 AddressService）
             $districtId = (int)($item->address_id ?? 0);
-            $addressPath = $this->addressDep->buildAddressPath($districtId);
+            $addressPath = $this->addressService->buildAddressPath($districtId);
             $detail = $item->detail_address ?? '';
             $address = $addressPath ? ($addressPath . '-' . $detail) : $detail;
 
@@ -173,7 +176,16 @@ class UsersListModule extends BaseModule
             ];
         })->toArray();
 
-        $this->exportTaskDep->submit($request->userId, '用户列表导出', $headers, $data, 'users_export');
+        // Module 层编排：写表 + 入队列
+        $taskId = $this->exportTaskDep->create($request->userId, '用户列表导出');
+        RedisQueue::send('export_task', [
+            'task_id' => $taskId,
+            'user_id' => $request->userId,
+            'headers' => $headers,
+            'data' => $data,
+            'title' => '用户列表导出',
+            'prefix' => 'users_export',
+        ]);
 
         return self::success(['message' => '导出任务已提交，完成后将通知您']);
     }

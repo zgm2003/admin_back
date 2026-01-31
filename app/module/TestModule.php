@@ -3,6 +3,7 @@
 namespace app\module;
 
 use app\dep\System\SystemSettingDep;
+use app\service\System\SettingService;
 
 /**
  * 测试模块 - 用于测试 BaseModule 的异常快捷方法
@@ -115,22 +116,22 @@ class TestModule extends BaseModule
         $dep = new SystemSettingDep();
         $testKey = 'test.crud.' . time();
         
-        // 1. 新增
-        $dep->setValue($testKey, 'hello world', 1, '测试配置');
+        // 1. 新增（通过 SettingService 带类型转换）
+        SettingService::set($testKey, 'hello world', 1, '测试配置');
         
-        // 2. 读取
-        $value = $dep->getValue($testKey);
+        // 2. 读取（通过 SettingService 带类型转换）
+        $value = SettingService::get($testKey);
         self::throwIf($value !== 'hello world', '读取失败: ' . $value);
         
-        // 3. 更新
+        // 3. 更新（通过 Dep 纯数据操作）
         $row = $dep->findByKey($testKey);
         $dep->updateById($row->id, ['setting_value' => 'updated value']);
-        $value2 = $dep->getValue($testKey);
+        $value2 = SettingService::get($testKey);
         self::throwIf($value2 !== 'updated value', '更新失败: ' . $value2);
         
-        // 4. 删除
+        // 4. 删除（通过 Dep 纯数据操作）
         $dep->deleteByKey($testKey);
-        $value3 = $dep->getValue($testKey);
+        $value3 = SettingService::get($testKey);
         self::throwIf($value3 !== null, '删除失败，值仍存在');
         
         return self::success(['message' => '系统设置 CRUD 测试通过！', 'test_key' => $testKey]);

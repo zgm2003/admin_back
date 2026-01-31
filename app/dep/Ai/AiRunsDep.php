@@ -96,20 +96,20 @@ class AiRunsDep extends BaseDep
     }
 
     /**
-     * 标记超时的 running 任务为失败（定时任务用）
-     * @param int $timeoutMinutes 超时分钟数
+     * 批量更新运行状态为失败（纯数据操作）
+     * @param string $threshold 时间阈值（created_at < 此时间的视为超时）
+     * @param string $errorMsg 错误信息
      * @return int 影响行数
      */
-    public function markTimeoutAsFailed(int $timeoutMinutes = 5): int
+    public function batchMarkFailed(string $threshold, string $errorMsg): int
     {
-        $threshold = date('Y-m-d H:i:s', strtotime("-{$timeoutMinutes} minutes"));
         return $this->model
             ->where('run_status', AiEnum::RUN_STATUS_RUNNING)
             ->where('is_del', CommonEnum::NO)
             ->where('created_at', '<', $threshold)
             ->update([
                 'run_status' => AiEnum::RUN_STATUS_FAIL,
-                'error_msg' => '执行超时',
+                'error_msg' => $errorMsg,
             ]);
     }
 

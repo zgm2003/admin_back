@@ -11,15 +11,17 @@ use app\validate\System\UploadRuleValidate;
 class UploadRuleModule extends BaseModule
 {
     protected UploadRuleDep $uploadRuleDep;
+    protected DictService $dictService;
 
     public function __construct()
     {
         $this->uploadRuleDep = $this->dep(UploadRuleDep::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     public function init($request)
     {
-        $data['dict'] = $this->svc(DictService::class)
+        $data['dict'] = $this->dictService
             ->setUploadImageExtArr()
             ->setUploadFileExtArr()
             ->getDict();

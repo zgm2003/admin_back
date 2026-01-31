@@ -12,15 +12,17 @@ use support\Redis;
 class PermissionModule extends BaseModule
 {
     protected PermissionDep $permissionDep;
+    protected DictService $dictService;
 
     public function __construct()
     {
         $this->permissionDep = $this->dep(PermissionDep::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     public function init($request)
     {
-        $data['dict'] = $this->svc(DictService::class)
+        $data['dict'] = $this->dictService
             ->setPermissionTree()
             ->setPermissionTypeArr()
             ->setPermissionPlatformArr()

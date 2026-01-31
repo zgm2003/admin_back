@@ -16,7 +16,7 @@ class ExportTaskModule extends BaseModule
 
     public function __construct()
     {
-        $this->exportTaskDep = new ExportTaskDep();
+        $this->exportTaskDep = $this->dep(ExportTaskDep::class);
     }
 
     /**

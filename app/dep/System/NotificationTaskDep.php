@@ -7,7 +7,6 @@ use app\enum\CommonEnum;
 use app\enum\NotificationEnum;
 use app\model\System\NotificationTaskModel;
 use support\Model;
-use Webman\RedisQueue\Client as RedisQueue;
 
 class NotificationTaskDep extends BaseDep
 {
@@ -44,17 +43,11 @@ class NotificationTaskDep extends BaseDep
     }
 
     /**
-     * 创建任务并入队（立即发送）
+     * 创建任务记录（纯数据写入）
      */
-    public function submit(array $data, bool $immediate = true): int
+    public function create(array $data): int
     {
-        $taskId = $this->add($data);
-
-        if ($immediate && empty($data['send_at'])) {
-            RedisQueue::send('notification_task', ['task_id' => $taskId]);
-        }
-
-        return $taskId;
+        return $this->add($data);
     }
 
     /**

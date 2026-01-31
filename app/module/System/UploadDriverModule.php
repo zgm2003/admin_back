@@ -13,15 +13,17 @@ use app\validate\System\UploadDriverValidate;
 class UploadDriverModule extends BaseModule
 {
     protected UploadDriverDep $uploadDriverDep;
+    protected DictService $dictService;
 
     public function __construct()
     {
         $this->uploadDriverDep = $this->dep(UploadDriverDep::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     public function init($request)
     {
-        $data['dict'] = $this->svc(DictService::class)
+        $data['dict'] = $this->dictService
             ->setUploadDriverArr()
             ->getDict();
         return self::success($data);

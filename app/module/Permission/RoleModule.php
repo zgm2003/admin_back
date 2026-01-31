@@ -14,16 +14,19 @@ use support\Cache;
 class RoleModule extends BaseModule
 {
     protected RoleDep $roleDep;
+    protected UsersDep $usersDep;
+    protected DictService $dictService;
 
     public function __construct()
     {
         $this->roleDep = $this->dep(RoleDep::class);
+        $this->usersDep = $this->dep(UsersDep::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     public function init($request)
     {
-        $dictService = $this->svc(DictService::class);
-        $data['dict'] = $dictService
+        $data['dict'] = $this->dictService
             ->setPermissionTree()
             ->getDict();
 
@@ -135,8 +138,7 @@ class RoleModule extends BaseModule
 
     private function clearPermissionCacheByRoleIds(array $roleIds): void
     {
-        $usersDep = $this->dep(UsersDep::class);
-        $userIds = $usersDep->getIdsByRoleIds($roleIds);
+        $userIds = $this->usersDep->getIdsByRoleIds($roleIds);
         foreach ($userIds as $uid) {
             foreach (PermissionEnum::ALLOWED_PLATFORMS as $platform) {
                 Cache::delete('auth_perm_uid_' . $uid . '_' . $platform);

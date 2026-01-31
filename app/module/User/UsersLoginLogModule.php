@@ -14,17 +14,19 @@ class UsersLoginLogModule extends BaseModule
 {
     protected UsersLoginLogDep $usersLoginLogDep;
     protected UsersDep $usersDep;
+    protected DictService $dictService;
 
     public function __construct()
     {
         $this->usersLoginLogDep = $this->dep(UsersLoginLogDep::class);
         $this->usersDep = $this->dep(UsersDep::class);
+        $this->dictService = $this->svc(DictService::class);
     }
 
     // 用户列表不需要了，前端使用远程搜索
     public function init()
     {
-        $dict = $this->svc(DictService::class)
+        $dict = $this->dictService
             ->setPlatformArr()
             ->setLoginTypeArr()
             ->getDict();

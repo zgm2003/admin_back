@@ -14,6 +14,13 @@ use TencentCloud\Common\Profile\HttpProfile;
 
 class UploadModule extends BaseModule
 {
+    protected UploadSettingDep $uploadSettingDep;
+
+    public function __construct()
+    {
+        $this->uploadSettingDep = $this->dep(UploadSettingDep::class);
+    }
+
     public function getUploadToken($request)
     {
         $folder = trim((string)$request->input('folderName', ''));
@@ -25,8 +32,7 @@ class UploadModule extends BaseModule
             'folderName 非法'
         );
 
-        $dep = new UploadSettingDep();
-        $setting = $dep->getActive();
+        $setting = $this->uploadSettingDep->getActive();
 
         self::throwIf(!$setting, '未配置有效的上传设置');
 
