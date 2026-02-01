@@ -35,7 +35,12 @@ class NotificationTaskModule extends BaseModule
             ->setNotificationTypeArr()
             ->setNotificationLevelArr()
             ->setNotificationTargetTypeArr()
+            ->setPlatformArr()
             ->getDict();
+        
+        // 通知任务的平台选项需要在前面加一个“全平台”
+        array_unshift($data['dict']['platformArr'], ['label' => '全平台', 'value' => 'all']);
+        
         return self::success($data);
     }
 
@@ -73,6 +78,8 @@ class NotificationTaskModule extends BaseModule
                 'type_text' => NotificationEnum::$typeArr[$item->type] ?? '未知',
                 'level' => $item->level,
                 'level_text' => NotificationEnum::$levelArr[$item->level] ?? '未知',
+                'platform' => $item->platform ?? 'all',
+                'platform_text' => ['all' => '全平台', 'admin' => 'PC后台', 'app' => 'H5/APP'][$item->platform] ?? '未知',
                 'target_type' => $item->target_type,
                 'target_type_text' => NotificationEnum::$targetTypeArr[$item->target_type] ?? '未知',
                 'status' => $item->status,
@@ -110,6 +117,7 @@ class NotificationTaskModule extends BaseModule
             'type' => $param['type'] ?? NotificationEnum::TYPE_INFO,
             'level' => $param['level'] ?? NotificationEnum::LEVEL_NORMAL,
             'link' => $param['link'] ?? '',
+            'platform' => $param['platform'] ?? 'all', // 推送平台
             'target_type' => $param['target_type'],
             'target_ids' => json_encode($param['target_ids'] ?? []),
             'status' => NotificationEnum::STATUS_PENDING,

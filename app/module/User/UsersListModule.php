@@ -181,6 +181,7 @@ class UsersListModule extends BaseModule
         RedisQueue::send('export_task', [
             'task_id' => $taskId,
             'user_id' => $request->userId,
+            'platform' => $request->platform ?? 'admin', // 推送到发起导出的平台
             'headers' => $headers,
             'data' => $data,
             'title' => '用户列表导出',

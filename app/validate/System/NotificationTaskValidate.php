@@ -14,6 +14,7 @@ class NotificationTaskValidate
             'type' => v::optional(v::intVal()->between(1, 4))->setName('类型'),
             'level' => v::optional(v::intVal()->between(1, 2))->setName('级别'),
             'link' => v::optional(v::stringType()->length(0, 500))->setName('链接'),
+            'platform' => v::optional(v::in(['all', 'admin', 'app']))->setName('平台'),
             'target_type' => v::intVal()->between(1, 3)->setName('目标类型'),
             'target_ids' => v::optional(v::arrayType())->setName('目标ID列表'),
             'send_at' => v::optional(v::stringType())->setName('发送时间'),

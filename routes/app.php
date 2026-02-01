@@ -16,6 +16,9 @@ Route::group('/api/app', function () {
 
 
 Route::group('/api/app', function () {
+    // WebSocket 绑定
+    Route::post('/WebSocket/bind', [controller\System\WebSocketController::class, 'bind']);
+    
     // 测试按钮权限
     Route::post('/test', [controller\App\AppController::class, 'test']);
 })->middleware([

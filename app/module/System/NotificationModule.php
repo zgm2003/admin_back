@@ -22,8 +22,7 @@ class NotificationModule extends BaseModule
     {
         $param = $this->validate($request, NotificationValidate::list());
         $param['page_size'] = $param['page_size'] ?? 20;
-        
-        $res = $this->notificationDep->listByUser($request->userId, $param);
+        $res = $this->notificationDep->listByUser($request->userId, $request->platform, $param);
         
         $list = $res['list']->map(fn($item) => [
             'id' => $item->id,
@@ -48,8 +47,7 @@ class NotificationModule extends BaseModule
      */
     public function unreadCount($request): array
     {
-        $count = $this->notificationDep->unreadCount($request->userId);
-        return self::success(['count' => $count]);
+        return self::success(['count' => $this->notificationDep->unreadCount($request->userId, $request->platform)]);
     }
 
     /**
@@ -58,7 +56,7 @@ class NotificationModule extends BaseModule
     public function read($request): array
     {
         $param = $this->validate($request, NotificationValidate::read());
-        $this->notificationDep->markRead($request->userId, $param['id'] ?? null);
+        $this->notificationDep->markRead($request->userId, $request->platform, $param['id'] ?? null);
         return self::success();
     }
 

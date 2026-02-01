@@ -19,6 +19,7 @@ class ExportTask implements Consumer
     {
         $taskId = $data['task_id'];
         $userId = $data['user_id'];
+        $platform = $data['platform'] ?? 'admin'; // 推送到发起导出的平台
         $title = $data['title'] ?? '数据导出';
 
         $this->log('开始导出', ['task_id' => $taskId, 'rows' => count($data['data'])]);
@@ -28,7 +29,8 @@ class ExportTask implements Consumer
         
         NotificationService::sendUrgent($userId, $title . ' - 导出完成', '点击查看并下载导出文件', [
             'type' => NotificationService::TYPE_SUCCESS,
-            'link' => '/devTools/exportTask'
+            'link' => '/devTools/exportTask',
+            'platform' => $platform, // 只推送到发起导出的平台
         ]);
         $this->log('导出成功', ['task_id' => $taskId, 'url' => $result['url']]);
     }
@@ -38,20 +40,21 @@ class ExportTask implements Consumer
         $data = $package['data'] ?? [];
         $taskId = $data['task_id'] ?? null;
         $userId = $data['user_id'] ?? null;
+        $platform = $data['platform'] ?? 'admin';
         $title = $data['title'] ?? '数据导出';
 
         if ($taskId) {
             (new ExportTaskDep())->updateFailed($taskId, '重试次数耗尽: ' . $e->getMessage());
         }
         if ($userId) {
-            // 发送通知：导出失败
             NotificationService::sendUrgent(
                 $userId,
                 $title . ' - 导出失败',
                 '导出任务失败，请重试',
                 [
                     'type' => NotificationService::TYPE_ERROR,
-                    'link' => '/devTools/exportTask'
+                    'link' => '/devTools/exportTask',
+                    'platform' => $platform,
                 ]
             );
         }

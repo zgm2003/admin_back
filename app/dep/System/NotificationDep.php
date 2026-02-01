@@ -17,11 +17,12 @@ class NotificationDep extends BaseDep
     /**
      * 获取用户通知列表（游标分页）
      */
-    public function listByUser(int $userId, array $param): array
+    public function listByUser(int $userId, string $platform, array $param): array
     {
         return $this->listCursor(
             $param,
             fn($q) => $q->where('user_id', $userId)
+                ->where(fn($q) => $q->where('platform', $platform)->orWhere('platform', 'all'))
                 ->when(isset($param['is_read']) && $param['is_read'] !== '', 
                     fn($q) => $q->where('is_read', $param['is_read']))
         );
@@ -30,10 +31,11 @@ class NotificationDep extends BaseDep
     /**
      * 获取用户未读通知数
      */
-    public function unreadCount(int $userId): int
+    public function unreadCount(int $userId, string $platform): int
     {
         return $this->model
             ->where('user_id', $userId)
+            ->where(fn($q) => $q->where('platform', $platform)->orWhere('platform', 'all'))
             ->where('is_read', CommonEnum::NO)
             ->where('is_del', CommonEnum::NO)
             ->count();
@@ -42,10 +44,11 @@ class NotificationDep extends BaseDep
     /**
      * 标记已读（传id标记单条，不传标记全部）
      */
-    public function markRead(int $userId, ?int $id = null): int
+    public function markRead(int $userId, string $platform, ?int $id = null): int
     {
         $query = $this->model
             ->where('user_id', $userId)
+            ->where(fn($q) => $q->where('platform', $platform)->orWhere('platform', 'all'))
             ->where('is_read', CommonEnum::NO)
             ->where('is_del', CommonEnum::NO);
         

@@ -57,6 +57,7 @@ class NotificationTask implements Consumer
                         'type' => NotificationEnum::getTypeStr($task->type),
                         'level' => NotificationEnum::getLevelStr($task->level),
                         'link' => $task->link ?? '',
+                        'platform' => $task->platform ?? 'all',
                     ]
                 );
                 $sentCount++;

@@ -225,6 +225,7 @@ Route::group('/api/admin', function () {
     Route::post('/WebSocket/onlineCount', [controller\System\WebSocketController::class, 'onlineCount']);
     Route::post('/WebSocket/pushToUser', [controller\System\WebSocketController::class, 'pushToUser']);
     Route::post('/WebSocket/broadcast', [controller\System\WebSocketController::class, 'broadcast']);
+    Route::post('/WebSocket/testPlatformPush', [controller\System\WebSocketController::class, 'testPlatformPush']);
 
     // 通知管理
     Route::post('/Notification/list', [controller\System\NotificationController::class, 'list']);

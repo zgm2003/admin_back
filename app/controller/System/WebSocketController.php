@@ -13,4 +13,5 @@ class WebSocketController extends Controller
     public function onlineCount(Request $request) { return $this->run([WebSocketModule::class, 'onlineCount'], $request); }
     public function pushToUser(Request $request) { return $this->run([WebSocketModule::class, 'pushToUser'], $request); }
     public function broadcast(Request $request) { return $this->run([WebSocketModule::class, 'broadcast'], $request); }
+    public function testPlatformPush(Request $request) { return $this->run([WebSocketModule::class, 'testPlatformPush'], $request); }
 }
