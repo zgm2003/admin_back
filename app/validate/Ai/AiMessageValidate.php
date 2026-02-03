@@ -4,6 +4,7 @@ namespace app\validate\Ai;
 
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
+use app\enum\AiEnum;
 
 class AiMessageValidate
 {
@@ -13,7 +14,7 @@ class AiMessageValidate
             'conversation_id' => v::intVal()->positive()->setName('会话ID'),
             'page_size'       => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page'    => v::optional(v::intVal()->positive()),
-            'role'            => v::optional(v::intVal()->between(1, 4)),
+            'role'            => v::optional(v::intVal()->in(array_keys(AiEnum::$roleArr))),
         ];
     }
 
@@ -21,7 +22,7 @@ class AiMessageValidate
     {
         return [
             'conversation_id' => v::intVal()->positive()->setName('会话ID'),
-            'role'            => v::intVal()->between(1, 4)->setName('角色'),
+            'role'            => v::intVal()->in(array_keys(AiEnum::$roleArr))->setName('角色'),
             'content'         => v::stringType()->notEmpty()->setName('消息内容'),
             'meta_json'       => v::optional(v::callback(function ($val) {
                 if ($val === null || $val === '') return true;

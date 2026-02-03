@@ -2,6 +2,7 @@
 
 namespace app\validate\User;
 
+use app\enum\CommonEnum;
 use app\enum\EmailEnum;
 use app\enum\SystemEnum;
 use Respect\Validation\Validator as v;
@@ -79,7 +80,7 @@ class UsersValidate
         return [
             'username' => v::length(1, 50)->setName('用户名'),
             'avatar' => v::optional(v::stringType()),
-            'sex' => v::intVal()->setName('性别'),
+            'sex' => v::intVal()->in(array_keys(CommonEnum::$sexArr))->setName('性别'),
             'birthday' => v::optional(v::stringType())->setName('生日'),
             'address' => v::intVal()->setName('地址'),
             'detail_address' => v::optional(v::stringType()),

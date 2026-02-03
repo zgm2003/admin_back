@@ -65,6 +65,7 @@ class PermissionValidate
             'platform'     => v::stringType()->in(PermissionEnum::ALLOWED_PLATFORMS)->setName('平台'),
             'name'         => v::optional(v::stringType()),
             'path'         => v::optional(v::stringType()),
+            'type'         => v::optional(v::intVal()),
         ];
     }
 
@@ -72,7 +73,7 @@ class PermissionValidate
     {
         return [
             'id'     => v::intVal()->setName('ID'),
-            'status' => v::intVal()->in([1, 2])->setName('状态'),
+            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('状态'),
         ];
     }
 }

@@ -18,7 +18,7 @@ class TestValidate
             'password' => v::stringType()->length(1, 255)->setName('密码'),
             'avatar' => v::optional(v::stringType()->length(0, 255))->setName('头像'),
             'cover_image' => v::optional(v::stringType()->length(0, 255))->setName('封面图'),
-            'status' => v::intVal()->positive()->setName('状态：1-启用 2-禁用'),
+            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('状态'),
             'type' => v::optional(v::intVal()->positive())->setName('类型：1-类型A 2-类型B 3-类型C'),
             'sex' => v::intVal()->min(0)->setName('性别：0-未知 1-男 2-女'),
             'age' => v::optional(v::intVal()->positive())->setName('年龄'),
@@ -29,8 +29,8 @@ class TestValidate
             'url' => v::optional(v::url())->setName('网址'),
             'published_at' => v::optional(v::stringType())->setName('发布时间'),
             'birthday' => v::optional(v::date('Y-m-d'))->setName('生日'),
-            'is_vip' => v::intVal()->positive()->setName('是否VIP：1-是 2-否'),
-            'is_hot' => v::intVal()->positive()->setName('是否热门：1-是 2-否'),
+            'is_vip' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('是否VIP'),
+            'is_hot' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('是否热门'),
         ];
     }
 
@@ -46,7 +46,7 @@ class TestValidate
             'password' => v::optional(v::stringType()->length(0, 255))->setName('密码'),
             'avatar' => v::optional(v::stringType()->length(0, 255))->setName('头像'),
             'cover_image' => v::optional(v::stringType()->length(0, 255))->setName('封面图'),
-            'status' => v::optional(v::intVal()->positive())->setName('状态：1-启用 2-禁用'),
+            'status' => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
             'type' => v::optional(v::intVal()->positive())->setName('类型：1-类型A 2-类型B 3-类型C'),
             'sex' => v::optional(v::intVal()->min(0))->setName('性别：0-未知 1-男 2-女'),
             'age' => v::optional(v::intVal()->positive())->setName('年龄'),
@@ -57,8 +57,8 @@ class TestValidate
             'url' => v::optional(v::url())->setName('网址'),
             'published_at' => v::optional(v::stringType())->setName('发布时间'),
             'birthday' => v::optional(v::date('Y-m-d'))->setName('生日'),
-            'is_vip' => v::optional(v::intVal()->positive())->setName('是否VIP：1-是 2-否'),
-            'is_hot' => v::optional(v::intVal()->positive())->setName('是否热门：1-是 2-否'),
+            'is_vip' => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('是否VIP'),
+            'is_hot' => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('是否热门'),
         ];
     }
 
@@ -74,6 +74,15 @@ class TestValidate
         return [
             'page_size'    => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
             'current_page' => v::intVal()->positive()->setName('当前页'),
+            'title'        => v::optional(v::stringType())->setName('标题'),
+            'username'     => v::optional(v::stringType())->setName('用户名'),
+            'nickname'     => v::optional(v::stringType())->setName('昵称'),
+            'email'        => v::optional(v::stringType())->setName('邮箱'),
+            'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
+            'type'         => v::optional(v::intVal())->setName('类型'),
+            'sex'          => v::optional(v::intVal())->setName('性别'),
+            'is_vip'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('是否VIP'),
+            'is_hot'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('是否热门'),
         ];
     }
 }

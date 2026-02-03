@@ -15,6 +15,7 @@ class ExportTaskValidate
             'status'       => v::optional(v::intVal()),
             'title'        => v::optional(v::stringType()),
             'file_name'    => v::optional(v::stringType()),
+            'user_id'      => v::optional(v::intVal()),
         ];
     }
 

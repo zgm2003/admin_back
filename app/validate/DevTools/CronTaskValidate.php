@@ -26,7 +26,7 @@ class CronTaskValidate
             'cron'          => v::stringType()->notEmpty()->length(1, 50)->setName('cron'),
             'cron_readable' => v::optional(v::stringType()->length(0, 50))->setName('cron_readable'),
             'handler'       => v::stringType()->notEmpty()->length(1, 255)->setName('handler'),
-            'status'        => v::intVal()->between(1, 2)->setName('status'),
+            'status'        => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('status'),
         ];
     }
 
@@ -39,7 +39,7 @@ class CronTaskValidate
             'cron'          => v::stringType()->notEmpty()->length(1, 50)->setName('cron'),
             'cron_readable' => v::optional(v::stringType()->length(0, 50))->setName('cron_readable'),
             'handler'       => v::stringType()->notEmpty()->length(1, 255)->setName('handler'),
-            'status'        => v::intVal()->between(1, 2)->setName('status'),
+            'status'        => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('status'),
         ];
     }
 
@@ -47,7 +47,7 @@ class CronTaskValidate
     {
         return [
             'id'     => v::intVal()->positive()->setName('id'),
-            'status' => v::intVal()->between(1, 2)->setName('status'),
+            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('status'),
         ];
     }
 
@@ -62,6 +62,8 @@ class CronTaskValidate
     {
         return [
             'task_id'      => v::intVal()->positive()->setName('task_id'),
+            'task_name'    => v::optional(v::stringType())->setName('task_name'),
+            'status'       => v::optional(v::stringType())->setName('status'),
             'date'         => v::optional(v::arrayType())->setName('date'),
             'page_size'    => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('page_size'),
             'current_page' => v::intVal()->positive()->setName('current_page'),

@@ -4,6 +4,7 @@ namespace app\validate\System;
 
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
+use app\enum\NotificationEnum;
 
 class NotificationTaskValidate
 {
@@ -22,11 +23,11 @@ class NotificationTaskValidate
         return [
             'title' => v::stringType()->notEmpty()->length(1, 100)->setName('标题'),
             'content' => v::optional(v::stringType())->setName('内容'),
-            'type' => v::optional(v::intVal()->between(1, 4))->setName('类型'),
-            'level' => v::optional(v::intVal()->between(1, 2))->setName('级别'),
+            'type' => v::optional(v::intVal()->in(array_keys(NotificationEnum::$typeArr)))->setName('类型'),
+            'level' => v::optional(v::intVal()->in(array_keys(NotificationEnum::$levelArr)))->setName('级别'),
             'link' => v::optional(v::stringType()->length(0, 500))->setName('链接'),
             'platform' => v::optional(v::in(['all', 'admin', 'app']))->setName('平台'),
-            'target_type' => v::intVal()->between(1, 3)->setName('目标类型'),
+            'target_type' => v::intVal()->in(array_keys(NotificationEnum::$targetTypeArr))->setName('目标类型'),
             'target_ids' => v::optional(v::arrayType())->setName('目标ID列表'),
             'send_at' => v::optional(v::stringType())->setName('发送时间'),
         ];

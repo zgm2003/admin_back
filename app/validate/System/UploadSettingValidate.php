@@ -24,7 +24,7 @@ class UploadSettingValidate
         return [
             'driver_id' => v::intVal()->setName('driver_id'),
             'rule_id'   => v::intVal()->setName('rule_id'),
-            'status'    => v::intVal()->between(1, 2)->setName('status'),
+            'status'    => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('status'),
             'remark'    => v::optional(v::stringType())->setName('remark'),
         ];
     }
@@ -35,7 +35,7 @@ class UploadSettingValidate
             'id'        => v::intVal()->setName('id'),
             'driver_id' => v::intVal()->setName('driver_id'),
             'rule_id'   => v::intVal()->setName('rule_id'),
-            'status'    => v::intVal()->between(1, 2)->setName('status'),
+            'status'    => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('status'),
             'remark'    => v::optional(v::stringType())->setName('remark'),
         ];
     }

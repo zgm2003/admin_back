@@ -17,7 +17,7 @@ class UsersLoginLogValidate
             'login_type'    => v::optional(v::stringType()),
             'ip'            => v::optional(v::stringType()),
             'platform'      => v::optional(v::stringType()),
-            'is_success'    => v::optional(v::intVal()),
+            'is_success'    => v::optional(v::intVal()->in(array_keys(CommonEnum::$isArr))),
             'date'          => v::optional(v::arrayType()),
         ];
     }
@@ -32,7 +32,7 @@ class UsersLoginLogValidate
             'login_type'    => v::optional(v::stringType()),
             'ip'            => v::optional(v::stringType()),
             'platform'      => v::optional(v::stringType()),
-            'is_success'    => v::optional(v::intVal()),
+            'is_success'    => v::optional(v::intVal()->in(array_keys(CommonEnum::$isArr))),
             'date'          => v::optional(v::arrayType()),
         ];
     }

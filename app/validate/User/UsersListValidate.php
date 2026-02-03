@@ -19,7 +19,7 @@ class UsersListValidate
             'address_id'     => v::optional(v::oneOf(v::intVal(), v::arrayType())),
             'address'        => v::optional(v::oneOf(v::intVal(), v::arrayType())),
             'role_id'        => v::optional(v::intVal()),
-            'sex'            => v::optional(v::intVal()),
+            'sex'            => v::optional(v::intVal()->in(array_keys(CommonEnum::$sexArr))),
             'date'           => v::optional(v::arrayType()),
         ];
     }
@@ -31,7 +31,7 @@ class UsersListValidate
             'username' => v::length(1, 64)->setName('用户名'),
             'avatar' => v::optional(v::stringType()),
             'role_id' => v::intVal()->setName('角色'),
-            'sex' => v::intVal()->setName('性别'),
+            'sex' => v::intVal()->in(array_keys(CommonEnum::$sexArr))->setName('性别'),
             'address' => v::intVal()->setName('地址'),
             'detail_address' => v::optional(v::stringType()),
             'bio' => v::optional(v::stringType()),
@@ -50,7 +50,7 @@ class UsersListValidate
         return [
             'ids' => v::arrayType()->setName('ids'),
             'field' => v::stringType()->setName('字段'),
-            'sex' => v::optional(v::intVal()),
+            'sex' => v::optional(v::intVal()->in(array_keys(CommonEnum::$sexArr))),
             'address' => v::optional(v::intVal()),
             'detail_address' => v::optional(v::stringType()),
         ];
