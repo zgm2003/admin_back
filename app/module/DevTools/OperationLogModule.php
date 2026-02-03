@@ -35,10 +35,7 @@ class OperationLogModule extends BaseModule
 
     public function list($request)
     {
-        $param = $request->all();
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
-
+        $param = $this->validate($request, OperationLogValidate::list());
         $resList = $this->operationLogDep->list($param);
         
         // === 优化：批量预加载用户数据 ===
@@ -59,8 +56,8 @@ class OperationLogModule extends BaseModule
             ];
         });
         $data['page'] = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $resList->perPage(),
+            'current_page' => $resList->currentPage(),
             'total_page' => $resList->lastPage(),
             'total' => $resList->total(),
         ];
@@ -74,7 +71,6 @@ class OperationLogModule extends BaseModule
     public function listCursor($request)
     {
         $param = $this->validate($request, OperationLogValidate::listCursor());
-        $param['page_size'] = $param['page_size'] ?? 20;
 
         $result = $this->operationLogDep->listByCursor($param);
         

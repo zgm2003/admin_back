@@ -38,10 +38,7 @@ class UsersLoginLogModule extends BaseModule
 
     public function list($request)
     {
-        $param = $request->all();
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
-
+        $param = $this->validate($request, UsersLoginLogValidate::list());
         $resList = $this->usersLoginLogDep->list($param);
         
         // === 优化：批量预加载用户数据 ===
@@ -75,8 +72,8 @@ class UsersLoginLogModule extends BaseModule
         });
         
         $data['page'] = [
-            'page_size' => (int)$param['page_size'],
-            'current_page' => (int)$param['current_page'],
+            'page_size' => $resList->perPage(),
+            'current_page' => $resList->currentPage(),
             'total_page' => $resList->lastPage(),
             'total' => $resList->total(),
         ];
@@ -89,7 +86,7 @@ class UsersLoginLogModule extends BaseModule
      */
     public function listCursor($request)
     {
-        $param = self::validate($request, UsersLoginLogValidate::listCursor());
+        $param = $this->validate($request, UsersLoginLogValidate::listCursor());
 
         $result = $this->usersLoginLogDep->listByCursor($param);
         

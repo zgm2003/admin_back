@@ -3,9 +3,20 @@
 namespace app\validate\DevTools;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class CronTaskValidate
 {
+    public static function list(): array
+    {
+        return [
+            'page_size'    => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
+            'current_page' => v::optional(v::intVal()->positive()),
+            'title'        => v::optional(v::stringType()),
+            'status'       => v::optional(v::intVal()),
+        ];
+    }
+
     public static function add(): array
     {
         return [
@@ -52,8 +63,8 @@ class CronTaskValidate
         return [
             'task_id'      => v::intVal()->positive()->setName('task_id'),
             'date'         => v::optional(v::arrayType())->setName('date'),
-            'current_page' => v::optional(v::intVal()->positive())->setName('current_page'),
-            'page_size'    => v::optional(v::intVal()->between(1, 100))->setName('page_size'),
+            'page_size'    => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('page_size'),
+            'current_page' => v::intVal()->positive()->setName('current_page'),
         ];
     }
 }

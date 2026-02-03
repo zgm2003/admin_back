@@ -3,6 +3,7 @@
 namespace app\validate\Ai;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class AiPromptValidate
 {
@@ -50,7 +51,7 @@ class AiPromptValidate
             'title' => v::optional(v::stringType()),
             'category' => v::optional(v::stringType()),
             'is_favorite' => v::optional(v::intVal()),
-            'page_size' => v::optional(v::intVal()->positive()),
+            'page_size' => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page' => v::optional(v::intVal()->positive()),
         ];
     }

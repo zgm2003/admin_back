@@ -21,7 +21,6 @@ class NotificationModule extends BaseModule
     public function list($request): array
     {
         $param = $this->validate($request, NotificationValidate::list());
-        $param['page_size'] = $param['page_size'] ?? 20;
         $res = $this->notificationDep->listByUser($request->userId, $request->platform, $param);
         
         $list = $res['list']->map(fn($item) => [

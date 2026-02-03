@@ -5,6 +5,9 @@ namespace app\enum;
 class CommonEnum
 {
     const DEFAULT_NULL = '-';
+
+    const PAGE_SIZE_MIN = 1;
+    const PAGE_SIZE_MAX = 50;
     const YES = 1;
     const NO = 2;
     const privince = '湖北省';

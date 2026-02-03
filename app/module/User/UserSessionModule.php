@@ -5,6 +5,7 @@ namespace app\module\User;
 use app\dep\User\UserSessionsDep;
 use app\module\BaseModule;
 use app\enum\PermissionEnum;
+use app\validate\User\UserSessionValidate;
 use support\Redis;
 
 /**
@@ -24,7 +25,7 @@ class UserSessionModule extends BaseModule
      */
     public function list($request): array
     {
-        $param = $request->all();
+        $param = $this->validate($request, UserSessionValidate::list());
         $paginator = $this->sessionsDep->listWithUser($param);
 
         // 计算状态（基于 refresh_token 过期时间）
@@ -59,8 +60,8 @@ class UserSessionModule extends BaseModule
      */
     public function kick($request): array
     {
-        $id = $request->post('id');
-        self::throwIf(!$id, '缺少会话ID');
+        $param = $this->validate($request, UserSessionValidate::kick());
+        $id = $param['id'];
 
         // 获取会话信息
         $sessions = $this->sessionsDep->getByIds([$id]);
@@ -90,8 +91,8 @@ class UserSessionModule extends BaseModule
      */
     public function batchKick($request): array
     {
-        $ids = $request->post('ids', []);
-        self::throwIf(empty($ids), '请选择要踢下线的会话');
+        $param = $this->validate($request, UserSessionValidate::batchKick());
+        $ids = $param['ids'];
 
         // 获取会话信息
         $sessions = $this->sessionsDep->getByIds($ids);

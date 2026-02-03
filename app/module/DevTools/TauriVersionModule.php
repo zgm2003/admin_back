@@ -35,9 +35,6 @@ class TauriVersionModule extends BaseModule
     public function list($request): array
     {
         $param = $this->validate($request, TauriVersionValidate::list());
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
-
         $res = $this->dep->list($param);
 
         $data['list'] = $res->map(fn($item) => [
@@ -55,8 +52,8 @@ class TauriVersionModule extends BaseModule
             'updated_at' => $item->updated_at->toDateTimeString(),
         ]);
         $data['page'] = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $res->perPage(),
+            'current_page' => $res->currentPage(),
             'total_page' => $res->lastPage(),
             'total' => $res->total(),
         ];

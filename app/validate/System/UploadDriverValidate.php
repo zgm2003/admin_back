@@ -3,9 +3,19 @@
 namespace app\validate\System;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class UploadDriverValidate
 {
+    public static function list(): array
+    {
+        return [
+            'page_size'    => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
+            'current_page' => v::intVal()->positive()->setName('当前页'),
+            'driver'       => v::optional(v::stringType()),
+        ];
+    }
+
     public static function add(): array
     {
         return [

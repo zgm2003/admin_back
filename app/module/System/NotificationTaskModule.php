@@ -63,9 +63,7 @@ class NotificationTaskModule extends BaseModule
      */
     public function list($request): array
     {
-        $param = $request->all();
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
+        $param = $this->validate($request, NotificationTaskValidate::list());
 
         $res = $this->notificationTaskDep->list($param);
 
@@ -92,8 +90,8 @@ class NotificationTaskModule extends BaseModule
             ];
         });
         $data['page'] = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $res->perPage(),
+            'current_page' => $res->currentPage(),
             'total_page' => $res->lastPage(),
             'total' => $res->total(),
         ];

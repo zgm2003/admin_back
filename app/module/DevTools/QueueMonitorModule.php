@@ -4,6 +4,7 @@ namespace app\module\DevTools;
 
 use app\module\BaseModule;
 use app\service\System\SettingService;
+use app\validate\DevTools\QueueMonitorValidate;
 use support\Redis;
 
 /**
@@ -111,6 +112,7 @@ class QueueMonitorModule extends BaseModule
      */
     public function list($request): array
     {
+        $this->validate($request, QueueMonitorValidate::list());
         $queues = $this->getQueues();
         // 批量获取 waiting 队列长度
         $pipe = Redis::pipeline();
@@ -175,15 +177,14 @@ class QueueMonitorModule extends BaseModule
      */
     public function failedList($request): array
     {
+        $param = $this->validate($request, QueueMonitorValidate::failedList());
         $this->getQueues(); // 触发加载配置
-        $param = $request->all();
-        $queueName = $param['queue'] ?? '';
         
-        self::throwIf(!$queueName, '请选择队列');
+        $queueName = $param['queue'];
         self::throwIf(!$this->isValidQueue($queueName), '无效的队列名');
         
-        $pageSize = (int)($param['page_size'] ?? 20);
-        $currentPage = (int)($param['current_page'] ?? 1);
+        $pageSize = $param['page_size'];
+        $currentPage = $param['current_page'];
         
         // 从统一的 failed 队列过滤指定队列的任务
         $allItems = Redis::lRange(self::FAILED_KEY, 0, -1);
@@ -219,14 +220,13 @@ class QueueMonitorModule extends BaseModule
      */
     public function retry($request): array
     {
+        $param = $this->validate($request, QueueMonitorValidate::retry());
         $this->getQueues(); // 触发加载配置
-        $param = $request->all();
-        $queueName = $param['queue'] ?? '';
-        $index = $param['index'] ?? null;
         
-        self::throwIf(!$queueName, '请选择队列');
+        $queueName = $param['queue'];
+        $index = $param['index'];
+        
         self::throwIf(!$this->isValidQueue($queueName), '无效的队列名');
-        self::throwIf($index === null, '请指定任务索引');
         
         // 获取指定位置的任务
         $item = Redis::lIndex(self::FAILED_KEY, (int)$index);
@@ -255,11 +255,10 @@ class QueueMonitorModule extends BaseModule
      */
     public function clear($request): array
     {
+        $param = $this->validate($request, QueueMonitorValidate::clear());
         $this->getQueues(); // 触发加载配置
-        $param = $request->all();
-        $queueName = $param['queue'] ?? '';
         
-        self::throwIf(!$queueName, '请选择队列');
+        $queueName = $param['queue'];
         self::throwIf(!$this->isValidQueue($queueName), '无效的队列名');
         
         $waitingKey = self::WAITING_PREFIX . $queueName;
@@ -274,11 +273,10 @@ class QueueMonitorModule extends BaseModule
      */
     public function clearFailed($request): array
     {
+        $param = $this->validate($request, QueueMonitorValidate::clearFailed());
         $this->getQueues(); // 触发加载配置
-        $param = $request->all();
-        $queueName = $param['queue'] ?? '';
         
-        self::throwIf(!$queueName, '请选择队列');
+        $queueName = $param['queue'];
         self::throwIf(!$this->isValidQueue($queueName), '无效的队列名');
         
         // 遍历删除指定队列的失败任务

@@ -39,10 +39,8 @@ class ExportTaskModule extends BaseModule
      */
     public function list($request): array
     {
-        $param = $request->all();
+        $param = $this->validate($request, ExportTaskValidate::list());
         $param['user_id'] = $request->userId;
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
 
         $res = $this->exportTaskDep->list($param);
 
@@ -62,8 +60,8 @@ class ExportTaskModule extends BaseModule
             ];
         });
         $data['page'] = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $res->perPage(),
+            'current_page' => $res->currentPage(),
             'total_page' => $res->lastPage(),
             'total' => $res->total(),
         ];

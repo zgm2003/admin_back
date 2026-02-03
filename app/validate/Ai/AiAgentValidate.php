@@ -4,6 +4,7 @@ namespace app\validate\Ai;
 
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
+use app\enum\AiEnum;
 
 class AiAgentValidate
 {
@@ -48,14 +49,14 @@ class AiAgentValidate
     public static function list(): array
     {
         return [
-            'page_size'    => v::optional(v::intVal()->positive()),
+            'page_size'    => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page' => v::optional(v::intVal()->positive()),
             'model_id'     => v::optional(v::intVal()->positive()),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr))),
-            'mode'         => v::optional(v::stringType()->in(['chat', 'rag', 'tool', 'workflow'])),
+            'mode'         => v::optional(v::stringType()->in(array_keys(AiEnum::$modeArr))),
             'name'         => v::optional(v::stringType()),
         ];
-    }
+    } 
 
     public static function status(): array
     {

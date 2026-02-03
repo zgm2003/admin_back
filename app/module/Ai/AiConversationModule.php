@@ -26,10 +26,7 @@ class AiConversationModule extends BaseModule
     public function list($request): array
     {
         $param = $this->validate($request, AiConversationValidate::list());
-
         $param['user_id'] = $request->userId;
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
         // 默认查询正常状态（status=1），前端可传 status=2 查归档
         if (!isset($param['status'])) {
             $param['status'] = CommonEnum::YES;
@@ -58,8 +55,8 @@ class AiConversationModule extends BaseModule
         });
 
         $page = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $res->perPage(),
+            'current_page' => $res->currentPage(),
             'total_page' => $res->lastPage(),
             'total' => $res->total(),
         ];

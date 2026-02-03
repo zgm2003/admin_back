@@ -11,7 +11,7 @@ class TauriVersionValidate
     public static function list(): array
     {
         return [
-            'page_size'    => v::optional(v::intVal()->min(1)->max(100)),
+            'page_size'    => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page' => v::optional(v::intVal()->min(1)),
             'platform'     => v::optional(v::in(array_keys(UploadConfigEnum::$tauriPlatformArr))),
         ];

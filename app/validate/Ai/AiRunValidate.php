@@ -4,6 +4,7 @@ namespace app\validate\Ai;
 
 use Respect\Validation\Validator as v;
 use app\enum\AiEnum;
+use app\enum\CommonEnum;
 
 class AiRunValidate
 {
@@ -13,7 +14,7 @@ class AiRunValidate
     public static function list(): array
     {
         return [
-            'page_size'    => v::optional(v::intVal()->positive()),
+            'page_size'    => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page' => v::optional(v::intVal()->positive()),
             'run_status'   => v::optional(v::intVal()->in(array_keys(AiEnum::$runStatusArr))),
             'agent_id'     => v::optional(v::intVal()->positive()),
@@ -66,8 +67,8 @@ class AiRunValidate
         return [
             'date_start'   => v::optional(v::date('Y-m-d')),
             'date_end'     => v::optional(v::date('Y-m-d')),
-            'page_size'    => v::optional(v::intVal()->between(1, 50)),
-            'current_page' => v::optional(v::intVal()->positive()),
+            'page_size'    => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
+            'current_page' => v::intVal()->positive()->setName('当前页'),
         ];
     }
 }

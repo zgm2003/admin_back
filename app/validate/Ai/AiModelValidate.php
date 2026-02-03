@@ -58,7 +58,7 @@ class AiModelValidate
     public static function list(): array
     {
         return [
-            'page_size'    => v::optional(v::intVal()->positive()),
+            'page_size'    => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page' => v::optional(v::intVal()->positive()),
             'driver'       => v::optional(v::stringType()),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr))),

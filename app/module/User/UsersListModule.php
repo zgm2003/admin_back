@@ -78,10 +78,7 @@ class UsersListModule extends BaseModule
 
     public function list($request)
     {
-        $param = $request->all();
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
-
+        $param = $this->validate($request, UsersListValidate::list());
         $resList = $this->usersDep->list($param);
         
         // 批量预加载角色数据（profile 已在 Dep 层 JOIN 查出）
@@ -115,8 +112,8 @@ class UsersListModule extends BaseModule
             ];
         });
         $data['page'] = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $resList->perPage(),
+            'current_page' => $resList->currentPage(),
             'total_page' => $resList->lastPage(),
             'total' => $resList->total(),
         ];

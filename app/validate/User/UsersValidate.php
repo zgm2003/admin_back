@@ -95,5 +95,12 @@ class UsersValidate
             'respassword' => v::length(6, 64)->setName('确认新密码'),
         ];
     }
+
+    public static function initPersonal(): array
+    {
+        return [
+            'user_id' => v::intVal()->setName('用户ID'),
+        ];
+    }
 }
 

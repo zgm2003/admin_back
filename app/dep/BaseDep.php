@@ -150,8 +150,8 @@ abstract class BaseDep
      */
     public function listCursor(array $param, ?callable $queryBuilder = null, array $columns = ['*'], bool $checkDel = true): array
     {
-        $pageSize = $param['page_size'] ?? 20;
-        $cursor = $param['cursor'] ?? null;
+        $pageSize = $param['page_size'];
+        $cursor = $param['cursor'];
         
         $query = $this->model->select($columns);
         

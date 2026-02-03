@@ -10,7 +10,7 @@ class AiConversationValidate
     public static function list(): array
     {
         return [
-            'page_size'    => v::optional(v::intVal()->positive()),
+            'page_size'    => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page' => v::optional(v::intVal()->positive()),
             'agent_id'     => v::optional(v::intVal()->positive()),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr))),

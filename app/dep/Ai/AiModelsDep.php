@@ -19,16 +19,25 @@ class AiModelsDep extends BaseDep
      */
     public function list(array $param)
     {
-        $pageSize = $param['page_size'] ?? 20;
-        $currentPage = $param['current_page'] ?? 1;
-
         return $this->model
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['driver']), fn($q) => $q->where('driver', $param['driver']))
             ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
             ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', $param['name'] . '%'))
             ->orderBy('id', 'desc')
-            ->paginate($pageSize, ['*'], 'page', $currentPage);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
+    }
+
+    /**
+     * 获取所有启用的模型（用于下拉选择等场景）
+     */
+    public function getAllActive()
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->orderBy('id', 'desc')
+            ->get();
     }
 
     /**

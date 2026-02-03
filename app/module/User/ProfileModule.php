@@ -77,7 +77,7 @@ class ProfileModule extends BaseModule
      */
     public function initPersonal($request): array
     {
-        $param = $request->all();
+        $param = $this->validate($request, UsersValidate::initPersonal());
 
         $user = $this->usersDep->find($param['user_id']);
         self::throwNotFound($user, '用户不存在');

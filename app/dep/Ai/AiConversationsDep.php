@@ -20,8 +20,6 @@ class AiConversationsDep extends BaseDep
      */
     public function list(array $param)
     {
-        $pageSize = $param['page_size'] ?? 20;
-        $currentPage = $param['current_page'] ?? 1;
         $columns = ['id', 'agent_id', 'title', 'status', 'last_message_at', 'created_at'];
 
         return $this->model
@@ -33,7 +31,7 @@ class AiConversationsDep extends BaseDep
             ->orderByRaw('last_message_at IS NULL ASC')
             ->orderBy('last_message_at', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate($pageSize, ['*'], 'page', $currentPage);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 
     /**

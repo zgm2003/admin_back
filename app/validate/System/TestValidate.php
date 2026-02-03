@@ -3,6 +3,7 @@
 namespace app\validate\System;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class TestValidate
 {
@@ -71,8 +72,8 @@ class TestValidate
     public static function list(): array
     {
         return [
-            'page_size'    => v::optional(v::intVal()->positive()),
-            'current_page' => v::optional(v::intVal()->positive()),
+            'page_size'    => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
+            'current_page' => v::intVal()->positive()->setName('当前页'),
         ];
     }
 }

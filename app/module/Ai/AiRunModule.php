@@ -55,10 +55,6 @@ class AiRunModule extends BaseModule
     public function list($request): array
     {
         $param = $this->validate($request, AiRunValidate::list());
-
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
-
         $res = $this->runsDep->list($param);
 
         // 批量查询关联数据（包含已删除，用于审计）
@@ -94,8 +90,8 @@ class AiRunModule extends BaseModule
         });
 
         $page = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $res->perPage(),
+            'current_page' => $res->currentPage(),
             'total_page' => $res->lastPage(),
             'total' => $res->total(),
         ];
@@ -220,9 +216,6 @@ class AiRunModule extends BaseModule
             $param['date_end'] = date('Y-m-d');
         }
 
-        $param['page_size'] = $param['page_size'] ?? 10;
-        $param['current_page'] = $param['current_page'] ?? 1;
-
         $result = $this->runsDep->getStatsByDate($param);
 
         return self::success([
@@ -243,9 +236,6 @@ class AiRunModule extends BaseModule
             $param['date_start'] = date('Y-m-d', strtotime('-29 days'));
             $param['date_end'] = date('Y-m-d');
         }
-
-        $param['page_size'] = $param['page_size'] ?? 10;
-        $param['current_page'] = $param['current_page'] ?? 1;
 
         $result = $this->runsDep->getStatsByAgent($param);
 
@@ -283,9 +273,6 @@ class AiRunModule extends BaseModule
             $param['date_start'] = date('Y-m-d', strtotime('-29 days'));
             $param['date_end'] = date('Y-m-d');
         }
-
-        $param['page_size'] = $param['page_size'] ?? 10;
-        $param['current_page'] = $param['current_page'] ?? 1;
 
         $result = $this->runsDep->getStatsByUser($param);
 

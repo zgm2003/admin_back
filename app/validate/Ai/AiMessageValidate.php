@@ -3,6 +3,7 @@
 namespace app\validate\Ai;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class AiMessageValidate
 {
@@ -10,7 +11,7 @@ class AiMessageValidate
     {
         return [
             'conversation_id' => v::intVal()->positive()->setName('会话ID'),
-            'page_size'       => v::optional(v::intVal()->positive()),
+            'page_size'       => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page'    => v::optional(v::intVal()->positive()),
             'role'            => v::optional(v::intVal()->between(1, 4)),
         ];

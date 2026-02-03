@@ -3,9 +3,27 @@
 namespace app\validate\User;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class UsersListValidate
 {
+    public static function list(): array
+    {
+        return [
+            'page_size'      => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
+            'current_page'   => v::intVal()->positive()->setName('当前页'),
+            'keyword'        => v::optional(v::stringType()),
+            'username'       => v::optional(v::stringType()),
+            'email'          => v::optional(v::stringType()),
+            'detail_address' => v::optional(v::stringType()),
+            'address_id'     => v::optional(v::oneOf(v::intVal(), v::arrayType())),
+            'address'        => v::optional(v::oneOf(v::intVal(), v::arrayType())),
+            'role_id'        => v::optional(v::intVal()),
+            'sex'            => v::optional(v::intVal()),
+            'date'           => v::optional(v::arrayType()),
+        ];
+    }
+
     public static function edit(): array
     {
         return [

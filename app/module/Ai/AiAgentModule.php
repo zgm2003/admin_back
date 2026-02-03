@@ -31,7 +31,7 @@ class AiAgentModule extends BaseModule
             ->getDict();
 
         // 获取可用的模型列表（用于下拉选择）
-        $models = $this->modelsDep->list(['page_size' => 100, 'current_page' => 1, 'status' => CommonEnum::YES]);
+        $models = $this->modelsDep->getAllActive();
         $data['dict']['model_list'] = $models->map(function ($item) {
             return [
                 'value' => $item->id,
@@ -45,10 +45,6 @@ class AiAgentModule extends BaseModule
     public function list($request): array
     {
         $param = $this->validate($request, AiAgentValidate::list());
-
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
-
         $res = $this->dep->list($param);
 
         // 批量获取关联的模型信息（避免N+1）
@@ -83,8 +79,8 @@ class AiAgentModule extends BaseModule
         });
 
         $page = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $res->perPage(),
+            'current_page' => $res->currentPage(),
             'total_page' => $res->lastPage(),
             'total' => $res->total(),
         ];

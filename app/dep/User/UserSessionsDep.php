@@ -170,9 +170,6 @@ class UserSessionsDep extends BaseDep
      */
     public function listWithUser(array $param)
     {
-        $pageSize = $param['page_size'] ?? 20;
-        $currentPage = $param['current_page'] ?? 1;
-
         $query = $this->model
             ->leftJoin('users', 'user_sessions.user_id', '=', 'users.id')
             ->select([
@@ -212,7 +209,7 @@ class UserSessionsDep extends BaseDep
         ", [$now, $now])
         ->orderByDesc('user_sessions.last_seen_at');
 
-        return $query->paginate($pageSize, ['*'], 'page', $currentPage);
+        return $query->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 
     /**

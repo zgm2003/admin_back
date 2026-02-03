@@ -3,6 +3,7 @@
 namespace app\validate\DevTools;
 
 use Respect\Validation\Validator as v;
+use app\enum\CommonEnum;
 
 class OperationLogValidate
 {
@@ -16,17 +17,18 @@ class OperationLogValidate
     public static function list(): array
     {
         return [
-            'page_size'    => v::optional(v::intVal()),
+            'page_size'    => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'current_page' => v::optional(v::intVal()),
             'user_id'      => v::optional(v::intVal()),
             'action'       => v::optional(v::stringType()),
+            'date'         => v::optional(v::arrayType()),
         ];
     }
 
     public static function listCursor(): array
     {
         return [
-            'page_size' => v::optional(v::intVal()->min(1)->max(100)),
+            'page_size' => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
             'cursor'    => v::optional(v::intVal()),
             'user_id'   => v::optional(v::intVal()),
             'action'    => v::optional(v::stringType()),

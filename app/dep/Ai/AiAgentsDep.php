@@ -19,9 +19,6 @@ class AiAgentsDep extends BaseDep
      */
     public function list(array $param)
     {
-        $pageSize = $param['page_size'] ?? 20;
-        $currentPage = $param['current_page'] ?? 1;
-
         return $this->model
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['model_id']), fn($q) => $q->where('model_id', (int)$param['model_id']))
@@ -29,7 +26,7 @@ class AiAgentsDep extends BaseDep
             ->when(!empty($param['mode']), fn($q) => $q->where('mode', $param['mode']))
             ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', $param['name'] . '%'))
             ->orderBy('id', 'desc')
-            ->paginate($pageSize, ['*'], 'page', $currentPage);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 
     /**

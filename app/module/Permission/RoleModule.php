@@ -49,8 +49,7 @@ class RoleModule extends BaseModule
 
     public function del($request)
     {
-        $param = $request->all();
-        self::throwIf(empty($param['id']), 'ID不能为空');
+        $param = $this->validate($request, RoleValidate::del());
         
         $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [(int)$param['id']];
         $dep = $this->roleDep;
@@ -87,10 +86,7 @@ class RoleModule extends BaseModule
     public function list($request)
     {
         $dep = $this->roleDep;
-        $param = $request->all();
-
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
+        $param = $this->validate($request, RoleValidate::list());
         $resList = $dep->list($param);
 
         $data['list'] = $resList->map(function ($item) {
@@ -104,8 +100,8 @@ class RoleModule extends BaseModule
             ];
         });
         $data['page'] = [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $resList->perPage(),
+            'current_page' => $resList->currentPage(),
             'total_page' => $resList->lastPage(),
             'total' => $resList->total(),
         ];

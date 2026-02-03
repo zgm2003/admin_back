@@ -20,8 +20,6 @@ class AiPromptModule extends BaseModule
     {
         $param = $this->validate($request, AiPromptValidate::list());
         $param['user_id'] = $request->userId;
-        $param['page_size'] = $param['page_size'] ?? 20;
-        $param['current_page'] = $param['current_page'] ?? 1;
 
         $res = $this->aiPromptDep->list($param);
 
@@ -39,8 +37,8 @@ class AiPromptModule extends BaseModule
         ]);
 
         return self::paginate($list, [
-            'page_size' => $param['page_size'],
-            'current_page' => $param['current_page'],
+            'page_size' => $res->perPage(),
+            'current_page' => $res->currentPage(),
             'total_page' => $res->lastPage(),
             'total' => $res->total(),
         ]);

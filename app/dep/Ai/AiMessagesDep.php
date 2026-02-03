@@ -20,8 +20,6 @@ class AiMessagesDep extends BaseDep
      */
     public function list(array $param)
     {
-        $pageSize = $param['page_size'] ?? 20;
-        $currentPage = $param['current_page'] ?? 1;
         $columns = ['id', 'conversation_id', 'role', 'content', 'meta_json', 'created_at'];
 
         return $this->model
@@ -30,7 +28,7 @@ class AiMessagesDep extends BaseDep
             ->where('conversation_id', $param['conversation_id'])
             ->when(isset($param['role']) && $param['role'] !== '', fn($q) => $q->where('role', (int)$param['role']))
             ->orderBy('id', 'desc')
-            ->paginate($pageSize, ['*'], 'page', $currentPage);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 
     /**

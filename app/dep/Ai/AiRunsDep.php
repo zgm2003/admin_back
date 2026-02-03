@@ -20,9 +20,6 @@ class AiRunsDep extends BaseDep
      */
     public function list(array $param)
     {
-        $pageSize = $param['page_size'] ?? 20;
-        $currentPage = $param['current_page'] ?? 1;
-
         return $this->model
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['run_status']), fn($q) => $q->where('run_status', (int)$param['run_status']))
@@ -32,7 +29,7 @@ class AiRunsDep extends BaseDep
             ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
             ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
             ->orderBy('id', 'desc')
-            ->paginate($pageSize, ['*'], 'page', $currentPage);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 
     /**
@@ -156,9 +153,9 @@ class AiRunsDep extends BaseDep
      */
     public function getStatsByDate(array $param): array
     {
-        $pageSize = $param['page_size'] ?? 10;
-        $currentPage = $param['current_page'] ?? 1;
-        $offset = ($currentPage - 1) * $pageSize;
+        $pageSize = $param['page_size'];
+        $currentPage = $param['current_page'];
+        $offset = $currentPage ? ($currentPage - 1) * $pageSize : 0;
 
         $query = $this->model
             ->selectRaw('DATE(created_at) as date, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
@@ -168,9 +165,9 @@ class AiRunsDep extends BaseDep
             ->groupBy('date')
             ->orderBy('date', 'desc');
 
-        $list = $query->offset($offset)->limit($pageSize + 1)->get();
-        $hasMore = $list->count() > $pageSize;
-        if ($hasMore) {
+        $list = $query->offset($offset)->limit($pageSize ? $pageSize + 1 : null)->get();
+        $hasMore = $pageSize ? $list->count() > $pageSize : false;
+        if ($hasMore && $pageSize) {
             $list = $list->slice(0, $pageSize);
         }
 
@@ -182,9 +179,9 @@ class AiRunsDep extends BaseDep
      */
     public function getStatsByAgent(array $param): array
     {
-        $pageSize = $param['page_size'] ?? 10;
-        $currentPage = $param['current_page'] ?? 1;
-        $offset = ($currentPage - 1) * $pageSize;
+        $pageSize = $param['page_size'];
+        $currentPage = $param['current_page'];
+        $offset = $currentPage ? ($currentPage - 1) * $pageSize : 0;
 
         $query = $this->model
             ->selectRaw('agent_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
@@ -194,9 +191,9 @@ class AiRunsDep extends BaseDep
             ->groupBy('agent_id')
             ->orderByRaw('total_runs DESC');
 
-        $list = $query->offset($offset)->limit($pageSize + 1)->get();
-        $hasMore = $list->count() > $pageSize;
-        if ($hasMore) {
+        $list = $query->offset($offset)->limit($pageSize ? $pageSize + 1 : null)->get();
+        $hasMore = $pageSize ? $list->count() > $pageSize : false;
+        if ($hasMore && $pageSize) {
             $list = $list->slice(0, $pageSize);
         }
 
@@ -208,9 +205,9 @@ class AiRunsDep extends BaseDep
      */
     public function getStatsByUser(array $param): array
     {
-        $pageSize = $param['page_size'] ?? 10;
-        $currentPage = $param['current_page'] ?? 1;
-        $offset = ($currentPage - 1) * $pageSize;
+        $pageSize = $param['page_size'];
+        $currentPage = $param['current_page'];
+        $offset = $currentPage ? ($currentPage - 1) * $pageSize : 0;
 
         $query = $this->model
             ->selectRaw('user_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
@@ -220,9 +217,9 @@ class AiRunsDep extends BaseDep
             ->groupBy('user_id')
             ->orderByRaw('total_runs DESC');
 
-        $list = $query->offset($offset)->limit($pageSize + 1)->get();
-        $hasMore = $list->count() > $pageSize;
-        if ($hasMore) {
+        $list = $query->offset($offset)->limit($pageSize ? $pageSize + 1 : null)->get();
+        $hasMore = $pageSize ? $list->count() > $pageSize : false;
+        if ($hasMore && $pageSize) {
             $list = $list->slice(0, $pageSize);
         }
 

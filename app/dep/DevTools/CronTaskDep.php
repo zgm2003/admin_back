@@ -78,7 +78,7 @@ class CronTaskDep extends BaseDep
             ->when(!empty($param['status']), fn($q) => $q->where('status', $param['status']))
             ->where('is_del', CommonEnum::NO)
             ->orderBy('id', 'asc')
-            ->paginate($param['page_size'] ?? 20, $columns, 'page', $param['current_page'] ?? 1);
+            ->paginate($param['page_size'], $columns, 'page', $param['current_page']);
     }
 
     // ==================== 写入方法 ====================

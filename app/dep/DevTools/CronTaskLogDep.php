@@ -61,7 +61,7 @@ class CronTaskLogDep extends BaseDep
                 $q->whereBetween('start_time', [$start, $end]);
             })
             ->orderBy('id', 'desc')
-            ->paginate($param['page_size'] ?? 20, $columns, 'page', $param['current_page'] ?? 1);
+            ->paginate($param['page_size'], $columns, 'page', $param['current_page']);
     }
 
     // ==================== 写入方法 ====================
