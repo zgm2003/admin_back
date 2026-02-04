@@ -46,7 +46,7 @@ class SystemSettingDep extends BaseDep
             ->first();
 
         if (!$row) {
-            Cache::set($cacheKey, false, 86400); // 缓存空结果
+            Cache::set($cacheKey, false); // 永久缓存空结果
             return null;
         }
 
@@ -54,7 +54,7 @@ class SystemSettingDep extends BaseDep
             'setting_value' => $row->setting_value,
             'value_type' => (int)$row->value_type,
         ];
-        Cache::set($cacheKey, $data, 86400);
+        Cache::set($cacheKey, $data); // 永久缓存，修改时主动删除
         return $data;
     }
 
