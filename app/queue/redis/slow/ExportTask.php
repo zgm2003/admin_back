@@ -27,7 +27,7 @@ class ExportTask implements Consumer
         $result = (new ExportService())->export($data['headers'], $data['data'], $data['prefix'] ?? 'export');
         (new ExportTaskDep())->updateSuccess($taskId, $result);
         
-        NotificationService::sendUrgent($userId, $title . ' - 导出完成', '点击查看并下载导出文件', [
+        NotificationService::sendUrgent($userId, $title . ' - 导出完成', '点击查看导出文件', [
             'type' => NotificationService::TYPE_SUCCESS,
             'link' => '/devTools/exportTask',
             'platform' => $platform, // 只推送到发起导出的平台
