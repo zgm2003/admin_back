@@ -5,6 +5,7 @@ namespace app\middleware;
 use app\dep\User\UserSessionsDep;
 use app\enum\ErrorCodeEnum;
 use app\enum\PermissionEnum;
+use app\enum\CacheTTLEnum;
 use app\service\System\SettingService;
 use app\service\User\TokenService;
 use Carbon\Carbon;
@@ -14,9 +15,6 @@ use Webman\Http\Response;
 
 class CheckToken
 {
-    // Redis TTL
-    const REDIS_TTL = 300; // 缓存 5 分钟
-
     public function process(Request $request, callable $next): Response
     {
         // 1. 获取 Token
@@ -91,7 +89,7 @@ class CheckToken
                 $session['device_id'] ?? '',
                 $session['id']
             ]);
-            Redis::connection('token')->set($redisKey, $value, self::REDIS_TTL);
+            Redis::connection('token')->set($redisKey, $value, CacheTTLEnum::TOKEN_SESSION);
         }
 
         // 3.1  检查过期
@@ -159,7 +157,7 @@ class CheckToken
                 if ($latest) {
                     $allowedSessionId = $latest->id;
                     // 写回 Redis（持久化，TTL 30 天）
-                    Redis::connection('token')->set($curSessKey, $allowedSessionId, 30 * 24 * 3600);
+                    Redis::connection('token')->set($curSessKey, $allowedSessionId, CacheTTLEnum::SINGLE_SESSION_POINTER);
                 }
             }
             // 6.2.3 补丁 3：如果指针存在，但 DB 中该会话已无效，需重新计算指针
@@ -179,7 +177,7 @@ class CheckToken
                          if ($realLatestId != $allowedSessionId) {
                              $allowedSessionId = $realLatestId;
                              // 指针修正，顺便续期
-                             Redis::connection('token')->set($curSessKey, $allowedSessionId, 30 * 24 * 3600);
+                             Redis::connection('token')->set($curSessKey, $allowedSessionId, CacheTTLEnum::SINGLE_SESSION_POINTER);
                          }
                      } else {
                          // 没有任何有效会话了？那我也得死
@@ -205,7 +203,7 @@ class CheckToken
         }
         
         // 6.4 续期 Redis 缓存
-        Redis::connection('token')->expire($redisKey, self::REDIS_TTL);
+        Redis::connection('token')->expire($redisKey, CacheTTLEnum::TOKEN_SESSION);
 
         return $next($request);
     }

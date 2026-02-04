@@ -4,6 +4,7 @@
 namespace app\middleware;
 
 use app\enum\ErrorCodeEnum;
+use app\enum\CacheTTLEnum;
 use support\Cache;
 use Webman\Http\Request;
 use Webman\Http\Response;
@@ -41,7 +42,7 @@ class CheckPermission implements MiddlewareInterface
                     $buttonCodes = $perm['buttonCodes'];
                     
                     // 重新写入缓存
-                    Cache::set($cacheKey, $buttonCodes, 300);
+                    Cache::set($cacheKey, $buttonCodes, CacheTTLEnum::PERMISSION_BUTTONS);
                 }
             } catch (\Exception $e) {
                 // 记录日志或忽略，走下面的错误返回逻辑

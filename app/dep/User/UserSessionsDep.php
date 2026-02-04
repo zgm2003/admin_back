@@ -61,28 +61,17 @@ class UserSessionsDep extends BaseDep
     }
 
     /**
-     * 获取用户最新有效会话
-     */
-    public function findLatestByUserId(int $userId)
-    {
-        return $this->model
-            ->where('user_id', $userId)
-            ->whereNull('revoked_at')
-            ->where('is_del', CommonEnum::NO)
-            ->orderByDesc('id')
-            ->first();
-    }
-
-    /**
      * 获取用户在指定平台的所有活跃会话
      */
     public function listActiveByUserPlatform(int $userId, string $platform)
     {
+        $now = date('Y-m-d H:i:s');
         return $this->model
             ->where('user_id', $userId)
             ->where('platform', $platform)
             ->whereNull('revoked_at')
             ->where('is_del', CommonEnum::NO)
+            ->where('refresh_expires_at', '>', $now)
             ->get();
     }
 
@@ -243,8 +232,8 @@ class UserSessionsDep extends BaseDep
             ],
         ];
 
-        // 缓存 30 秒
-        \support\Cache::set($cacheKey, $result, 30);
+        // 缓存 5 分钟
+        \support\Cache::set($cacheKey, $result, \app\enum\CacheTTLEnum::SESSION_STATS);
 
         return $result;
     }

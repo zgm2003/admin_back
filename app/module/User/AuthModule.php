@@ -6,6 +6,7 @@ use app\dep\Permission\RoleDep;
 use app\dep\User\UserProfileDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UserSessionsDep;
+use app\enum\CacheTTLEnum;
 use app\enum\CommonEnum;
 use app\enum\EmailEnum;
 use app\enum\PermissionEnum;
@@ -300,13 +301,13 @@ class AuthModule extends BaseModule
                 'theme' => $theme,
                 'code' => $code,
             ]);
-            Cache::set('email_code_' . md5($account), $code, 300);
+            Cache::set('email_code_' . md5($account), $code, CacheTTLEnum::VERIFY_CODE);
             return self::success([], '验证码发送成功');
         }
 
         if (isValidPhone($account)) {
             $code = 123456; // TODO: 接入真实短信服务
-            Cache::set('phone_code_' . md5($account), $code, 300);
+            Cache::set('phone_code_' . md5($account), $code, CacheTTLEnum::VERIFY_CODE);
             return self::success([], '验证码发送成功(测试:123456)');
         }
 
@@ -430,7 +431,7 @@ class AuthModule extends BaseModule
     private function updateSessionPointer(int $userId, string $platform, int $sessionId): void
     {
         $key = "cur_sess:" . strtolower(trim($platform)) . ":{$userId}";
-        Redis::connection('token')->set($key, $sessionId, 30 * 24 * 3600);
+        Redis::connection('token')->set($key, $sessionId, CacheTTLEnum::SINGLE_SESSION_POINTER);
     }
 
     private function checkSingleSessionPolicy(int $userId, string $platform, int $currentSessionId): bool
@@ -447,7 +448,7 @@ class AuthModule extends BaseModule
             $latest = $this->userSessionsDep->findLatestActiveByUserPlatform($userId, $platform);
             if ($latest) {
                 $allowedId = $latest->id;
-                Redis::connection('token')->set($key, $allowedId, 30 * 24 * 3600);
+                Redis::connection('token')->set($key, $allowedId, CacheTTLEnum::SINGLE_SESSION_POINTER);
             }
         }
 

@@ -8,6 +8,7 @@ use app\dep\User\UserProfileDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UsersQuickEntryDep;
 use app\enum\CommonEnum;
+use app\enum\CacheTTLEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
 use app\service\DictService;
@@ -64,7 +65,7 @@ class ProfileModule extends BaseModule
 
         // 按钮权限缓存key按平台隔离
         $cacheKey = 'auth_perm_uid_' . $user->id . '_' . $platform;
-        Cache::set($cacheKey, $perm['buttonCodes'], 300);
+        Cache::set($cacheKey, $perm['buttonCodes'], CacheTTLEnum::PERMISSION_BUTTONS);
 
         // 获取用户快捷入口配置
         $quickEntry = $this->usersQuickEntryDep->listByUserId($user->id);
