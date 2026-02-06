@@ -63,7 +63,14 @@ class AiMessageModule extends BaseModule
 
         $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
 
-        // 这里简化处理，直接软删（实际可校验消息是否属于用户的会话）
+        // 校验消息属于当前用户的会话
+        foreach ($ids as $id) {
+            $message = $this->dep->get((int)$id);
+            self::throwNotFound($message, '消息不存在');
+            $conversation = $this->conversationsDep->getByUser($message->conversation_id, $request->userId);
+            self::throwIf(!$conversation, '无权操作');
+        }
+
         $this->dep->delete($ids);
         return self::success();
     }

@@ -203,14 +203,15 @@ class AiChatModule extends BaseModule
                     (int)((microtime(true) - $llmStart) * 1000));
                 
                 // 保存已生成的部分内容
+                $canceledAssistantId = null;
                 if (!empty($result['content'])) {
-                    $this->saveAssistantMessage(
+                    $canceledAssistantId = $this->saveAssistantMessage(
                         $ctx['conversationId'], $result['content'], $result['usage'] ?? [],
                         $ctx['modelCode'], $requestId, $result['request_id'] ?? null
                     );
                 }
                 
-                $onChunk('canceled', ['conversation_id' => $ctx['conversationId'], 'run_id' => $runId]);
+                $onChunk('canceled', ['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'user_message_id' => $ctx['userMessageId'], 'assistant_message_id' => $canceledAssistantId]);
                 return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'canceled' => true]);
             }
 
@@ -272,7 +273,7 @@ class AiChatModule extends BaseModule
             $this->autoGenerateTitle($ctx, $param['content'], $userId);
         }
 
-        $onChunk('done', ['conversation_id' => $ctx['conversationId'], 'run_id' => $runId]);
+        $onChunk('done', ['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'user_message_id' => $ctx['userMessageId'], 'assistant_message_id' => $assistantMessageId]);
 
         return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId]);
     }
