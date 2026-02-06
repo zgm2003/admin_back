@@ -220,6 +220,11 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/TauriVersion/forceUpdate', [controller\DevTools\TauriVersionController::class, 'forceUpdate']);
     Route::post('/DevTools/TauriVersion/updateJson', [controller\DevTools\TauriVersionController::class, 'updateJson']);
 
+    // 系统日志
+    Route::post('/SystemLog/init', [controller\System\SystemLogController::class, 'init']);
+    Route::post('/SystemLog/files', [controller\System\SystemLogController::class, 'files']);
+    Route::post('/SystemLog/content', [controller\System\SystemLogController::class, 'content']);
+
     // WebSocket 绑定与推送
     Route::post('/WebSocket/bind', [controller\System\WebSocketController::class, 'bind']);
     Route::post('/WebSocket/onlineCount', [controller\System\WebSocketController::class, 'onlineCount']);

@@ -243,6 +243,16 @@ class DictService
         return $this;
     }
 
+    public function setLogLevelArr(){
+        $this->dict['log_level_arr'] = $this->enumToDict(SystemEnum::$logLevelArr);
+        return $this;
+    }
+
+    public function setLogTailArr(){
+        $this->dict['log_tail_arr'] = $this->enumToDict(SystemEnum::$logTailArr);
+        return $this;
+    }
+
     public function enumToDict($enum)
     {
         $res = [];
