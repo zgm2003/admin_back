@@ -86,7 +86,7 @@ class NotificationTaskModule extends BaseModule
                 'sent_count' => $item->sent_count,
                 'send_at' => $item->send_at,
                 'error_msg' => $item->error_msg,
-                'created_at' => $item->created_at->toDateTimeString(),
+                'created_at' => $item->created_at,
             ];
         });
         $data['page'] = [
