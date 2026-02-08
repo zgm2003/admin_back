@@ -233,7 +233,9 @@ Route::group('/api/admin', function () {
     Route::post('/WebSocket/testPlatformPush', [controller\System\WebSocketController::class, 'testPlatformPush']);
 
     // 通知管理
+    Route::post('/Notification/init', [controller\System\NotificationController::class, 'init']);
     Route::post('/Notification/list', [controller\System\NotificationController::class, 'list']);
+    Route::post('/Notification/listCursor', [controller\System\NotificationController::class, 'listCursor']);
     Route::post('/Notification/unreadCount', [controller\System\NotificationController::class, 'unreadCount']);
     Route::post('/Notification/read', [controller\System\NotificationController::class, 'read']);
     Route::post('/Notification/del', [controller\System\NotificationController::class, 'del']);

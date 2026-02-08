@@ -243,6 +243,11 @@ class DictService
         return $this;
     }
 
+    public function setNotificationReadStatusArr(){
+        $this->dict['notification_read_status_arr'] = $this->enumToDict(NotificationEnum::$readStatusArr);
+        return $this;
+    }
+
     public function setLogLevelArr(){
         $this->dict['log_level_arr'] = $this->enumToDict(SystemEnum::$logLevelArr);
         return $this;

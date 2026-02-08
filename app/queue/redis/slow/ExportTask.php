@@ -4,6 +4,7 @@ namespace app\queue\redis\slow;
 
 use app\dep\DevTools\ExportTaskDep;
 use app\service\ExportService;
+use app\enum\NotificationEnum;
 use app\service\System\NotificationService;
 use Webman\RedisQueue\Consumer;
 
@@ -28,7 +29,7 @@ class ExportTask implements Consumer
         (new ExportTaskDep())->updateSuccess($taskId, $result);
         
         NotificationService::sendUrgent($userId, $title . ' - 导出完成', '点击查看导出文件', [
-            'type' => NotificationService::TYPE_SUCCESS,
+            'type' => NotificationEnum::TYPE_SUCCESS,
             'link' => '/devTools/exportTask',
             'platform' => $platform, // 只推送到发起导出的平台
         ]);
@@ -52,7 +53,7 @@ class ExportTask implements Consumer
                 $title . ' - 导出失败',
                 '导出任务失败，请重试',
                 [
-                    'type' => NotificationService::TYPE_ERROR,
+                    'type' => NotificationEnum::TYPE_ERROR,
                     'link' => '/devTools/exportTask',
                     'platform' => $platform,
                 ]

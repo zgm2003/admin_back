@@ -2,6 +2,8 @@
 
 namespace app\enum;
 
+use app\enum\CommonEnum;
+
 /**
  * 通知枚举
  */
@@ -64,6 +66,12 @@ class NotificationEnum
         self::STATUS_SENDING => '发送中',
         self::STATUS_SUCCESS => '已完成',
         self::STATUS_FAILED => '失败',
+    ];
+
+    // ==================== 已读状态 ====================
+    public static $readStatusArr = [
+        CommonEnum::YES => '已读',
+        CommonEnum::NO => '未读',
     ];
 
     /**

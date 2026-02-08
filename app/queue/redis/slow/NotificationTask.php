@@ -54,8 +54,8 @@ class NotificationTask implements Consumer
                     $task->title,
                     $task->content ?? '',
                     [
-                        'type' => NotificationEnum::getTypeStr($task->type),
-                        'level' => NotificationEnum::getLevelStr($task->level),
+                        'type' => (int)$task->type,
+                        'level' => (int)$task->level,
                         'link' => $task->link ?? '',
                         'platform' => $task->platform ?? 'all',
                     ]
