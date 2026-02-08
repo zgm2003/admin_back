@@ -52,7 +52,7 @@ class OperationLogModule extends BaseModule
                 'request_data' => $item['request_data'],
                 'response_data' => $item['response_data'],
                 'is_success' => $item['is_success'],
-                'created_at' => $item['created_at']->toDateTimeString(),
+                'created_at' => $item['created_at'],
             ];
         });
         $data['page'] = [
@@ -88,7 +88,7 @@ class OperationLogModule extends BaseModule
                 'request_data' => $item['request_data'],
                 'response_data' => $item['response_data'],
                 'is_success' => $item['is_success'],
-                'created_at' => $item['created_at']->toDateTimeString(),
+                'created_at' => $item['created_at'],
             ];
         });
 

@@ -44,8 +44,8 @@ class SystemSettingModule extends BaseModule
                 'status' => $it['status'],
                 'status_name' => CommonEnum::$statusArr[$it['status']],
                 'is_del' => $it['is_del'],
-                'created_at' => $it['created_at']->toDateTimeString(),
-                'updated_at' => $it['updated_at']->toDateTimeString(),
+                'created_at' => $it['created_at'],
+                'updated_at' => $it['updated_at'],
             ];
         });
         $page = [

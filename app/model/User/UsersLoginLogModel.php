@@ -2,9 +2,9 @@
 
 namespace app\model\User;
 
-use support\Model;
+use app\model\BaseModel;
 
-class UsersLoginLogModel extends Model
+class UsersLoginLogModel extends BaseModel
 {
-    public $table = 'users_login_log';
+    protected $table = 'users_login_log';
 }

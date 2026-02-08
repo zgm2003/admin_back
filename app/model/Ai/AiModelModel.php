@@ -2,9 +2,9 @@
 
 namespace app\model\Ai;
 
-use support\Model;
+use app\model\BaseModel;
 
-class AiModelModel extends Model
+class AiModelModel extends BaseModel
 {
     /**
      * 表名

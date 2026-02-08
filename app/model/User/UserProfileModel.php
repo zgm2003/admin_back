@@ -2,11 +2,11 @@
 
 namespace app\model\User;
 
-use support\Model;
+use app\model\BaseModel;
 
-class UserProfileModel extends Model
+class UserProfileModel extends BaseModel
 {
-    public $table = 'user_profiles';
+    protected $table = 'user_profiles';
     public $primaryKey = 'user_id';
 }
 

@@ -2,9 +2,9 @@
 
 namespace app\model\Ai;
 
-use support\Model;
+use app\model\BaseModel;
 
-class AiAgentModel extends Model
+class AiAgentModel extends BaseModel
 {
     protected $table = 'ai_agents';
 

@@ -2,10 +2,10 @@
 
 namespace app\model\System;
 
-use support\Model;
+use app\model\BaseModel;
 
-class UploadDriverModel extends Model
+class UploadDriverModel extends BaseModel
 {
-    public $table = 'upload_driver';
+    protected $table = 'upload_driver';
 }
 

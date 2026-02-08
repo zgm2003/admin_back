@@ -2,9 +2,9 @@
 
 namespace app\model\User;
 
-use support\Model;
+use app\model\BaseModel;
 
-class UsersQuickEntryModel extends Model
+class UsersQuickEntryModel extends BaseModel
 {
     protected $table = 'users_quick_entry';
 

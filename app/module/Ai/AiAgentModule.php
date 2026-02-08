@@ -73,8 +73,8 @@ class AiAgentModule extends BaseModule
                 'extra_params' => $item->extra_params,
                 'status' => $item->status,
                 'status_name' => CommonEnum::$statusArr[$item->status] ?? '',
-                'created_at' => $item->created_at?->toDateTimeString(),
-                'updated_at' => $item->updated_at?->toDateTimeString(),
+                'created_at' => $item->created_at,
+                'updated_at' => $item->updated_at,
             ];
         });
 

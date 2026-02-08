@@ -2,9 +2,9 @@
 
 namespace app\model\System;
 
-use support\Model;
+use app\model\BaseModel;
 
-class UploadSettingModel extends Model
+class UploadSettingModel extends BaseModel
 {
-    public $table = 'upload_setting';
+    protected $table = 'upload_setting';
 }

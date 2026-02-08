@@ -40,7 +40,7 @@ class AiMessageModule extends BaseModule
                 'role' => $item->role,
                 'content' => $item->content,
                 'meta_json' => $item->meta_json,
-                'created_at' => $item->created_at?->toDateTimeString(),
+                'created_at' => $item->created_at,
             ];
         });
 

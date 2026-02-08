@@ -85,7 +85,7 @@ class AiRunModule extends BaseModule
                 'latency_ms' => $item->latency_ms,
                 'latency_str' => $item->latency_ms ? round($item->latency_ms / 1000, 2) . 's' : '-',
                 'error_msg' => $item->error_msg,
-                'created_at' => $item->created_at?->toDateTimeString(),
+                'created_at' => $item->created_at,
             ];
         });
 
@@ -141,16 +141,16 @@ class AiRunModule extends BaseModule
                 'id' => $userMessage->id,
                 'content' => $userMessage->content,
                 'meta_json' => $userMessage->meta_json,
-                'created_at' => $userMessage->created_at?->toDateTimeString(),
+                'created_at' => $userMessage->created_at,
             ] : null,
             'assistant_message' => $assistantMessage ? [
                 'id' => $assistantMessage->id,
                 'content' => $assistantMessage->content,
                 'meta_json' => $assistantMessage->meta_json,
-                'created_at' => $assistantMessage->created_at?->toDateTimeString(),
+                'created_at' => $assistantMessage->created_at,
             ] : null,
-            'created_at' => $run->created_at?->toDateTimeString(),
-            'updated_at' => $run->updated_at?->toDateTimeString(),
+            'created_at' => $run->created_at,
+            'updated_at' => $run->updated_at,
             // 步骤列表
             'steps' => $this->getStepsList($run->id),
         ]);
@@ -174,7 +174,7 @@ class AiRunModule extends BaseModule
                 'latency_ms' => $step->latency_ms,
                 'latency_str' => $step->latency_ms !== null ? $step->latency_ms . 'ms' : '-',
                 'payload_json' => $step->payload_json,
-                'created_at' => $step->created_at?->toDateTimeString(),
+                'created_at' => $step->created_at,
             ];
         })->toArray();
     }

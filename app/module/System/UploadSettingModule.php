@@ -123,8 +123,8 @@ class UploadSettingModule extends BaseModule
                 'status' => $item['status'],
                 'status_name' => CommonEnum::$statusArr[$item->status] ?? '',
                 'remark' => $item['remark'],
-                'created_at' => $item['created_at']->toDateTimeString(),
-                'updated_at' => $item['updated_at']->toDateTimeString(),
+                'created_at' => $item['created_at'],
+                'updated_at' => $item['updated_at'],
             ];
         });
         $page = [

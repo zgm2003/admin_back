@@ -67,7 +67,7 @@ class UsersLoginLogModule extends BaseModule
                 'ua' => $item['ua'],
                 'is_success' => $item['is_success'],
                 'reason' => $item['reason'] ?? '',
-                'created_at' => $item['created_at']->toDateTimeString(),
+                'created_at' => $item['created_at'],
             ];
         });
         
@@ -115,7 +115,7 @@ class UsersLoginLogModule extends BaseModule
                 'ua' => $item['ua'],
                 'is_success' => $item['is_success'],
                 'reason' => $item['reason'] ?? '',
-                'created_at' => $item['created_at']->toDateTimeString(),
+                'created_at' => $item['created_at'],
             ];
         });
 

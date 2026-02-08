@@ -108,7 +108,7 @@ class UsersListModule extends BaseModule
                 'address_show' => $address,
                 'address' => $districtId,
                 'detail_address' => $item->detail_address ?? '',
-                'created_at' => $item['created_at']->toDateTimeString(),
+                'created_at' => $item['created_at'],
             ];
         });
         $data['page'] = [

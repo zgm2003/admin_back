@@ -76,8 +76,8 @@ class UploadRuleModule extends BaseModule
                 'max_size_mb' => $item['max_size_mb'],
                 'image_exts' => json_decode($item['image_exts']),
                 'file_exts' => json_decode($item['file_exts']),
-                'created_at' => $item['created_at']->toDateTimeString(),
-                'updated_at' => $item['updated_at']->toDateTimeString(),
+                'created_at' => $item['created_at'],
+                'updated_at' => $item['updated_at'],
             ];
         });
         $page = [

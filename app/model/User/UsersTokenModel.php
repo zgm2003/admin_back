@@ -2,9 +2,9 @@
 
 namespace app\model\User;
 
-use support\Model;
+use app\model\BaseModel;
 
-class UsersTokenModel extends Model
+class UsersTokenModel extends BaseModel
 {
-    public $table = 'users_token';
+    protected $table = 'users_token';
 }

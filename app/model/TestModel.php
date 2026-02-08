@@ -2,9 +2,7 @@
 
 namespace app\model;
 
-use support\Model;
-
-class TestModel extends Model
+class TestModel extends BaseModel
 {
-    public $table = 'test';
+    protected $table = 'test';
 }

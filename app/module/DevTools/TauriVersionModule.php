@@ -48,8 +48,8 @@ class TauriVersionModule extends BaseModule
             'file_size_text' => $this->formatFileSize($item->file_size),
             'is_latest' => $item->is_latest,
             'force_update' => $item->force_update,
-            'created_at' => $item->created_at->toDateTimeString(),
-            'updated_at' => $item->updated_at->toDateTimeString(),
+            'created_at' => $item->created_at,
+            'updated_at' => $item->updated_at,
         ]);
         $data['page'] = [
             'page_size' => $res->perPage(),

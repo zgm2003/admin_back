@@ -95,8 +95,8 @@ class RoleModule extends BaseModule
                 'name' => $item['name'],
                 'permission_id' => json_decode($item['permission_id']),
                 'is_default' => $item['is_default'] ?? CommonEnum::NO,
-                'created_at' => $item['created_at']->toDateTimeString(),
-                'updated_at' => $item['updated_at']->toDateTimeString()
+                'created_at' => $item['created_at'],
+                'updated_at' => $item['updated_at']
             ];
         });
         $data['page'] = [

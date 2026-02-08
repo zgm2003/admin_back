@@ -2,9 +2,7 @@
 
 namespace app\model;
 
-use support\Model;
-
-class AddressModel extends Model
+class AddressModel extends BaseModel
 {
-    public $table = 'address';
+    protected $table = 'address';
 }

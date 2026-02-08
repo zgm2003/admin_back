@@ -49,8 +49,8 @@ class AiConversationModule extends BaseModule
                 'last_message_at' => $item->last_message_at?->toDateTimeString(),
                 'status' => $item->status,
                 'status_name' => CommonEnum::$statusArr[$item->status] ?? '',
-                'created_at' => $item->created_at?->toDateTimeString(),
-                'updated_at' => $item->updated_at?->toDateTimeString(),
+                'created_at' => $item->created_at,
+                'updated_at' => $item->updated_at,
             ];
         });
 
@@ -145,7 +145,7 @@ class AiConversationModule extends BaseModule
             'title' => $item->title,
             'last_message_at' => $item->last_message_at?->toDateTimeString(),
             'status' => $item->status,
-            'created_at' => $item->created_at?->toDateTimeString(),
+            'created_at' => $item->created_at,
         ]);
     }
 }

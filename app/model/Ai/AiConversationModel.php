@@ -2,15 +2,13 @@
 
 namespace app\model\Ai;
 
-use support\Model;
+use app\model\BaseModel;
 
-class AiConversationModel extends Model
+class AiConversationModel extends BaseModel
 {
     protected $table = 'ai_conversations';
 
     protected $casts = [
         'last_message_at' => 'datetime',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
     ];
 }

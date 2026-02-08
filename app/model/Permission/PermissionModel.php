@@ -2,9 +2,9 @@
 
 namespace app\model\Permission;
 
-use support\Model;
+use app\model\BaseModel;
 
-class PermissionModel extends Model
+class PermissionModel extends BaseModel
 {
-    public $table = 'permission';
+    protected $table = 'permission';
 }

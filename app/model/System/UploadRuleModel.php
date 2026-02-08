@@ -2,9 +2,9 @@
 
 namespace app\model\System;
 
-use support\Model;
+use app\model\BaseModel;
 
-class UploadRuleModel extends Model
+class UploadRuleModel extends BaseModel
 {
-    public $table = 'upload_rule';
+    protected $table = 'upload_rule';
 }

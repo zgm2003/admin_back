@@ -2,10 +2,10 @@
 
 namespace app\model\System;
 
-use support\Model;
+use app\model\BaseModel;
 
-class SystemSettingModel extends Model
+class SystemSettingModel extends BaseModel
 {
-    public $table = 'system_settings';
+    protected $table = 'system_settings';
 }
 

@@ -106,8 +106,8 @@ class UploadDriverModule extends BaseModule
                 'appid' => $item['appid'],
                 'endpoint' => $item['endpoint'],
                 'bucket_domain' => $item['bucket_domain'],
-                'created_at' => $item['created_at']->toDateTimeString(),
-                'updated_at' => $item['updated_at']->toDateTimeString(),
+                'created_at' => $item['created_at'],
+                'updated_at' => $item['updated_at'],
             ];
         });
         $page = [

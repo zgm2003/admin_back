@@ -2,9 +2,9 @@
 
 namespace app\model\Ai;
 
-use support\Model;
+use app\model\BaseModel;
 
-class AiPromptModel extends Model
+class AiPromptModel extends BaseModel
 {
-    public $table = 'ai_prompt';
+    protected $table = 'ai_prompt';
 }

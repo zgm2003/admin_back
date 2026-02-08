@@ -2,10 +2,10 @@
 
 namespace app\model\User;
 
-use support\Model;
+use app\model\BaseModel;
 
-class UserSessionsModel extends Model
+class UserSessionsModel extends BaseModel
 {
-    public $table = 'user_sessions';
+    protected $table = 'user_sessions';
 }
 

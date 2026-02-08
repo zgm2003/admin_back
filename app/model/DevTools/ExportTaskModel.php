@@ -2,11 +2,9 @@
 
 namespace app\model\DevTools;
 
-use support\Model;
+use app\model\BaseModel;
 
-class ExportTaskModel extends Model
+class ExportTaskModel extends BaseModel
 {
     protected $table = 'export_tasks';
-    protected $primaryKey = 'id';
-    public $timestamps = false;
 }

@@ -2,9 +2,9 @@
 
 namespace app\model\DevTools;
 
-use support\Model;
+use app\model\BaseModel;
 
-class OperationLogModel extends Model
+class OperationLogModel extends BaseModel
 {
-    public $table = 'operation_logs';
+    protected $table = 'operation_logs';
 }

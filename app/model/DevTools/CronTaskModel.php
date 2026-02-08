@@ -2,9 +2,9 @@
 
 namespace app\model\DevTools;
 
-use support\Model;
+use app\model\BaseModel;
 
-class CronTaskModel extends Model
+class CronTaskModel extends BaseModel
 {
     protected $table = 'cron_task';
 }
