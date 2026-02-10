@@ -6,6 +6,7 @@ use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
 use app\enum\PermissionEnum;
 use app\enum\CommonEnum;
+use app\service\System\AuthPlatformService;
 
 class PermissionService
 {
@@ -27,7 +28,7 @@ class PermissionService
     public function buildPermissionContextByUser($user, string $platform): array
     {
         // 平台必须是合法值
-        if (!in_array($platform, PermissionEnum::ALLOWED_PLATFORMS, true)) {
+        if (!\in_array($platform, AuthPlatformService::getAllowedPlatforms(), true)) {
             throw new \InvalidArgumentException('无效的平台标识: ' . $platform);
         }
 

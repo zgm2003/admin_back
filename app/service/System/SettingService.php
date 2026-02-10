@@ -3,7 +3,6 @@
 namespace app\service\System;
 
 use app\dep\System\SystemSettingDep;
-use app\exception\BusinessException;
 
 /**
  * 系统设置服务 - 统一从数据库读取配置
@@ -60,40 +59,6 @@ class SettingService
             4 => json_decode($value, true) ?? $default, // JSON
             default => $value, // 字符串
         };
-    }
-
-    // ==================== Auth 相关 ====================
-
-    public static function getAccessTtl(): int
-    {
-        return (int)self::get('auth.access_ttl', config('auth.access_ttl', 4 * 3600));
-    }
-
-    public static function getRefreshTtl(): int
-    {
-        return (int)self::get('auth.refresh_ttl', config('auth.refresh_ttl', 14 * 24 * 3600));
-    }
-
-    /**
-     * 获取平台认证策略（强约束：必须配置，否则拒绝访问）
-     * @throws BusinessException
-     */
-    public static function getAuthPolicy(string $platform): array
-    {
-        // 优先数据库
-        $policy = self::get('auth.policy.' . $platform);
-        if ($policy !== null && is_array($policy)) {
-            return $policy;
-        }
-
-        // fallback 到 config 文件
-        $configPolicy = config('auth.policies.' . $platform);
-        if ($configPolicy !== null && is_array($configPolicy)) {
-            return $configPolicy;
-        }
-
-        // fail-close：未配置则拒绝访问
-        throw new BusinessException("平台 [{$platform}] 未配置认证策略，拒绝访问", 401);
     }
 
     // ==================== User 相关 ====================

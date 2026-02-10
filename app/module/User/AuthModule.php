@@ -9,10 +9,10 @@ use app\dep\User\UserSessionsDep;
 use app\enum\CacheTTLEnum;
 use app\enum\CommonEnum;
 use app\enum\EmailEnum;
-use app\enum\PermissionEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
 use app\service\DictService;
+use app\service\System\AuthPlatformService;
 use app\service\System\SettingService;
 use app\service\User\TokenService;
 use app\validate\User\UsersValidate;
@@ -42,12 +42,21 @@ class AuthModule extends BaseModule
     }
 
     /**
-     * 获取登录配置（登录类型字典）
+     * 获取登录配置（按平台返回允许的登录方式）
      */
     public function getLoginConfig(): array
     {
-        $dict = $this->dictService->setLoginTypeArr()->getDict();
-        return self::success($dict);
+        $platform = request()->header('platform', '');
+        self::throwIf(!$platform, '缺少平台标识');
+
+        $allowedTypes = AuthPlatformService::getLoginTypes($platform);
+        $filtered = [];
+        foreach (SystemEnum::$loginTypeArr as $key => $label) {
+            if (\in_array($key, $allowedTypes, true)) {
+                $filtered[] = ['label' => $label, 'value' => $key];
+            }
+        }
+        return self::success(['login_type_arr' => $filtered]);
     }
 
     /**
@@ -151,7 +160,9 @@ class AuthModule extends BaseModule
         $isNewUser = false;
         // 自动注册
         if (!$user) {
-            if (!SettingService::isRegisterEnabled()) {
+            $platform = $request->header('platform');
+            self::throwIf(!$platform, '缺少平台标识');
+            if (!AuthPlatformService::isRegisterEnabled($platform)) {
                 return ['error' => '暂未开放注册', 'user' => null];
             }
             $user = $this->autoRegister($param['login_account'], $loginType);
@@ -169,11 +180,6 @@ class AuthModule extends BaseModule
      */
     private function autoRegister(string $account, string $loginType)
     {
-        // 检查是否允许注册
-        if (!SettingService::isRegisterEnabled()) {
-            return null;
-        }
-
         try {
             return $this->withTransaction(function () use ($account, $loginType) {
                 $defaultRole = $this->roleDep->getDefault();
@@ -230,7 +236,7 @@ class AuthModule extends BaseModule
         $platform = $session['platform'];
         self::throwIf(!$this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id']), '账号已在其他设备登录，请重新登录', self::CODE_UNAUTHORIZED);
 
-        $tokens = TokenService::generateTokenPair();
+        $tokens = TokenService::generateTokenPair($platform);
 
         $this->userSessionsDep->rotate($session['id'], [
             'access_token_hash' => $tokens['access_token_hash'],
@@ -367,24 +373,37 @@ class AuthModule extends BaseModule
     {
         $platformHeader = $request->header('platform');
         
-        // 平台强制校验
+        // 平台校验（动态读取 auth_platforms 表）
         self::throwIf(
-            !$platformHeader || !in_array($platformHeader, PermissionEnum::ALLOWED_PLATFORMS, true),
-            '无效的平台标识，必须为 admin 或 app'
+            !$platformHeader || !AuthPlatformService::isValidPlatform($platformHeader),
+            '无效的平台标识'
         );
         
         $deviceId = $request->header('device-id', '');
 
-        $tokens = TokenService::generateTokenPair();
+        // 按平台生成不同 TTL 的 token
+        $tokens = TokenService::generateTokenPair($platformHeader);
 
-        // 单端登录策略（互踢）
-        $policyConfig = SettingService::getAuthPolicy($platformHeader ?: 'default');
-        if (!empty($policyConfig['single_session_per_platform'])) {
+        // 会话淘汰策略（单端互踢 > 最大会话数限制）
+        $policy = AuthPlatformService::getAuthPolicy($platformHeader);
+        if (!empty($policy['single_session_per_platform'])) {
+            // 单端登录：踢掉该用户在此平台的所有旧会话
             $oldSessions = $this->userSessionsDep->listActiveByUserPlatform($userId, $platformHeader);
-            foreach ($oldSessions as $oldSession) {
-                Redis::connection('token')->del($oldSession->access_token_hash);
+            foreach ($oldSessions as $old) {
+                Redis::connection('token')->del($old->access_token_hash);
             }
             $this->userSessionsDep->revokeByUserPlatform($userId, $platformHeader);
+        } elseif ($policy['max_sessions'] > 0) {
+            // 多会话上限：FIFO 淘汰最早的超额会话
+            $activeSessions = $this->userSessionsDep->listActiveByUserPlatform($userId, $platformHeader);
+            $overCount = $activeSessions->count() - $policy['max_sessions'] + 1;
+            if ($overCount > 0) {
+                $toRevoke = $activeSessions->sortBy('id')->take($overCount);
+                foreach ($toRevoke as $old) {
+                    Redis::connection('token')->del($old->access_token_hash);
+                    $this->userSessionsDep->revoke($old->id);
+                }
+            }
         }
 
         $sessionData = [
@@ -436,7 +455,7 @@ class AuthModule extends BaseModule
 
     private function checkSingleSessionPolicy(int $userId, string $platform, int $currentSessionId): bool
     {
-        $policyConfig = SettingService::getAuthPolicy($platform ?: 'default');
+        $policyConfig = AuthPlatformService::getAuthPolicy($platform);
         if (empty($policyConfig['single_session_per_platform'])) {
             return true;
         }

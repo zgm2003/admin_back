@@ -8,6 +8,7 @@ use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
+use app\service\System\AuthPlatformService;
 use app\validate\Permission\RoleValidate;
 use support\Cache;
 
@@ -136,7 +137,7 @@ class RoleModule extends BaseModule
     {
         $userIds = $this->usersDep->getIdsByRoleIds($roleIds);
         foreach ($userIds as $uid) {
-            foreach (PermissionEnum::ALLOWED_PLATFORMS as $platform) {
+            foreach (AuthPlatformService::getAllowedPlatforms() as $platform) {
                 Cache::delete('auth_perm_uid_' . $uid . '_' . $platform);
             }
         }

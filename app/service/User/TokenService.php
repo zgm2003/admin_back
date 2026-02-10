@@ -2,7 +2,7 @@
 
 namespace app\service\User;
 
-use app\service\System\SettingService;
+use app\service\System\AuthPlatformService;
 use Carbon\Carbon;
 
 class TokenService
@@ -21,11 +21,11 @@ class TokenService
         return hash('sha256', $token . '|' . $pepper);
     }
 
-    public static function generateTokenPair(): array
+    public static function generateTokenPair(string $platform): array
     {
         $now = Carbon::now();
-        $accessTtl = SettingService::getAccessTtl();
-        $refreshTtl = SettingService::getRefreshTtl();
+        $accessTtl = AuthPlatformService::getAccessTtl($platform);
+        $refreshTtl = AuthPlatformService::getRefreshTtl($platform);
 
         $accessToken = self::makeToken(32);
         $refreshToken = self::makeToken(64);

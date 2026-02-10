@@ -258,6 +258,11 @@ class DictService
         return $this;
     }
 
+    public function setAuthPlatformLoginTypeArr(){
+        $this->dict['auth_platform_login_type_arr'] = $this->enumToDict(SystemEnum::$loginTypeArr);
+        return $this;
+    }
+
     public function enumToDict($enum)
     {
         $res = [];
