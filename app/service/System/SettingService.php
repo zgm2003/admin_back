@@ -68,8 +68,4 @@ class SettingService
         return (string)self::get('user.default_avatar', '');
     }
 
-    public static function isRegisterEnabled(): bool
-    {
-        return (bool)self::get('user.register_enabled', true);
-    }
 }
