@@ -44,13 +44,13 @@ class CheckToken
             return json(['code' => ErrorCodeEnum::UNAUTHORIZED, 'data' => [], 'msg' => 'Token已过期']);
         }
 
-        // 4. 平台校验
+        // 4. 平台校验 + 安全策略（合并调用，减少缓存查询）
         $currentPlatform = $request->header('platform');
         if (!$currentPlatform || !AuthPlatformService::isValidPlatform($currentPlatform)) {
             return json(['code' => ErrorCodeEnum::PARAM_ERROR, 'msg' => '无效的平台标识', 'data' => []]);
         }
 
-        // 5. 安全策略校验
+        // 5. 安全策略（getPlatform 已被内存缓存，不再产生额外 Redis 查询）
         $policy = AuthPlatformService::getAuthPolicy($session['platform']);
 
         // 5.1 绑定平台

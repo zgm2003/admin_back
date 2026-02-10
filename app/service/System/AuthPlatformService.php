@@ -8,11 +8,27 @@ use app\exception\BusinessException;
 
 /**
  * 认证平台服务 — 统一对外提供平台配置
- * 替代原来散落在 PermissionEnum + SettingService 中的硬编码逻辑
+ *
+ * 三级缓存架构：进程内存（0ms）→ Redis（0.1-0.5ms）→ MySQL（1-5ms）
+ * 内存缓存 TTL 60秒，多 Worker 间最大延迟 60秒，对平台配置可接受
  */
 class AuthPlatformService
 {
     private static ?AuthPlatformDep $dep = null;
+
+    /** 进程级内存缓存：code → 平台数据 */
+    private static array $memPlatform = [];
+    /** 进程级内存缓存：所有启用平台 code 列表 */
+    private static ?array $memCodes = null;
+    /** 进程级内存缓存：code→name 映射 */
+    private static ?array $memMap = null;
+    /** 内存缓存写入时间戳 */
+    private static int $memPlatformAt = 0;
+    private static int $memCodesAt = 0;
+    private static int $memMapAt = 0;
+
+    /** 内存缓存 TTL（秒） */
+    private const MEM_TTL = 60;
 
     private static function dep(): AuthPlatformDep
     {
@@ -23,15 +39,50 @@ class AuthPlatformService
     }
 
     /**
+     * 清除当前进程的内存缓存（写操作后调用）
+     */
+    public static function flushMemCache(): void
+    {
+        self::$memPlatform = [];
+        self::$memCodes = null;
+        self::$memMap = null;
+        self::$memPlatformAt = 0;
+        self::$memCodesAt = 0;
+        self::$memMapAt = 0;
+    }
+
+    /**
+     * 内存缓存是否过期
+     */
+    private static function isExpired(int $timestamp): bool
+    {
+        return (\time() - $timestamp) > self::MEM_TTL;
+    }
+
+    // ==================== 核心查询方法 ====================
+
+    /**
      * 获取平台配置（fail-close：未配置或禁用则拒绝）
+     * 三级缓存：内存 → Redis → DB
      * @throws BusinessException
      */
     public static function getPlatform(string $code): array
     {
+        // L1: 进程内存
+        if (isset(self::$memPlatform[$code]) && !self::isExpired(self::$memPlatformAt)) {
+            return self::$memPlatform[$code];
+        }
+
+        // L2+L3: Redis → DB（由 Dep 层处理）
         $platform = self::dep()->getByCode($code);
         if (!$platform) {
             throw new BusinessException("平台 [{$code}] 未配置或已禁用，拒绝访问", 401);
         }
+
+        // 回写内存
+        self::$memPlatform[$code] = $platform;
+        self::$memPlatformAt = \time();
+
         return $platform;
     }
 
@@ -40,7 +91,41 @@ class AuthPlatformService
      */
     public static function getAllowedPlatforms(): array
     {
-        return self::dep()->getAllActiveCodes();
+        if (self::$memCodes !== null && !self::isExpired(self::$memCodesAt)) {
+            return self::$memCodes;
+        }
+
+        self::$memCodes = self::dep()->getAllActiveCodes();
+        self::$memCodesAt = \time();
+        return self::$memCodes;
+    }
+
+    /**
+     * 获取所有启用的平台 code→name 映射
+     */
+    public static function getPlatformMap(): array
+    {
+        if (self::$memMap !== null && !self::isExpired(self::$memMapAt)) {
+            return self::$memMap;
+        }
+
+        self::$memMap = self::dep()->getAllActiveMap();
+        self::$memMapAt = \time();
+        return self::$memMap;
+    }
+
+    // ==================== 便捷方法（均基于 getPlatform 的内存缓存） ====================
+
+    /**
+     * 校验平台是否合法并返回安全策略（合并调用，一次查询搞定）
+     * 用于 CheckToken 中间件，替代 isValidPlatform + getAuthPolicy 两次调用
+     */
+    public static function validateAndGetPolicy(string $code): ?array
+    {
+        if (!\in_array($code, self::getAllowedPlatforms(), true)) {
+            return null;
+        }
+        return self::getAuthPolicy($code);
     }
 
     /**
@@ -108,13 +193,5 @@ class AuthPlatformService
     {
         $map = self::getPlatformMap();
         return $map[$code] ?? $code;
-    }
-
-    /**
-     * 获取所有启用的平台 code→name 映射
-     */
-    public static function getPlatformMap(): array
-    {
-        return self::dep()->getAllActiveMap();
     }
 }

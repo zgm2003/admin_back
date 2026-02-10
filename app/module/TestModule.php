@@ -2,7 +2,9 @@
 
 namespace app\module;
 
+use app\dep\System\AuthPlatformDep;
 use app\dep\System\SystemSettingDep;
+use app\service\System\AuthPlatformService;
 use app\service\System\SettingService;
 
 /**
@@ -156,6 +158,122 @@ class TestModule extends BaseModule
     }
 
     /**
+     * 测试 AuthPlatformService 三级缓存性能
+     * 对比：L1 内存缓存 vs L2 Redis 缓存 vs L3 MySQL
+     */
+    public function testMemCache($request): array
+    {
+        $iterations = (int)($request->post('iterations', 1000));
+        $platform = $request->post('platform', 'admin');
+        $results = [];
+
+        // ==================== 测试1：预热后的内存缓存（L1） ====================
+        // 先调一次预热
+        AuthPlatformService::getPlatform($platform);
+
+        $start = hrtime(true);
+        for ($i = 0; $i < $iterations; $i++) {
+            AuthPlatformService::getPlatform($platform);
+        }
+        $l1Time = (hrtime(true) - $start) / 1e6; // 转毫秒
+
+        $results['L1_memory'] = [
+            'iterations'   => $iterations,
+            'total_ms'     => round($l1Time, 4),
+            'avg_us'       => round($l1Time / $iterations * 1000, 4), // 微秒
+            'ops_per_sec'  => $iterations > 0 ? round($iterations / ($l1Time / 1000)) : 0,
+        ];
+
+        // ==================== 测试2：强制走 Redis（清内存缓存后） ====================
+        $start = hrtime(true);
+        for ($i = 0; $i < $iterations; $i++) {
+            AuthPlatformService::flushMemCache(); // 每次清内存，强制走 Redis
+            AuthPlatformService::getPlatform($platform);
+        }
+        $l2Time = (hrtime(true) - $start) / 1e6;
+
+        $results['L2_redis'] = [
+            'iterations'   => $iterations,
+            'total_ms'     => round($l2Time, 4),
+            'avg_us'       => round($l2Time / $iterations * 1000, 4),
+            'ops_per_sec'  => $iterations > 0 ? round($iterations / ($l2Time / 1000)) : 0,
+        ];
+
+        // ==================== 测试3：强制走 MySQL（清 Redis + 内存缓存） ====================
+        $dep = new AuthPlatformDep();
+        $mysqlIterations = min($iterations, 100); // MySQL 测试限制 100 次，避免太慢
+        $cacheKey = 'auth_platform_' . $platform;
+
+        $start = hrtime(true);
+        for ($i = 0; $i < $mysqlIterations; $i++) {
+            AuthPlatformService::flushMemCache();
+            \support\Cache::delete($cacheKey); // 清 Redis
+            AuthPlatformService::getPlatform($platform);
+        }
+        $l3Time = (hrtime(true) - $start) / 1e6;
+
+        $results['L3_mysql'] = [
+            'iterations'   => $mysqlIterations,
+            'total_ms'     => round($l3Time, 4),
+            'avg_us'       => round($l3Time / $mysqlIterations * 1000, 4),
+            'ops_per_sec'  => $mysqlIterations > 0 ? round($mysqlIterations / ($l3Time / 1000)) : 0,
+        ];
+
+        // ==================== 测试4：便捷方法（基于内存缓存） ====================
+        // 预热
+        AuthPlatformService::getPlatform($platform);
+
+        $start = hrtime(true);
+        for ($i = 0; $i < $iterations; $i++) {
+            AuthPlatformService::getAuthPolicy($platform);
+        }
+        $policyTime = (hrtime(true) - $start) / 1e6;
+
+        $results['getAuthPolicy_cached'] = [
+            'iterations'   => $iterations,
+            'total_ms'     => round($policyTime, 4),
+            'avg_us'       => round($policyTime / $iterations * 1000, 4),
+            'ops_per_sec'  => $iterations > 0 ? round($iterations / ($policyTime / 1000)) : 0,
+        ];
+
+        // ==================== 测试5：getAllowedPlatforms 内存缓存 ====================
+        AuthPlatformService::getAllowedPlatforms(); // 预热
+
+        $start = hrtime(true);
+        for ($i = 0; $i < $iterations; $i++) {
+            AuthPlatformService::getAllowedPlatforms();
+        }
+        $codesTime = (hrtime(true) - $start) / 1e6;
+
+        $results['getAllowedPlatforms_cached'] = [
+            'iterations'   => $iterations,
+            'total_ms'     => round($codesTime, 4),
+            'avg_us'       => round($codesTime / $iterations * 1000, 4),
+            'ops_per_sec'  => $iterations > 0 ? round($iterations / ($codesTime / 1000)) : 0,
+        ];
+
+        // ==================== 汇总 ====================
+        $l1Avg = $results['L1_memory']['avg_us'];
+        $l2Avg = $results['L2_redis']['avg_us'];
+        $l3Avg = $results['L3_mysql']['avg_us'];
+
+        $results['summary'] = [
+            'L1_vs_L2_speedup' => $l1Avg > 0 ? round($l2Avg / $l1Avg, 1) . 'x' : 'N/A',
+            'L1_vs_L3_speedup' => $l1Avg > 0 ? round($l3Avg / $l1Avg, 1) . 'x' : 'N/A',
+            'L2_vs_L3_speedup' => $l2Avg > 0 ? round($l3Avg / $l2Avg, 1) . 'x' : 'N/A',
+            'conclusion'       => $l1Avg < $l2Avg && $l2Avg < $l3Avg
+                ? '✅ 三级缓存有效：L1(内存) < L2(Redis) < L3(MySQL)'
+                : '⚠️ 结果异常，请检查',
+        ];
+
+        // 恢复正常缓存状态
+        AuthPlatformService::flushMemCache();
+        AuthPlatformService::getPlatform($platform);
+
+        return self::success($results);
+    }
+
+    /**
      * 综合测试
      */
     public function test($request): array
@@ -172,6 +290,7 @@ class TestModule extends BaseModule
             'transactionRollback' => $this->testTransactionRollback($request),
             'systemSetting' => $this->testSystemSetting($request),
             'settingService' => $this->testSettingService($request),
+            'memCache' => $this->testMemCache($request),
             default => $this->testSuccess($request),
         };
     }

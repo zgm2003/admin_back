@@ -5,6 +5,7 @@ namespace app\dep\System;
 use app\dep\BaseDep;
 use app\enum\CommonEnum;
 use app\model\System\AuthPlatformModel;
+use app\service\System\AuthPlatformService;
 use support\Cache;
 use support\Model;
 
@@ -169,10 +170,13 @@ class AuthPlatformDep extends BaseDep
 
     private function clearCache(string $code = ''): void
     {
+        // 清 Redis 缓存
         Cache::delete(self::CACHE_ALL);
         Cache::delete(self::CACHE_ALL . '_map');
         if ($code) {
             Cache::delete(self::CACHE_PREFIX . $code);
         }
+        // 清当前进程内存缓存
+        AuthPlatformService::flushMemCache();
     }
 }
