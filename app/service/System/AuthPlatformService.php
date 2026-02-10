@@ -100,4 +100,21 @@ class AuthPlatformService
     {
         return self::getPlatform($code)['allow_register'] === CommonEnum::YES;
     }
+
+    /**
+     * 获取平台名称（code→name，未找到返回 code 本身）
+     */
+    public static function getPlatformName(string $code): string
+    {
+        $map = self::getPlatformMap();
+        return $map[$code] ?? $code;
+    }
+
+    /**
+     * 获取所有启用的平台 code→name 映射
+     */
+    public static function getPlatformMap(): array
+    {
+        return self::dep()->getAllActiveMap();
+    }
 }

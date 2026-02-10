@@ -22,16 +22,4 @@ class PermissionEnum
         self::TYPE_PAGE => "页面",
         self::TYPE_BUTTON => "按钮",
     ];
-
-    // 平台（强制校验，只允许这两个值）
-    const PLATFORM_ADMIN = 'admin';  // PC后台
-    const PLATFORM_APP = 'app';      // H5/APP
-
-    // 允许的平台列表
-    const ALLOWED_PLATFORMS = [self::PLATFORM_ADMIN, self::PLATFORM_APP];
-
-    public static $platformArr = [
-        self::PLATFORM_ADMIN => "PC后台",
-        self::PLATFORM_APP => "H5/APP",
-    ];
 }

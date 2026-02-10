@@ -15,6 +15,7 @@ use app\enum\SystemEnum;
 use app\enum\AiEnum;
 use app\enum\CronEnum;
 use app\enum\NotificationEnum;
+use app\service\System\AuthPlatformService;
 use support\Cache;
 
 
@@ -78,9 +79,10 @@ class DictService
         $allPermissions = $dep->getAllPermissions();
         
         // 转换为树形结构，label 加上平台标识，保留 platform 字段供前端过滤
-        $resCategory = array_map(function ($item) {
+        $platformMap = AuthPlatformService::getPlatformMap();
+        $resCategory = array_map(function ($item) use ($platformMap) {
             $platform = $item['platform'] ?? '';
-            $platformTag = $platform ? '[' . (PermissionEnum::$platformArr[$platform] ?? $platform) . '] ' : '';
+            $platformTag = $platform ? '[' . ($platformMap[$platform] ?? $platform) . '] ' : '';
             return [
                 'id' => $item['id'],
                 'label' => $platformTag . $item['name'],
@@ -148,7 +150,7 @@ class DictService
         return $this;
     }
     public function setPermissionPlatformArr(){
-        $this->dict['permission_platform_arr'] = $this->enumToDict(PermissionEnum::$platformArr);
+        $this->dict['permission_platform_arr'] = $this->enumToDict(AuthPlatformService::getPlatformMap());
         return $this;
     }
     public function setCommonStatusArr(){
@@ -187,7 +189,7 @@ class DictService
     }
 
     public function setPlatformArr(){
-        $this->dict['platformArr'] = $this->enumToDict(PermissionEnum::$platformArr);
+        $this->dict['platformArr'] = $this->enumToDict(AuthPlatformService::getPlatformMap());
         return $this;
     }
 
@@ -274,6 +276,7 @@ class DictService
         }
         return $res;
     }
+
     public function getDict()
     {
         return $this->dict;

@@ -6,6 +6,7 @@ use app\dep\Permission\PermissionDep;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
+use app\service\System\AuthPlatformService;
 use app\validate\Permission\PermissionValidate;
 use support\Redis;
 
@@ -91,8 +92,8 @@ class PermissionModule extends BaseModule
             $this->permissionDep->add($data);
             
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
-            // H5/APP 平台按钮无需父级
-            if ($platform !== PermissionEnum::PLATFORM_APP) {
+            // 非 admin 平台按钮无需父级
+            if ($platform === 'admin') {
                 self::throwIf(empty($param['parent_id']), 'parent_id 不能为空');
             }
             self::throwIf(empty($param['code']), 'code 不能为空');
@@ -206,7 +207,7 @@ class PermissionModule extends BaseModule
     public function del($request)
     {
         $param = $this->validate($request, PermissionValidate::del());
-        $ids = is_array($param['id']) ? $param['id'] : [$param['id']];
+        $ids = \is_array($param['id']) ? $param['id'] : [$param['id']];
         $this->permissionDep->delete($ids);
         
         PermissionDep::clearCache();
@@ -218,7 +219,7 @@ class PermissionModule extends BaseModule
     public function batchEdit($request)
     {
         $param = $this->validate($request, PermissionValidate::batchEdit());
-        $ids = is_array($param['ids']) ? $param['ids'] : [$param['ids']];
+        $ids = \is_array($param['ids']) ? $param['ids'] : [$param['ids']];
 
         if ($param['field'] == 'description') {
             $data = ['description' => $param['description']];
@@ -274,7 +275,7 @@ class PermissionModule extends BaseModule
                 'code' => $item->code,
                 'sort' => $item->sort,
                 'platform' => $item->platform,
-                'platform_name' => PermissionEnum::$platformArr[$item->platform] ?? $item->platform,
+                'platform_name' => AuthPlatformService::getPlatformName($item->platform),
             ];
         });
         
@@ -290,7 +291,7 @@ class PermissionModule extends BaseModule
         $platform = $param['platform'];
         
         // 只允许非 PC 后台平台
-        self::throwIf($platform === PermissionEnum::PLATFORM_ADMIN, '请使用 PC 后台权限管理');
+        self::throwIf($platform === 'admin', '请使用 PC 后台权限管理');
         self::throwIf(empty($param['code']), 'code 不能为空');
         
         // 唯一性检查：platform + code
@@ -323,7 +324,7 @@ class PermissionModule extends BaseModule
         $id = $param['id'];
         
         // 只允许非 PC 后台平台
-        self::throwIf($platform === PermissionEnum::PLATFORM_ADMIN, '请使用 PC 后台权限管理');
+        self::throwIf($platform === 'admin', '请使用 PC 后台权限管理');
         self::throwIf(empty($param['code']), 'code 不能为空');
         
         // 唯一性检查：platform + code（排除自己）

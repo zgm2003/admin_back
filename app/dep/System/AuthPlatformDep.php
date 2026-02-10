@@ -68,6 +68,28 @@ class AuthPlatformDep extends BaseDep
     }
 
     /**
+     * 获取所有启用的平台 code→name 映射（永久缓存）
+     */
+    public function getAllActiveMap(): array
+    {
+        $cacheKey = self::CACHE_ALL . '_map';
+        $cached = Cache::get($cacheKey);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $map = $this->model
+            ->where('status', CommonEnum::YES)
+            ->where('is_del', CommonEnum::NO)
+            ->pluck('name', 'code')
+            ->toArray();
+
+        Cache::set($cacheKey, $map);
+        return $map;
+    }
+
+
+    /**
      * 列表查询（分页 + 过滤）
      */
     public function list(array $param)
@@ -148,6 +170,7 @@ class AuthPlatformDep extends BaseDep
     private function clearCache(string $code = ''): void
     {
         Cache::delete(self::CACHE_ALL);
+        Cache::delete(self::CACHE_ALL . '_map');
         if ($code) {
             Cache::delete(self::CACHE_PREFIX . $code);
         }
