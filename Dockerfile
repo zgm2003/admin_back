@@ -1,4 +1,4 @@
-FROM php:8.2-cli
+FROM php:8.2-cli AS base
 
 # 安装系统依赖
 RUN apt-get update && apt-get install -y \
@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libxml2-dev \
     libcurl4-openssl-dev \
+    libevent-dev \
     unzip \
     git \
     procps \
@@ -34,34 +35,37 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 RUN pecl install redis && docker-php-ext-enable redis
 
 # 安装 event 扩展（提升异步 I/O 性能）
-RUN apt-get update && apt-get install -y libevent-dev && rm -rf /var/lib/apt/lists/* \
-    && printf '\n\n\n\n\n\n' | pecl install event \
+RUN printf '\n\n\n\n\n\n' | pecl install event \
     && docker-php-ext-enable --ini-name zz-event.ini event
 
-# OPcache 生产配置（显著提升 PHP 性能）
-RUN echo 'opcache.enable=1' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.enable_cli=1' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.memory_consumption=256' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.interned_strings_buffer=16' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.max_accelerated_files=10000' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.validate_timestamps=0' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.save_comments=1' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.jit=1255' >> /usr/local/etc/php/conf.d/opcache.ini \
-    && echo 'opcache.jit_buffer_size=128M' >> /usr/local/etc/php/conf.d/opcache.ini
+# OPcache 生产配置
+COPY docker/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+
+# PHP 运行时配置
+COPY docker/php.ini /usr/local/etc/php/conf.d/99-webman.ini
 
 # 安装 Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# 复制项目文件
+# ========== 依赖层（改代码不重装依赖） ==========
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-scripts --no-interaction
+
+# ========== 代码层 ==========
 COPY . .
 
-# 安装依赖（生产模式）
-RUN composer install --no-dev --optimize-autoloader
+# 执行 post-install 脚本（如果有）
+RUN composer dump-autoload --optimize --no-dev
 
 # 创建运行时目录
-RUN mkdir -p runtime/logs && chmod -R 777 runtime
+RUN mkdir -p runtime/logs runtime/views \
+    && chmod -R 777 runtime
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD php -r "echo file_get_contents('http://127.0.0.1:8787/');" || exit 1
 
 EXPOSE 8787 8788
 

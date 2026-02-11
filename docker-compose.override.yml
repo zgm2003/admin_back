@@ -1,0 +1,12 @@
+# 开发环境覆盖配置（本地 docker compose up 自动加载）
+# 生产环境用: docker compose -f docker-compose.yml up -d
+version: '3.8'
+
+services:
+  webman:
+    volumes:
+      - .:/app                    # 代码挂载，热更新
+      - /app/vendor               # 排除 vendor
+      - webman-runtime:/app/runtime
+    environment:
+      APP_DEBUG: "true"

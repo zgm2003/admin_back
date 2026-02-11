@@ -7,5 +7,11 @@ runtime/*.status
 vendor
 node_modules
 *.log
+.env
 .env.local
 docker-compose.override.yml
+docker-compose.yml
+Dockerfile
+.dockerignore
+tests
+*.md
