@@ -56,6 +56,8 @@ class AiRunValidate
         return [
             'date_start' => v::optional(v::date('Y-m-d')),
             'date_end'   => v::optional(v::date('Y-m-d')),
+            'agent_id'   => v::optional(v::intVal()->positive()),
+            'user_id'    => v::optional(v::intVal()->positive()),
         ];
     }
 
@@ -67,6 +69,8 @@ class AiRunValidate
         return [
             'date_start'   => v::optional(v::date('Y-m-d')),
             'date_end'     => v::optional(v::date('Y-m-d')),
+            'agent_id'     => v::optional(v::intVal()->positive()),
+            'user_id'      => v::optional(v::intVal()->positive()),
             'page_size'    => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
             'current_page' => v::intVal()->positive()->setName('当前页'),
         ];

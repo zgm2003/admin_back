@@ -193,7 +193,10 @@ class AiRunModule extends BaseModule
         }
 
         $summary = $this->runsDep->getStats($param);
-        $summary['avg_latency_str'] = $summary['avg_latency_ms'] ? round($summary['avg_latency_ms'] / 1000, 2) . 's' : '-';
+        $summary['avg_latency_ms'] = $summary['avg_latency_ms'] ? (int)round($summary['avg_latency_ms']) : 0;
+        $summary['success_rate'] = $summary['total_runs'] > 0
+            ? round($summary['success_runs'] / $summary['total_runs'] * 100, 1)
+            : 0;
 
         return self::success([
             'date_range' => [

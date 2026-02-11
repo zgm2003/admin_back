@@ -21,6 +21,11 @@ class AiRunsDep extends BaseDep
     public function list(array $param)
     {
         return $this->model
+            ->select([
+                'id', 'request_id', 'user_id', 'agent_id', 'conversation_id',
+                'run_status', 'model_snapshot', 'prompt_tokens', 'completion_tokens',
+                'total_tokens', 'latency_ms', 'error_msg', 'created_at',
+            ])
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['run_status']), fn($q) => $q->where('run_status', (int)$param['run_status']))
             ->when(!empty($param['agent_id']), fn($q) => $q->where('agent_id', (int)$param['agent_id']))
@@ -126,25 +131,35 @@ class AiRunsDep extends BaseDep
     }
 
     /**
-     * 统计概览
+     * 统计概览（单条 SQL，条件聚合）
      */
     public function getStats(array $param): array
     {
-        $query = $this->model
+        $row = $this->model
+            ->selectRaw('
+                COUNT(*) as total_runs,
+                SUM(CASE WHEN run_status = ? THEN 1 ELSE 0 END) as success_runs,
+                SUM(CASE WHEN run_status = ? THEN 1 ELSE 0 END) as fail_runs,
+                COALESCE(SUM(total_tokens), 0) as total_tokens,
+                COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
+                COALESCE(SUM(completion_tokens), 0) as total_completion_tokens,
+                AVG(latency_ms) as avg_latency_ms
+            ', [AiEnum::RUN_STATUS_SUCCESS, AiEnum::RUN_STATUS_FAIL])
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
             ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
             ->when(!empty($param['agent_id']), fn($q) => $q->where('agent_id', (int)$param['agent_id']))
-            ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', (int)$param['user_id']));
+            ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', (int)$param['user_id']))
+            ->first();
 
         return [
-            'total_runs' => (clone $query)->count(),
-            'success_runs' => (clone $query)->where('run_status', AiEnum::RUN_STATUS_SUCCESS)->count(),
-            'fail_runs' => (clone $query)->where('run_status', AiEnum::RUN_STATUS_FAIL)->count(),
-            'total_tokens' => (clone $query)->sum('total_tokens') ?? 0,
-            'total_prompt_tokens' => (clone $query)->sum('prompt_tokens') ?? 0,
-            'total_completion_tokens' => (clone $query)->sum('completion_tokens') ?? 0,
-            'avg_latency_ms' => (clone $query)->avg('latency_ms'),
+            'total_runs' => (int)($row->total_runs ?? 0),
+            'success_runs' => (int)($row->success_runs ?? 0),
+            'fail_runs' => (int)($row->fail_runs ?? 0),
+            'total_tokens' => (int)($row->total_tokens ?? 0),
+            'total_prompt_tokens' => (int)($row->total_prompt_tokens ?? 0),
+            'total_completion_tokens' => (int)($row->total_completion_tokens ?? 0),
+            'avg_latency_ms' => $row->avg_latency_ms,
         ];
     }
 
@@ -162,6 +177,8 @@ class AiRunsDep extends BaseDep
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
             ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
+            ->when(!empty($param['agent_id']), fn($q) => $q->where('agent_id', (int)$param['agent_id']))
+            ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', (int)$param['user_id']))
             ->groupBy('date')
             ->orderBy('date', 'desc');
 
@@ -188,6 +205,8 @@ class AiRunsDep extends BaseDep
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
             ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
+            ->when(!empty($param['agent_id']), fn($q) => $q->where('agent_id', (int)$param['agent_id']))
+            ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', (int)$param['user_id']))
             ->groupBy('agent_id')
             ->orderByRaw('total_runs DESC');
 
@@ -214,6 +233,8 @@ class AiRunsDep extends BaseDep
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['date_start']), fn($q) => $q->where('created_at', '>=', $param['date_start'] . ' 00:00:00'))
             ->when(!empty($param['date_end']), fn($q) => $q->where('created_at', '<=', $param['date_end'] . ' 23:59:59'))
+            ->when(!empty($param['agent_id']), fn($q) => $q->where('agent_id', (int)$param['agent_id']))
+            ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', (int)$param['user_id']))
             ->groupBy('user_id')
             ->orderByRaw('total_runs DESC');
 
