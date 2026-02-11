@@ -13,16 +13,7 @@
  */
 
 use app\controller;
-use app\lib\Metrics;
 use Webman\Route;
-
-// 性能指标导出接口（不需要认证，供 Prometheus/监控系统采集）
-Route::get('/metrics', function () {
-    return response(Metrics::exportPrometheus(), 200, ['Content-Type' => 'text/plain']);
-});
-Route::get('/metrics/json', function () {
-    return json(Metrics::export());
-});
 
 // 兗底预检：拦截 /api/admin 下所有 OPTIONS，避免 404/无头导致预检失败
 Route::group('/api/admin', function () {

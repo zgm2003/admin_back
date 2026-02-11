@@ -4,7 +4,6 @@ namespace app\middleware;
 use Webman\MiddlewareInterface;
 use Webman\Http\Response;
 use Webman\Http\Request;
-use app\lib\Metrics;
 
 /**
  * TraceId 链路追踪中间件
@@ -31,15 +30,7 @@ class TraceId implements MiddlewareInterface
         // 计算耗时
         $duration = round((microtime(true) - $startTime) * 1000, 2);
         
-        // 收集 API 指标
-        Metrics::recordApi(
-            $request->path(),
-            $request->method(),
-            $response->getStatusCode(),
-            $duration
-        );
-        
-        // 在响应头中返回 trace_id，便于前端调试
+        // 在响应头中返回 trace_id 和耗时，便于前端调试
         $response->withHeader('X-Trace-Id', $traceId);
         $response->withHeader('X-Response-Time', $duration . 'ms');
         
