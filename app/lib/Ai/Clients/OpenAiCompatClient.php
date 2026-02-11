@@ -135,6 +135,7 @@ class OpenAiCompatClient implements AiClientInterface
         $usage = ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null];
         $requestId = null;
         $canceled = false;
+        $sseBuffer = ''; // 缓冲不完整的 SSE 行
 
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -146,62 +147,60 @@ class OpenAiCompatClient implements AiClientInterface
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/json',
-                'Authorization: Bearer ' . $apiKey,
+                "Authorization: Bearer {$apiKey}",
                 'Accept: text/event-stream',
             ],
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$fullContent, &$usage, &$requestId, &$canceled, $onChunk, $shouldStop) {
+            CURLOPT_WRITEFUNCTION => function ($ch, $data) use (&$fullContent, &$usage, &$requestId, &$canceled, &$sseBuffer, $onChunk, $shouldStop) {
                 // 检查是否应该停止
                 if ($shouldStop && $shouldStop()) {
                     $canceled = true;
                     return 0; // 返回 0 中断 curl
                 }
-                
-                // 解析 SSE 数据
-                $lines = explode("\n", $data);
+
+                // 将新数据追加到缓冲区，按完整行处理
+                $sseBuffer .= $data;
+                $lines = explode("\n", $sseBuffer);
+                // 最后一个元素可能是不完整的行，保留到下次
+                $sseBuffer = array_pop($lines);
+
                 foreach ($lines as $line) {
                     $line = trim($line);
-                    if (empty($line)) {
+                    if ($line === '' || str_starts_with($line, ':')) {
                         continue;
                     }
-                    // 跳过注释行
-                    if (str_starts_with($line, ':')) {
+                    if (!str_starts_with($line, 'data:')) {
                         continue;
                     }
-                    // 解析 data: 前缀
-                    if (str_starts_with($line, 'data:')) {
-                        $jsonStr = trim(substr($line, 5));
-                        if ($jsonStr === '[DONE]') {
-                            // 流结束
-                            continue;
-                        }
-                        $chunk = json_decode($jsonStr, true);
-                        if (!$chunk) {
-                            continue;
-                        }
-                        // 捕获 request_id
-                        if (isset($chunk['id']) && !$requestId) {
-                            $requestId = $chunk['id'];
-                        }
-                        // 捕获内容
-                        if (isset($chunk['choices'][0]['delta']['content'])) {
-                            $deltaContent = $chunk['choices'][0]['delta']['content'];
-                            $fullContent .= $deltaContent;
-                            // 回调通知前端
-                            $onChunk($deltaContent, $chunk);
-                        }
-                        // 捕获 usage（通常在最后一个 chunk）
-                        if (isset($chunk['usage'])) {
-                            $usage = [
-                                'prompt_tokens' => $chunk['usage']['prompt_tokens'] ?? null,
-                                'completion_tokens' => $chunk['usage']['completion_tokens'] ?? null,
-                                'total_tokens' => $chunk['usage']['total_tokens'] ?? null,
-                            ];
-                        }
+                    $jsonStr = trim(substr($line, 5));
+                    if ($jsonStr === '[DONE]') {
+                        continue;
+                    }
+                    $chunk = json_decode($jsonStr, true);
+                    if (!$chunk) {
+                        continue;
+                    }
+                    // 捕获 request_id
+                    if (isset($chunk['id']) && !$requestId) {
+                        $requestId = $chunk['id'];
+                    }
+                    // 捕获内容
+                    if (isset($chunk['choices'][0]['delta']['content'])) {
+                        $deltaContent = $chunk['choices'][0]['delta']['content'];
+                        $fullContent .= $deltaContent;
+                        $onChunk($deltaContent, $chunk);
+                    }
+                    // 捕获 usage（通常在最后一个 chunk）
+                    if (isset($chunk['usage'])) {
+                        $usage = [
+                            'prompt_tokens' => $chunk['usage']['prompt_tokens'] ?? null,
+                            'completion_tokens' => $chunk['usage']['completion_tokens'] ?? null,
+                            'total_tokens' => $chunk['usage']['total_tokens'] ?? null,
+                        ];
                     }
                 }
-                return strlen($data);
+                return \strlen($data);
             },
         ]);
 

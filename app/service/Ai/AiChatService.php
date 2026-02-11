@@ -85,22 +85,26 @@ class AiChatService
 
         // 历史消息
         $history = $this->messagesDep->getRecentByConversationId($conversationId, $maxHistory * 2);
-        foreach (array_reverse($history->toArray()) as $msg) {
+        foreach (\array_reverse($history->toArray()) as $msg) {
             $roleStr = AiEnum::$roleArr[$msg['role']] ?? null;
             if (!$roleStr) {
                 continue;
             }
 
-            // 从 meta_json 提取附件
+            // assistant 消息始终是纯文本，不需要多模态处理
+            if ($msg['role'] === AiEnum::ROLE_ASSISTANT) {
+                $messages[] = ['role' => $roleStr, 'content' => $msg['content'] ?? ''];
+                continue;
+            }
+
+            // user 消息：从 meta_json 提取附件，构建多模态内容
             $attachments = [];
             if (!empty($msg['meta_json'])) {
-                $metaJson = is_string($msg['meta_json']) ? json_decode($msg['meta_json'], true) : $msg['meta_json'];
+                $metaJson = \is_string($msg['meta_json']) ? json_decode($msg['meta_json'], true) : $msg['meta_json'];
                 $attachments = $metaJson['attachments'] ?? [];
             }
 
-            // 构建消息内容（支持多模态）
             $content = $this->buildMultimodalContent($msg['content'] ?? '', $attachments, $modalities);
-
             $messages[] = ['role' => $roleStr, 'content' => $content];
         }
 
@@ -151,8 +155,8 @@ class AiChatService
             return $text;
         }
 
-        // 过滤出图片类型的附件
-        $imageAttachments = array_filter($attachments, fn($a) => ($a['type'] ?? '') === 'image');
+        // 过滤出图片类型的附件，array_values 重置索引避免 json_encode 输出对象
+        $imageAttachments = \array_values(\array_filter($attachments, fn($a) => ($a['type'] ?? '') === 'image'));
         if (empty($imageAttachments)) {
             return $text;
         }
@@ -160,17 +164,26 @@ class AiChatService
         // 支持图片：构建多模态格式
         $content = [];
 
-        // 添加文本
+        // 文本部分必须在前
         if (!empty($text)) {
             $content[] = ['type' => 'text', 'text' => $text];
         }
 
-        // 添加图片
+        // 添加图片（校验 url 非空）
         foreach ($imageAttachments as $attachment) {
+            $url = $attachment['url'] ?? '';
+            if (empty($url)) {
+                continue;
+            }
             $content[] = [
                 'type' => 'image_url',
-                'image_url' => ['url' => $attachment['url']]
+                'image_url' => ['url' => $url],
             ];
+        }
+
+        // 如果过滤后没有有效图片，退回纯文本
+        if (\count($content) <= 1 && !empty($text)) {
+            return $text;
         }
 
         return $content;

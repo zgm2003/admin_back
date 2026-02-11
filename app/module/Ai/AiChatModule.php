@@ -13,7 +13,6 @@ use app\enum\AiEnum;
 use app\module\BaseModule;
 use app\service\Ai\AiChatService;
 use app\validate\Ai\AiChatValidate;
-use RuntimeException;
 use Webman\RedisQueue\Client as RedisQueue;
 use Webman\Event\Event;
 
@@ -172,7 +171,7 @@ class AiChatModule extends BaseModule
         $errorMsg = null;
         $llmStepId = null;
         $llmStart = microtime(true);
-        $streamContent = '';
+        $assistantMessageId = null;
 
         try {
             $llmStepId = $this->stepsDep->add([
@@ -186,9 +185,8 @@ class AiChatModule extends BaseModule
 
             $result = $this->chatService->chatStream(
                 $ctx['client'], $ctx['payload'], $ctx['config'],
-                function ($delta) use ($onChunk, &$streamContent) {
+                function ($delta) use ($onChunk) {
                     $onChunk('content', ['delta' => $delta]);
-                    $streamContent .= $delta;
                 },
                 function () use ($runId) {
                     // 检查是否已取消（通过数据库状态）
@@ -266,14 +264,20 @@ class AiChatModule extends BaseModule
         }
 
         if ($errorMsg !== null) {
-            self::throw('AI 调用失败: ' . $errorMsg);
+            $onChunk('error', ['msg' => "AI 调用失败: {$errorMsg}"]);
+            return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'error' => true]);
         }
 
         if ($ctx['isNew']) {
             $this->autoGenerateTitle($ctx, $param['content'], $userId);
         }
 
-        $onChunk('done', ['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'user_message_id' => $ctx['userMessageId'], 'assistant_message_id' => $assistantMessageId]);
+        $onChunk('done', [
+            'conversation_id' => $ctx['conversationId'],
+            'run_id' => $runId,
+            'user_message_id' => $ctx['userMessageId'],
+            'assistant_message_id' => $assistantMessageId,
+        ]);
 
         return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId]);
     }
