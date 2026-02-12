@@ -416,9 +416,29 @@ class ChatModule extends BaseModule
 
         $participants = $this->participantDep->getActiveParticipantsWithProfile($conversationId);
 
+        // 批量查询在线状态
+        $onlineMap = [];
+        $memberUserIds = $participants->pluck('user_id')->toArray();
+        if (!empty($memberUserIds)) {
+            try {
+                Gateway::$registerAddress = ChatService::GATEWAY_REGISTER_ADDRESS;
+                foreach ($memberUserIds as $uid) {
+                    $onlineMap[$uid] = Gateway::isUidOnline((string)$uid);
+                }
+            } catch (\Throwable $e) {
+                // Gateway 不可用时全部默认离线
+            }
+        }
+
+        $participantList = $participants->map(function ($p) use ($onlineMap) {
+            $row = $p->toArray();
+            $row['is_online'] = $onlineMap[$p->user_id] ?? false;
+            return $row;
+        })->toArray();
+
         return self::success([
             'conversation'  => $conversation->toArray(),
-            'participants'  => $participants->toArray(),
+            'participants'  => $participantList,
         ]);
     }
 
