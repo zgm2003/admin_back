@@ -28,6 +28,7 @@ class AiConversationsDep extends BaseDep
             ->where('user_id', $param['user_id'])
             ->when(isset($param['status']), fn($q) => $q->where('status', (int)$param['status']))
             ->when(!empty($param['agent_id']), fn($q) => $q->where('agent_id', (int)$param['agent_id']))
+            ->when(!empty($param['title']), fn($q) => $q->where('title', 'like', '%' . $param['title'] . '%'))
             ->orderByRaw('last_message_at IS NULL ASC')
             ->orderBy('last_message_at', 'desc')
             ->orderBy('id', 'desc')

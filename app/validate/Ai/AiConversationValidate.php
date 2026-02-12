@@ -14,6 +14,7 @@ class AiConversationValidate
             'current_page' => v::optional(v::intVal()->positive()),
             'agent_id'     => v::optional(v::intVal()->positive()),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr))),
+            'title'        => v::optional(v::stringType()->length(1, 100)),
         ];
     }
 
