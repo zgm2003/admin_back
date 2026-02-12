@@ -6,6 +6,7 @@ use app\dep\Ai\AiMessagesDep;
 use app\dep\Ai\AiConversationsDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
+use app\enum\AiEnum;
 use app\validate\Ai\AiMessageValidate;
 use RuntimeException;
 
@@ -73,6 +74,32 @@ class AiMessageModule extends BaseModule
 
         $this->dep->delete($ids);
         return self::success();
+    }
+
+    /**
+     * 编辑消息内容并删除后续消息（用于编辑后重新生成）
+     */
+    public function editContent($request): array
+    {
+        $param = $this->validate($request, AiMessageValidate::editContent());
+
+        $message = $this->dep->get((int)$param['id']);
+        self::throwNotFound($message, '消息不存在');
+
+        // 校验消息属于当前用户的会话
+        $conversation = $this->conversationsDep->getByUser($message->conversation_id, $request->userId);
+        self::throwIf(!$conversation, '无权操作');
+
+        // 只允许编辑用户消息
+        self::throwIf($message->role !== AiEnum::ROLE_USER, '只能编辑用户消息');
+
+        // 更新消息内容
+        $this->dep->updateContent((int)$param['id'], $param['content']);
+
+        // 软删除该消息之后的所有消息
+        $deletedCount = $this->dep->softDeleteAfter($message->conversation_id, (int)$param['id']);
+
+        return self::success(['deleted_count' => $deletedCount]);
     }
 
     /**

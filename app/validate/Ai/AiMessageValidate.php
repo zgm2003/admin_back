@@ -43,6 +43,14 @@ class AiMessageValidate
         ];
     }
 
+    public static function editContent(): array
+    {
+        return [
+            'id'      => v::intVal()->positive()->setName('ID'),
+            'content' => v::stringType()->notEmpty()->length(1, 10000)->setName('消息内容'),
+        ];
+    }
+
     public static function feedback(): array
     {
         return [
