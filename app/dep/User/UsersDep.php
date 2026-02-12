@@ -69,6 +69,36 @@ class UsersDep extends BaseDep
     }
 
     /**
+     * 根据 ID 查询用户（含 avatar），用于聊天等需要展示头像的场景
+     */
+    public function findWithProfile(int $id)
+    {
+        return $this->model
+            ->from('users')
+            ->leftJoin('user_profiles', 'user_profiles.user_id', '=', 'users.id')
+            ->where('users.id', $id)
+            ->select(['users.id', 'users.username', 'user_profiles.avatar'])
+            ->first();
+    }
+
+    /**
+     * 批量查询用户（含 avatar），返回 id => row 的 Collection
+     */
+    public function getMapWithProfile(array $ids)
+    {
+        if (empty($ids)) {
+            return collect();
+        }
+        return $this->model
+            ->from('users')
+            ->leftJoin('user_profiles', 'user_profiles.user_id', '=', 'users.id')
+            ->whereIn('users.id', array_unique($ids))
+            ->select(['users.id', 'users.username', 'user_profiles.avatar'])
+            ->get()
+            ->keyBy('id');
+    }
+
+    /**
      * 获取用户总数
      */
     public function countAll(): int

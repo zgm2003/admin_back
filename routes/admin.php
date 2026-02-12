@@ -247,6 +247,27 @@ Route::group('/api/admin', function () {
     Route::post('/NotificationTask/add', [controller\System\NotificationTaskController::class, 'add']);
     Route::post('/NotificationTask/del', [controller\System\NotificationTaskController::class, 'del']);
     Route::post('/NotificationTask/cancel', [controller\System\NotificationTaskController::class, 'cancel']);
+
+    // 聊天管理
+    Route::post('/Chat/conversationList', [controller\Chat\ChatController::class, 'conversationList']);
+    Route::post('/Chat/createPrivate', [controller\Chat\ChatController::class, 'createPrivate']);
+    Route::post('/Chat/createGroup', [controller\Chat\ChatController::class, 'createGroup']);
+    Route::post('/Chat/deleteConversation', [controller\Chat\ChatController::class, 'deleteConversation']);
+    Route::post('/Chat/groupInfo', [controller\Chat\ChatController::class, 'groupInfo']);
+    Route::post('/Chat/groupUpdate', [controller\Chat\ChatController::class, 'groupUpdate']);
+    Route::post('/Chat/groupInvite', [controller\Chat\ChatController::class, 'groupInvite']);
+    Route::post('/Chat/groupKick', [controller\Chat\ChatController::class, 'groupKick']);
+    Route::post('/Chat/groupLeave', [controller\Chat\ChatController::class, 'groupLeave']);
+    Route::post('/Chat/groupTransfer', [controller\Chat\ChatController::class, 'groupTransfer']);
+    Route::post('/Chat/sendMessage', [controller\Chat\ChatController::class, 'sendMessage']);
+    Route::post('/Chat/messageList', [controller\Chat\ChatController::class, 'messageList']);
+    Route::post('/Chat/markRead', [controller\Chat\ChatController::class, 'markRead']);
+    Route::post('/Chat/contactList', [controller\Chat\ChatController::class, 'contactList']);
+    Route::post('/Chat/contactAdd', [controller\Chat\ChatController::class, 'contactAdd']);
+    Route::post('/Chat/contactConfirm', [controller\Chat\ChatController::class, 'contactConfirm']);
+    Route::post('/Chat/contactDelete', [controller\Chat\ChatController::class, 'contactDelete']);
+    Route::post('/Chat/typing', [controller\Chat\ChatController::class, 'typing']);
+    Route::post('/Chat/onlineStatus', [controller\Chat\ChatController::class, 'onlineStatus']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,
