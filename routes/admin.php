@@ -266,6 +266,7 @@ Route::group('/api/admin', function () {
     Route::post('/Chat/contactAdd', [controller\Chat\ChatController::class, 'contactAdd']);
     Route::post('/Chat/contactConfirm', [controller\Chat\ChatController::class, 'contactConfirm']);
     Route::post('/Chat/contactDelete', [controller\Chat\ChatController::class, 'contactDelete']);
+    Route::post('/Chat/togglePin', [controller\Chat\ChatController::class, 'togglePin']);
     Route::post('/Chat/typing', [controller\Chat\ChatController::class, 'typing']);
     Route::post('/Chat/onlineStatus', [controller\Chat\ChatController::class, 'onlineStatus']);
 })->middleware([

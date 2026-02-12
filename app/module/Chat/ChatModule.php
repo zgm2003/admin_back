@@ -48,6 +48,9 @@ class ChatModule extends BaseModule
         // 校验目标用户存在
         self::throwIf(!$this->usersDep->find($targetUserId), '用户不存在');
 
+        // 校验必须是已确认的联系人才能私聊（对标微信逻辑）
+        self::throwIf(!$this->contactDep->isConfirmedContact($currentUserId, $targetUserId), '对方不是你的联系人，请先添加联系人');
+
         // 幂等：查找已有私聊会话
         $existing = $this->conversationDep->findPrivateConversation($currentUserId, $targetUserId);
         if ($existing) {
@@ -780,6 +783,27 @@ class ChatModule extends BaseModule
      * 正在输入通知（仅私聊）
      * 向私聊会话中对方推送 chat_typing 消息
      */
+    /**
+     * 切换会话置顶
+     */
+    public function togglePin($request): array
+    {
+        $param = $this->validate($request, [
+            'conversation_id' => \Respect\Validation\Validator::intVal()->positive()->setName('会话ID'),
+        ]);
+        $currentUserId = $request->userId;
+        $conversationId = (int)$param['conversation_id'];
+
+        self::throwIf(
+            !$this->participantDep->isParticipant($conversationId, $currentUserId),
+            '会话不存在'
+        );
+
+        $this->participantDep->togglePin($conversationId, $currentUserId);
+
+        return self::success();
+    }
+
     public function typing($request): array
     {
         $param = $this->validate($request, ChatValidate::typing());

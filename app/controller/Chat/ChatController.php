@@ -59,6 +59,9 @@ class ChatController extends Controller
     /** 删除联系人 */
     public function contactDelete(Request $request) { return $this->run([ChatModule::class, 'contactDelete'], $request); }
 
+    /** 切换会话置顶 */
+    public function togglePin(Request $request) { return $this->run([ChatModule::class, 'togglePin'], $request); }
+
     /** 正在输入通知 */
     public function typing(Request $request) { return $this->run([ChatModule::class, 'typing'], $request); }
 

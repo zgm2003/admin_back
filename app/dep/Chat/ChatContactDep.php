@@ -129,6 +129,19 @@ class ChatContactDep extends BaseDep
     }
 
     /**
+     * 检查两个用户是否为已确认的联系人
+     */
+    public function isConfirmedContact(int $userIdA, int $userIdB): bool
+    {
+        return $this->query()
+            ->where('user_id', $userIdA)
+            ->where('contact_user_id', $userIdB)
+            ->where('status', ChatEnum::CONTACT_CONFIRMED)
+            ->where('is_del', CommonEnum::NO)
+            ->exists();
+    }
+
+    /**
      * 检查联系人关系是否存在（任一方向，未删除）
      */
     public function contactExists(int $userIdA, int $userIdB): bool
@@ -144,6 +157,7 @@ class ChatContactDep extends BaseDep
             ->where('is_del', CommonEnum::NO)
             ->exists();
     }
+
 
     /**
      * 检查是否存在已软删除的双向联系人记录

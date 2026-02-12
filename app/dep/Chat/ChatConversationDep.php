@@ -79,7 +79,8 @@ class ChatConversationDep extends BaseDep
             })
             ->where('p.user_id', $userId)
             ->where('c.is_del', CommonEnum::NO)
-            ->select('c.*', 'p.role', 'p.last_read_message_id')
+            ->select('c.*', 'p.role', 'p.last_read_message_id', 'p.is_pinned')
+            ->orderByRaw('p.is_pinned = 1 DESC')
             ->orderBy('c.last_message_at', 'desc')
             ->get();
     }

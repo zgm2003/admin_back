@@ -170,6 +170,25 @@ class ChatParticipantDep extends BaseDep
     }
 
     /**
+     * 切换会话置顶状态
+     */
+    public function togglePin(int $conversationId, int $userId): int
+    {
+        $current = $this->query()
+            ->where('conversation_id', $conversationId)
+            ->where('user_id', $userId)
+            ->where('is_del', CommonEnum::NO)
+            ->value('is_pinned');
+
+        $newVal = ($current == CommonEnum::YES) ? CommonEnum::NO : CommonEnum::YES;
+
+        return $this->query()
+            ->where('conversation_id', $conversationId)
+            ->where('user_id', $userId)
+            ->update(['is_pinned' => $newVal]);
+    }
+
+    /**
      * 批量查询私聊会话中对方用户的信息（username、avatar）
      * 返回 conversationId => ['username' => ..., 'avatar' => ...] 的映射
      *
