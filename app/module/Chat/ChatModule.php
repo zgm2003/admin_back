@@ -11,6 +11,8 @@ use app\enum\ChatEnum;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\Chat\ChatService;
+use app\service\System\NotificationService;
+use app\enum\NotificationEnum;
 use app\validate\Chat\ChatValidate;
 use GatewayWorker\Lib\Gateway;
 
@@ -508,16 +510,27 @@ class ChatModule extends BaseModule
 
         self::throwIf(empty($newUserIds), '所选用户已在群聊中');
 
-        // 添加新参与者
-        $participants = [];
-        foreach ($newUserIds as $uid) {
-            $participants[] = [
-                'conversation_id' => $conversationId,
-                'user_id'         => $uid,
-                'role'            => ChatEnum::ROLE_MEMBER,
-            ];
+        // 区分：已有记录但非活跃（KICKED/LEFT）的用户 vs 完全新的用户
+        $inactiveUserIds = $this->participantDep->getInactiveUserIds($conversationId, $newUserIds);
+        $trulyNewUserIds = array_values(array_diff($newUserIds, $inactiveUserIds));
+
+        // 恢复非活跃参与者
+        if (!empty($inactiveUserIds)) {
+            $this->participantDep->reactivateBatch($conversationId, $inactiveUserIds);
         }
-        $this->participantDep->addBatch($participants);
+
+        // 添加全新参与者
+        if (!empty($trulyNewUserIds)) {
+            $participants = [];
+            foreach ($trulyNewUserIds as $uid) {
+                $participants[] = [
+                    'conversation_id' => $conversationId,
+                    'user_id'         => $uid,
+                    'role'            => ChatEnum::ROLE_MEMBER,
+                ];
+            }
+            $this->participantDep->addBatch($participants);
+        }
 
         // 更新成员数量
         $this->conversationDep->update($conversationId, [
@@ -530,6 +543,22 @@ class ChatModule extends BaseModule
         $newUsers = $this->usersDep->getMapWithProfile($newUserIds);
         $newUserNames = $newUsers->pluck('username')->implode('、') ?: implode('、', $newUserIds);
         $this->sendSystemMessage($conversationId, "{$inviterName} 邀请了 {$newUserNames} 加入群聊");
+
+        // 推送群更新通知给所有活跃参与者（含新成员）
+        $allParticipants = $this->participantDep->getActiveParticipants($conversationId);
+        $allParticipantUserIds = $allParticipants->pluck('user_id')->toArray();
+        ChatService::pushGroupUpdate($conversationId, $allParticipantUserIds, ['action' => 'invite', 'user_ids' => $newUserIds]);
+
+        // 系统通知：通知每个被邀请的新成员
+        $groupName = $conversation->name ?: '未命名群聊';
+        foreach ($newUserIds as $uid) {
+            NotificationService::send(
+                $uid,
+                '群聊邀请',
+                "{$inviterName} 邀请你加入群聊「{$groupName}」",
+                ['link' => '/chat']
+            );
+        }
 
         return self::success();
     }
@@ -570,6 +599,25 @@ class ChatModule extends BaseModule
         $targetUser = $this->usersDep->findWithProfile($targetUserId);
         $targetName = $targetUser->username ?? (string)$targetUserId;
         $this->sendSystemMessage($conversationId, "{$targetName} 被移出群聊");
+
+        // 推送群更新通知给剩余参与者
+        $remainingParticipants = $this->participantDep->getActiveParticipants($conversationId);
+        $remainingUserIds = $remainingParticipants->pluck('user_id')->toArray();
+        ChatService::pushGroupUpdate($conversationId, $remainingUserIds, ['action' => 'kick', 'user_id' => $targetUserId]);
+
+        // 也通知被踢的人（让其前端清理状态）
+        ChatService::pushGroupUpdate($conversationId, [$targetUserId], ['action' => 'kicked', 'user_id' => $targetUserId]);
+
+        // 系统通知：通知被踢的人
+        $groupName = $conversation->name ?: '未命名群聊';
+        NotificationService::sendWarning(
+            $targetUserId,
+            '你已被移出群聊',
+            "你已被移出群聊「{$groupName}」",
+            [
+                'level' => NotificationEnum::LEVEL_URGENT,
+            ]
+        );
 
         return self::success();
     }
@@ -645,6 +693,23 @@ class ChatModule extends BaseModule
         $targetName = $targetUser->username ?? (string)$targetUserId;
         $this->sendSystemMessage($conversationId, "群主已转让给 {$targetName}");
 
+        // 推送群更新通知给所有参与者
+        $allParticipants = $this->participantDep->getActiveParticipants($conversationId);
+        $allParticipantUserIds = $allParticipants->pluck('user_id')->toArray();
+        ChatService::pushGroupUpdate($conversationId, $allParticipantUserIds, ['action' => 'transfer', 'new_owner_id' => $targetUserId]);
+
+        // 系统通知：通知新群主
+        $groupName = $conversation->name ?: '未命名群聊';
+        NotificationService::sendSuccess(
+            $targetUserId,
+            '你已成为群主',
+            "你已成为群聊「{$groupName}」的群主",
+            [
+                'level' => NotificationEnum::LEVEL_URGENT,
+                'link' => '/chat',
+            ]
+        );
+
         return self::success();
     }
 
@@ -682,6 +747,16 @@ class ChatModule extends BaseModule
         // 推送好友请求通知给对方
         ChatService::pushContactRequest($currentUserId, $targetUserId);
 
+        // 系统通知持久化
+        $currentUser = $this->usersDep->findWithProfile($currentUserId);
+        $currentUserName = $currentUser->username ?? (string)$currentUserId;
+        NotificationService::send(
+            $targetUserId,
+            '新的好友请求',
+            "{$currentUserName} 请求添加你为好友",
+            ['link' => '/chat']
+        );
+
         return self::success();
     }
 
@@ -708,12 +783,25 @@ class ChatModule extends BaseModule
         // 通知发起方：好友请求已被确认
         ChatService::pushContactConfirmed($currentUserId, $fromUserId);
 
+        // 系统通知持久化
+        $currentUser = $this->usersDep->findWithProfile($currentUserId);
+        $currentUserName = $currentUser->username ?? (string)$currentUserId;
+        NotificationService::sendSuccess(
+            $fromUserId,
+            '好友请求已通过',
+            "{$currentUserName} 接受了你的好友请求",
+            [
+                'link' => '/chat',
+            ]
+        );
+
         return self::success();
     }
 
     /**
      * 删除联系人
      * 软删除双向的 Contact 记录
+     * 如果是已确认的联系人，同时清理私聊会话并通知对方
      */
     public function contactDelete($request): array
     {
@@ -727,18 +815,52 @@ class ChatModule extends BaseModule
             '联系人不存在'
         );
 
-        // 查询当前用户侧的记录，判断是否为拒绝待确认请求
+        // 查询当前用户侧的记录，判断场景
         $myRecord = $this->contactDep->getContact($currentUserId, $targetUserId);
+        $isConfirmed = $myRecord && (int)$myRecord['status'] === ChatEnum::CONTACT_CONFIRMED;
         $isPendingReject = $myRecord
             && (int)$myRecord['status'] === ChatEnum::CONTACT_PENDING
             && (int)$myRecord['is_initiator'] === 0;
 
-        // 双向软删除
+        // 双向软删除联系人
         $this->contactDep->softDeleteBidirectional($currentUserId, $targetUserId);
 
-        // 如果是拒绝待确认请求，通知发起方刷新列表
+        $currentUser = $this->usersDep->findWithProfile($currentUserId);
+        $currentUserName = $currentUser->username ?? (string)$currentUserId;
+
         if ($isPendingReject) {
+            // 场景1：拒绝待确认请求
             ChatService::pushContactRejected($currentUserId, $targetUserId);
+
+            NotificationService::sendWarning(
+                $targetUserId,
+                '好友请求被拒绝',
+                "{$currentUserName} 拒绝了你的好友请求"
+            );
+        } elseif ($isConfirmed) {
+            // 场景2：删除已确认的好友 → 同时清理私聊会话
+            $privateConv = $this->conversationDep->findPrivateConversationAny($currentUserId, $targetUserId);
+            $conversationId = null;
+
+            if ($privateConv) {
+                $conversationId = $privateConv->id;
+                // 双方参与者都设为 LEFT，会话从双方列表消失
+                $this->participantDep->updateStatus($conversationId, $currentUserId, ChatEnum::PARTICIPANT_LEFT);
+                $this->participantDep->updateStatus($conversationId, $targetUserId, ChatEnum::PARTICIPANT_LEFT);
+                // 清除双方的未读计数
+                ChatService::deleteUnread($currentUserId, $conversationId);
+                ChatService::deleteUnread($targetUserId, $conversationId);
+            }
+
+            // WebSocket 实时通知对方：联系人被删除 + 会话需清理
+            ChatService::pushContactDeleted($currentUserId, $targetUserId, $conversationId);
+
+            // 系统通知持久化
+            NotificationService::sendWarning(
+                $targetUserId,
+                '联系人已被删除',
+                "{$currentUserName} 将你从联系人中移除"
+            );
         }
 
         return self::success();

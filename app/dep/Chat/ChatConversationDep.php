@@ -42,6 +42,28 @@ class ChatConversationDep extends BaseDep
     }
 
     /**
+     * 查找两人之间的私聊会话（不限参与者状态）
+     * 用于删除联系人时清理关联的私聊会话
+     */
+    public function findPrivateConversationAny(int $userIdA, int $userIdB)
+    {
+        return $this->query()
+            ->from('chat_conversations as c')
+            ->join('chat_participants as pa', function ($join) use ($userIdA) {
+                $join->on('pa.conversation_id', '=', 'c.id')
+                    ->where('pa.user_id', $userIdA);
+            })
+            ->join('chat_participants as pb', function ($join) use ($userIdB) {
+                $join->on('pb.conversation_id', '=', 'c.id')
+                    ->where('pb.user_id', $userIdB);
+            })
+            ->where('c.type', ChatEnum::CONVERSATION_PRIVATE)
+            ->where('c.is_del', CommonEnum::NO)
+            ->select('c.*')
+            ->first();
+    }
+
+    /**
      * 创建会话，返回新会话 ID
      */
     public function createConversation(array $data): int

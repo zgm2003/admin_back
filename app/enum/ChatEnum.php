@@ -37,6 +37,7 @@ class ChatEnum
     const WS_CONTACT_REQUEST = 'chat_contact_request';
     const WS_CONTACT_REJECTED = 'chat_contact_rejected';
     const WS_CONTACT_CONFIRMED = 'chat_contact_confirmed';
+    const WS_CONTACT_DELETED = 'chat_contact_deleted';
 
     // 会话类型映射
     public static $conversationTypeArr = [

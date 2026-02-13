@@ -226,5 +226,49 @@ class ChatParticipantDep extends BaseDep
         return $map;
     }
 
+    /**
+     * 批量恢复非活跃参与者（KICKED/LEFT → ACTIVE）
+     *
+     * @param int $conversationId
+     * @param array $userIds
+     * @return int 恢复的行数
+     */
+    public function reactivateBatch(int $conversationId, array $userIds): int
+    {
+        if (empty($userIds)) {
+            return 0;
+        }
+
+        return $this->query()
+            ->where('conversation_id', $conversationId)
+            ->whereIn('user_id', $userIds)
+            ->where('status', '!=', ChatEnum::PARTICIPANT_ACTIVE)
+            ->update([
+                'status' => ChatEnum::PARTICIPANT_ACTIVE,
+                'role' => ChatEnum::ROLE_MEMBER,
+                'is_del' => CommonEnum::NO,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+    }
+
+    /**
+     * 获取会话中已存在但非活跃的参与者 user_id 列表（KICKED/LEFT）
+     *
+     * @return array
+     */
+    public function getInactiveUserIds(int $conversationId, array $userIds): array
+    {
+        if (empty($userIds)) {
+            return [];
+        }
+
+        return $this->query()
+            ->where('conversation_id', $conversationId)
+            ->whereIn('user_id', $userIds)
+            ->where('status', '!=', ChatEnum::PARTICIPANT_ACTIVE)
+            ->pluck('user_id')
+            ->toArray();
+    }
+
 
 }

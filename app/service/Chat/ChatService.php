@@ -266,6 +266,26 @@ class ChatService
     }
 
     /**
+     * 推送联系人被删除通知
+     *
+     * @param int $deletedByUserId 执行删除的用户ID
+     * @param int $targetUserId 被删除的用户ID
+     * @param int|null $conversationId 关联的私聊会话ID（如有）
+     */
+    public static function pushContactDeleted(int $deletedByUserId, int $targetUserId, ?int $conversationId = null): void
+    {
+        $payload = json_encode([
+            'type' => ChatEnum::WS_CONTACT_DELETED,
+            'data' => [
+                'deleted_by' => $deletedByUserId,
+                'conversation_id' => $conversationId,
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+
+        self::safeSendToUid($targetUserId, $payload);
+    }
+
+    /**
      * 安全发送 WebSocket 消息到指定用户
      * 推送失败仅记录警告日志，不抛出异常
      *
