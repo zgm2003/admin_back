@@ -19,6 +19,9 @@ Route::group('/api/app', function () {
     // WebSocket 绑定
     Route::post('/WebSocket/bind', [controller\System\WebSocketController::class, 'bind']);
     
+    // 版本检查
+    Route::post('/Version/check', [controller\App\AppController::class, 'versionCheck']);
+
     // 测试按钮权限
     Route::post('/test', [controller\App\AppController::class, 'test']);
 
