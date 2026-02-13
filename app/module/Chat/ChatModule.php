@@ -362,8 +362,9 @@ class ChatModule extends BaseModule
 
     /**
      * 发送系统消息并更新会话 last_message
+     * @return array [messageId, participantUserIds] 消息ID和活跃参与者ID列表
      */
-    private function sendSystemMessage(int $conversationId, string $content): int
+    private function sendSystemMessage(int $conversationId, string $content): array
     {
         $now = date('Y-m-d H:i:s');
         $messageId = $this->messageDep->addMessage([
@@ -393,7 +394,7 @@ class ChatModule extends BaseModule
 
         ChatService::pushMessage($conversationId, $participantUserIds, $messageData, 0);
 
-        return $messageId;
+        return [$messageId, $participantUserIds];
     }
 
     /**
@@ -542,11 +543,7 @@ class ChatModule extends BaseModule
         $inviterName = $inviter->username ?? (string)$currentUserId;
         $newUsers = $this->usersDep->getMapWithProfile($newUserIds);
         $newUserNames = $newUsers->pluck('username')->implode('、') ?: implode('、', $newUserIds);
-        $this->sendSystemMessage($conversationId, "{$inviterName} 邀请了 {$newUserNames} 加入群聊");
-
-        // 推送群更新通知给所有活跃参与者（含新成员）
-        $allParticipants = $this->participantDep->getActiveParticipants($conversationId);
-        $allParticipantUserIds = $allParticipants->pluck('user_id')->toArray();
+        [, $allParticipantUserIds] = $this->sendSystemMessage($conversationId, "{$inviterName} 邀请了 {$newUserNames} 加入群聊");
         ChatService::pushGroupUpdate($conversationId, $allParticipantUserIds, ['action' => 'invite', 'user_ids' => $newUserIds]);
 
         // 系统通知：通知每个被邀请的新成员
@@ -598,11 +595,7 @@ class ChatModule extends BaseModule
         // 发送系统消息
         $targetUser = $this->usersDep->findWithProfile($targetUserId);
         $targetName = $targetUser->username ?? (string)$targetUserId;
-        $this->sendSystemMessage($conversationId, "{$targetName} 被移出群聊");
-
-        // 推送群更新通知给剩余参与者
-        $remainingParticipants = $this->participantDep->getActiveParticipants($conversationId);
-        $remainingUserIds = $remainingParticipants->pluck('user_id')->toArray();
+        [, $remainingUserIds] = $this->sendSystemMessage($conversationId, "{$targetName} 被移出群聊");
         ChatService::pushGroupUpdate($conversationId, $remainingUserIds, ['action' => 'kick', 'user_id' => $targetUserId]);
 
         // 也通知被踢的人（让其前端清理状态）
@@ -691,11 +684,9 @@ class ChatModule extends BaseModule
         // 发送系统消息
         $targetUser = $this->usersDep->findWithProfile($targetUserId);
         $targetName = $targetUser->username ?? (string)$targetUserId;
-        $this->sendSystemMessage($conversationId, "群主已转让给 {$targetName}");
+        [, $allParticipantUserIds] = $this->sendSystemMessage($conversationId, "群主已转让给 {$targetName}");
 
         // 推送群更新通知给所有参与者
-        $allParticipants = $this->participantDep->getActiveParticipants($conversationId);
-        $allParticipantUserIds = $allParticipants->pluck('user_id')->toArray();
         ChatService::pushGroupUpdate($conversationId, $allParticipantUserIds, ['action' => 'transfer', 'new_owner_id' => $targetUserId]);
 
         // 系统通知：通知新群主
