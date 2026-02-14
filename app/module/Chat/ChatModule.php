@@ -375,12 +375,21 @@ class ChatModule extends BaseModule
             // 撤回自己的消息
             if ($isGroupChat) {
                 // 群聊:需要检查角色和时间限制
-                $currentParticipant = $this->participantDep->getParticipant($message->conversation_id, $currentUserId);
-                self::throwNotFound($currentParticipant, '你不在群聊中');
-                self::throwIf($currentParticipant->status !== ChatEnum::PARTICIPANT_ACTIVE, '你已退出群聊');
+                // 使用行锁防止并发时角色变更(如被取消管理员、被踢出群)
+                $needTimeLimitCheck = false;
+                
+                $this->withTransaction(function () use ($message, $currentUserId, &$needTimeLimitCheck) {
+                    $currentParticipant = $this->participantDep->getParticipantForUpdate($message->conversation_id, $currentUserId);
+                    self::throwNotFound($currentParticipant, '你不在群聊中');
+                    self::throwIf($currentParticipant->status !== ChatEnum::PARTICIPANT_ACTIVE, '你已退出群聊');
 
-                // 群主和管理员撤回自己的消息无时间限制,普通成员2分钟限制
-                if (!in_array($currentParticipant->role, [ChatEnum::ROLE_OWNER, ChatEnum::ROLE_ADMIN])) {
+                    // 群主和管理员撤回自己的消息无时间限制,普通成员2分钟限制
+                    if (!in_array($currentParticipant->role, [ChatEnum::ROLE_OWNER, ChatEnum::ROLE_ADMIN])) {
+                        $needTimeLimitCheck = true;
+                    }
+                });
+                
+                if ($needTimeLimitCheck) {
                     $createdTime = strtotime($message->created_at);
                     $now = time();
                     self::throwIf($now - $createdTime > 120, '消息发送超过2分钟，无法撤回');
