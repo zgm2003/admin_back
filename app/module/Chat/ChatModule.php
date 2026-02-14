@@ -93,7 +93,8 @@ class ChatModule extends BaseModule
         // 去重并排除创建者自身
         $memberIds = array_values(array_unique(array_filter($memberIds, fn($id) => $id !== $currentUserId)));
 
-        self::throwIf(\count($memberIds) < 2, '群聊至少需要2名成员');
+        // 至少需要1名成员（加上创建者共2人）
+        self::throwIf(\count($memberIds) < 1, '群聊至少需要选择1名好友');
 
         // 校验用户是否真实存在
         $existingUsers = $this->usersDep->getMapWithProfile($memberIds);
