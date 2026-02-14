@@ -507,28 +507,28 @@ class ChatModule extends BaseModule
         $inactiveUserIds = $this->participantDep->getInactiveUserIds($conversationId, $newUserIds);
         $trulyNewUserIds = array_values(array_diff($newUserIds, $inactiveUserIds));
 
-        // 恢复非活跃参与者
-        if (!empty($inactiveUserIds)) {
-            $this->participantDep->reactivateBatch($conversationId, $inactiveUserIds);
-        }
-
-        // 添加全新参与者
-        if (!empty($trulyNewUserIds)) {
-            $participants = [];
-            foreach ($trulyNewUserIds as $uid) {
-                $participants[] = [
-                    'conversation_id' => $conversationId,
-                    'user_id'         => $uid,
-                    'role'            => ChatEnum::ROLE_MEMBER,
-                ];
+        // 事务：恢复参与者 + 添加参与者 + 更新成员数量
+        $this->withTransaction(function () use ($conversationId, $inactiveUserIds, $trulyNewUserIds, $newUserIds, $conversation) {
+            if (!empty($inactiveUserIds)) {
+                $this->participantDep->reactivateBatch($conversationId, $inactiveUserIds);
             }
-            $this->participantDep->addBatch($participants);
-        }
-
-        // 更新成员数量
-        $this->conversationDep->update($conversationId, [
-            'member_count' => $conversation->member_count + \count($newUserIds),
-        ]);
+            
+            if (!empty($trulyNewUserIds)) {
+                $participants = [];
+                foreach ($trulyNewUserIds as $uid) {
+                    $participants[] = [
+                        'conversation_id' => $conversationId,
+                        'user_id'         => $uid,
+                        'role'            => ChatEnum::ROLE_MEMBER,
+                    ];
+                }
+                $this->participantDep->addBatch($participants);
+            }
+            
+            $this->conversationDep->update($conversationId, [
+                'member_count' => $conversation->member_count + \count($newUserIds),
+            ]);
+        });
 
         // 发送系统消息（用用户名而非ID）
         $inviter = $this->usersDep->findWithProfile($currentUserId);
@@ -576,13 +576,14 @@ class ChatModule extends BaseModule
             '该用户不在群聊中'
         );
 
-        // 更新目标参与者状态为 KICKED
-        $this->participantDep->updateStatus($conversationId, $targetUserId, ChatEnum::PARTICIPANT_KICKED);
-
-        // 递减成员数量
-        $this->conversationDep->update($conversationId, [
-            'member_count' => max(0, $conversation->member_count - 1),
-        ]);
+        // 事务：更新参与者状态 + 更新成员数量
+        $this->withTransaction(function () use ($conversationId, $targetUserId, $conversation) {
+            $this->participantDep->updateStatus($conversationId, $targetUserId, ChatEnum::PARTICIPANT_KICKED);
+            
+            $this->conversationDep->update($conversationId, [
+                'member_count' => max(0, $conversation->member_count - 1),
+            ]);
+        });
 
         // 发送系统消息
         $targetUser = $this->usersDep->findWithProfile($targetUserId);
