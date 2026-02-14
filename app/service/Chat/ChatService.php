@@ -286,6 +286,28 @@ class ChatService
     }
 
     /**
+     * 推送消息撤回通知
+     *
+     * @param int $conversationId 会话ID
+     * @param int $messageId 被撤回的消息ID
+     * @param array $participantUserIds 会话参与者用户ID列表
+     */
+    public static function pushMessageRecall(int $conversationId, int $messageId, array $participantUserIds): void
+    {
+        $payload = json_encode([
+            'type' => ChatEnum::WS_MESSAGE_RECALL,
+            'data' => [
+                'conversation_id' => $conversationId,
+                'message_id' => $messageId,
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+
+        foreach ($participantUserIds as $userId) {
+            self::safeSendToUid($userId, $payload);
+        }
+    }
+
+    /**
      * 安全发送 WebSocket 消息到指定用户
      * 推送失败仅记录警告日志，不抛出异常
      *

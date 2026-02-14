@@ -67,4 +67,7 @@ class ChatController extends Controller
 
     /** 查询用户在线状态 */
     public function onlineStatus(Request $request) { return $this->run([ChatModule::class, 'onlineStatus'], $request); }
+
+    /** 撤回消息 */
+    public function recallMessage(Request $request) { return $this->run([ChatModule::class, 'recallMessage'], $request); }
 }

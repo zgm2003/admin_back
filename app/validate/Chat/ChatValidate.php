@@ -64,6 +64,16 @@ class ChatValidate
     }
 
     /**
+     * 撤回消息
+     */
+    public static function recallMessage(): array
+    {
+        return [
+            'message_id' => v::intVal()->positive()->setName('消息ID'),
+        ];
+    }
+
+    /**
      * 修改群聊信息（名称/公告）
      */
     public static function groupUpdate(): array

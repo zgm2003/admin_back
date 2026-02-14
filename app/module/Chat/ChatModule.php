@@ -346,6 +346,42 @@ class ChatModule extends BaseModule
         return self::success();
     }
 
+    /**
+     * 撤回消息
+     * 只能撤回自己发送的消息，且发送时间在2分钟内
+     */
+    public function recallMessage($request): array
+    {
+        $param = $this->validate($request, ChatValidate::recallMessage());
+        $currentUserId = $request->userId;
+        $messageId = (int)$param['message_id'];
+
+        // 查找消息
+        $message = $this->messageDep->find($messageId);
+        self::throwNotFound($message, '消息不存在');
+
+        // 校验是否为消息发送者
+        self::throwIf($message->sender_id !== $currentUserId, '只能撤回自己的消息', self::CODE_FORBIDDEN);
+
+        // 校验消息是否已被删除
+        self::throwIf($message->is_del === CommonEnum::YES, '消息已被删除');
+
+        // 校验撤回时间限制（2分钟内）
+        $createdTime = strtotime($message->created_at);
+        $now = time();
+        self::throwIf($now - $createdTime > 120, '消息发送超过2分钟，无法撤回');
+
+        // 软删除消息
+        $this->messageDep->update($messageId, ['is_del' => CommonEnum::YES]);
+
+        // 推送撤回通知给所有参与者
+        $participants = $this->participantDep->getActiveParticipants($message->conversation_id);
+        $participantUserIds = $participants->pluck('user_id')->toArray();
+        ChatService::pushMessageRecall($message->conversation_id, $messageId, $participantUserIds);
+
+        return self::success();
+    }
+
     // ==================== 群聊管理 ====================
 
     /**

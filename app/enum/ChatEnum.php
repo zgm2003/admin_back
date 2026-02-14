@@ -33,6 +33,7 @@ class ChatEnum
     const WS_CHAT_TYPING = 'chat_typing';
     const WS_CHAT_READ = 'chat_read';
     const WS_CHAT_ONLINE = 'chat_online';
+    const WS_MESSAGE_RECALL = 'chat_message_recall';
     const WS_GROUP_UPDATE = 'chat_group_update';
     const WS_CONTACT_REQUEST = 'chat_contact_request';
     const WS_CONTACT_REJECTED = 'chat_contact_rejected';

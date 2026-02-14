@@ -269,6 +269,7 @@ Route::group('/api/admin', function () {
     Route::post('/Chat/togglePin', [controller\Chat\ChatController::class, 'togglePin']);
     Route::post('/Chat/typing', [controller\Chat\ChatController::class, 'typing']);
     Route::post('/Chat/onlineStatus', [controller\Chat\ChatController::class, 'onlineStatus']);
+    Route::post('/Chat/recallMessage', [controller\Chat\ChatController::class, 'recallMessage']);
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

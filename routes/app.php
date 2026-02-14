@@ -52,6 +52,7 @@ Route::group('/api/app', function () {
     Route::post('/Chat/togglePin', [controller\Chat\ChatController::class, 'togglePin']);
     Route::post('/Chat/typing', [controller\Chat\ChatController::class, 'typing']);
     Route::post('/Chat/onlineStatus', [controller\Chat\ChatController::class, 'onlineStatus']);
+    Route::post('/Chat/recallMessage', [controller\Chat\ChatController::class, 'recallMessage']);
 
     // 用户搜索（聊天添加联系人）
     Route::post('/UsersList/list', [controller\User\UsersListController::class, 'list']);
