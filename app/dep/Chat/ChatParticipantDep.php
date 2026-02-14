@@ -283,4 +283,18 @@ class ChatParticipantDep extends BaseDep
             ->update(['is_del' => CommonEnum::NO]);
     }
 
+    /**
+     * 使用行锁查询参与者记录（用于并发控制）
+     *
+     * @return object|null
+     */
+    public function getParticipantForUpdate(int $conversationId, int $userId)
+    {
+        return $this->query()
+            ->where('conversation_id', $conversationId)
+            ->where('user_id', $userId)
+            ->lockForUpdate()
+            ->first();
+    }
+
 }

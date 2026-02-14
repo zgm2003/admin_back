@@ -399,6 +399,19 @@ class ChatModule extends BaseModule
     }
 
     /**
+     * 检查用户是否为群主或管理员
+     */
+    private function checkOwnerOrAdmin(int $conversationId, int $userId): void
+    {
+        $participant = $this->participantDep->getParticipant($conversationId, $userId);
+        self::throwIf(
+            !$participant || !in_array($participant->role, [ChatEnum::ROLE_OWNER, ChatEnum::ROLE_ADMIN]),
+            '权限不足',
+            self::CODE_FORBIDDEN
+        );
+    }
+
+    /**
      * 发送系统消息并更新会话 last_message
      * @return array [messageId, participantUserIds] 消息ID和活跃参与者ID列表
      */
@@ -478,7 +491,7 @@ class ChatModule extends BaseModule
 
     /**
      * 修改群聊名称/公告
-     * 仅群主可操作，修改后推送 WS_GROUP_UPDATE 给所有成员
+     * 群主和管理员可操作，修改后推送 WS_GROUP_UPDATE 给所有成员
      */
     public function groupUpdate($request): array
     {
@@ -490,7 +503,7 @@ class ChatModule extends BaseModule
         self::throwNotFound($conversation);
         self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
 
-        $this->checkOwner($conversationId, $currentUserId);
+        $this->checkOwnerOrAdmin($conversationId, $currentUserId);
 
         // 构建更新数据
         $updateData = [];
@@ -517,7 +530,7 @@ class ChatModule extends BaseModule
 
     /**
      * 邀请成员加入群聊
-     * 仅群主可操作，添加成员后发送系统消息
+     * 所有群成员都可以邀请，添加成员后发送系统消息
      */
     public function groupInvite($request): array
     {
@@ -530,7 +543,12 @@ class ChatModule extends BaseModule
         self::throwNotFound($conversation);
         self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
 
-        $this->checkOwner($conversationId, $currentUserId);
+        // 检查当前用户是否为群成员
+        self::throwIf(
+            !$this->participantDep->isParticipant($conversationId, $currentUserId),
+            '无权操作',
+            self::CODE_FORBIDDEN
+        );
 
         // 过滤已是活跃参与者的用户
         $existingParticipants = $this->participantDep->getActiveParticipants($conversationId);
@@ -590,7 +608,7 @@ class ChatModule extends BaseModule
 
     /**
      * 移除群聊成员
-     * 仅群主可操作，不能移除自己
+     * 群主可以踢所有人(除自己)，管理员只能踢普通成员
      */
     public function groupKick($request): array
     {
@@ -603,19 +621,40 @@ class ChatModule extends BaseModule
         self::throwNotFound($conversation);
         self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
 
-        $this->checkOwner($conversationId, $currentUserId);
         self::throwIf($targetUserId === $currentUserId, '不能移除自己');
 
-        // 校验目标用户是活跃参与者
-        self::throwIf(
-            !$this->participantDep->isParticipant($conversationId, $targetUserId),
-            '该用户不在群聊中'
-        );
+        // 事务：检查权限 + 更新参与者状态 + 更新成员数量
+        $this->withTransaction(function () use ($conversationId, $currentUserId, $targetUserId, $conversation) {
+            // 使用行锁查询当前用户和目标用户的角色，防止并发冲突
+            $currentParticipant = $this->participantDep->getParticipantForUpdate($conversationId, $currentUserId);
+            
+            self::throwNotFound($currentParticipant, '你不在群聊中');
+            self::throwIf($currentParticipant->status !== ChatEnum::PARTICIPANT_ACTIVE, '你已退出群聊');
 
-        // 事务：更新参与者状态 + 更新成员数量
-        $this->withTransaction(function () use ($conversationId, $targetUserId, $conversation) {
+            $targetParticipant = $this->participantDep->getParticipantForUpdate($conversationId, $targetUserId);
+            
+            self::throwNotFound($targetParticipant, '该用户不在群聊中');
+            self::throwIf($targetParticipant->status !== ChatEnum::PARTICIPANT_ACTIVE, '该用户已退出群聊');
+
+            // 权限判断
+            if ($currentParticipant->role === ChatEnum::ROLE_OWNER) {
+                // 群主可以踢所有人(除自己)
+            } elseif ($currentParticipant->role === ChatEnum::ROLE_ADMIN) {
+                // 管理员只能踢普通成员
+                self::throwIf(
+                    in_array($targetParticipant->role, [ChatEnum::ROLE_OWNER, ChatEnum::ROLE_ADMIN]),
+                    '管理员不能移除群主或其他管理员',
+                    self::CODE_FORBIDDEN
+                );
+            } else {
+                // 普通成员无权踢人
+                self::throwIf(true, '权限不足', self::CODE_FORBIDDEN);
+            }
+
+            // 更新参与者状态
             $this->participantDep->updateStatus($conversationId, $targetUserId, ChatEnum::PARTICIPANT_KICKED);
             
+            // 更新成员数量
             $this->conversationDep->update($conversationId, [
                 'member_count' => max(0, $conversation->member_count - 1),
             ]);
@@ -994,5 +1033,61 @@ class ChatModule extends BaseModule
         $statusMap = ChatService::getOnlineStatusBatch($allowedIds);
 
         return self::success(['online_status' => $statusMap]);
+    }
+
+    /**
+     * 设置/取消管理员
+     */
+    public function setAdmin($request): array
+    {
+        $param = $this->validate($request, ChatValidate::setAdmin());
+        $currentUserId = $request->userId;
+        $conversationId = (int)$param['conversation_id'];
+        $targetUserId = (int)$param['user_id'];
+        $isAdmin = (bool)$param['is_admin'];
+
+        $conversation = $this->conversationDep->find($conversationId);
+        self::throwNotFound($conversation);
+        self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
+
+        // 只有群主可以设置管理员
+        $this->checkOwner($conversationId, $currentUserId);
+
+        // 不能对自己操作
+        self::throwIf($targetUserId === $currentUserId, '不能对自己操作');
+
+        // 计算新角色
+        $newRole = $isAdmin ? ChatEnum::ROLE_ADMIN : ChatEnum::ROLE_MEMBER;
+
+        // 事务:使用行锁查询目标用户,防止同时被踢出等并发冲突
+        $this->withTransaction(function () use ($conversationId, $targetUserId, $newRole) {
+            $targetParticipant = $this->participantDep->getParticipantForUpdate($conversationId, $targetUserId);
+            
+            self::throwNotFound($targetParticipant, '该用户不在群内');
+            self::throwIf($targetParticipant->status !== ChatEnum::PARTICIPANT_ACTIVE, '该用户已退出群聊');
+
+            // 不能对群主操作
+            self::throwIf($targetParticipant->role === ChatEnum::ROLE_OWNER, '不能对群主操作');
+
+            // 设置角色
+            $this->participantDep->updateRole($conversationId, $targetUserId, $newRole);
+        });
+
+        // 发送系统消息
+        $operator = $this->usersDep->findWithProfile($currentUserId);
+        $operatorName = $operator->username ?? (string)$currentUserId;
+        $target = $this->usersDep->findWithProfile($targetUserId);
+        $targetName = $target->username ?? (string)$targetUserId;
+        $action = $isAdmin ? '设为管理员' : '取消了管理员';
+        [, $allParticipantUserIds] = $this->sendSystemMessage($conversationId, "{$operatorName} {$action} {$targetName}");
+
+        // 推送群更新通知
+        ChatService::pushGroupUpdate($conversationId, $allParticipantUserIds, [
+            'action' => 'role_changed',
+            'user_id' => $targetUserId,
+            'role' => $newRole,
+        ]);
+
+        return self::success();
     }
 }

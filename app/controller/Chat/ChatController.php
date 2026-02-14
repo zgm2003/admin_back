@@ -70,4 +70,7 @@ class ChatController extends Controller
 
     /** 撤回消息 */
     public function recallMessage(Request $request) { return $this->run([ChatModule::class, 'recallMessage'], $request); }
+
+    /** 设置/取消管理员 */
+    public function setAdmin(Request $request) { return $this->run([ChatModule::class, 'setAdmin'], $request); }
 }

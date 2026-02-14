@@ -129,6 +129,18 @@ class ChatValidate
     }
 
     /**
+     * 设置/取消管理员
+     */
+    public static function setAdmin(): array
+    {
+        return [
+            'conversation_id' => v::intVal()->positive()->setName('会话ID'),
+            'user_id'         => v::intVal()->positive()->setName('用户ID'),
+            'is_admin'        => v::boolVal()->setName('是否为管理员'),
+        ];
+    }
+
+    /**
      * 添加联系人
      */
     public static function contactAdd(): array
