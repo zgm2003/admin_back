@@ -360,16 +360,66 @@ class ChatModule extends BaseModule
         $message = $this->messageDep->find($messageId);
         self::throwNotFound($message, '消息不存在');
 
-        // 校验是否为消息发送者
-        self::throwIf($message->sender_id !== $currentUserId, '只能撤回自己的消息', self::CODE_FORBIDDEN);
-
         // 校验消息是否已被删除
         self::throwIf($message->is_del === CommonEnum::YES, '消息已被删除');
 
-        // 校验撤回时间限制（2分钟内）
-        $createdTime = strtotime($message->created_at);
-        $now = time();
-        self::throwIf($now - $createdTime > 120, '消息发送超过2分钟，无法撤回');
+        // 获取会话信息
+        $conversation = $this->conversationDep->find($message->conversation_id);
+        self::throwNotFound($conversation);
+
+        $isSelfMessage = $message->sender_id === $currentUserId;
+        $isGroupChat = $conversation->type === ChatEnum::CONVERSATION_GROUP;
+
+        // 权限判断
+        if ($isSelfMessage) {
+            // 撤回自己的消息
+            if ($isGroupChat) {
+                // 群聊:需要检查角色和时间限制
+                $currentParticipant = $this->participantDep->getParticipant($message->conversation_id, $currentUserId);
+                self::throwNotFound($currentParticipant, '你不在群聊中');
+                self::throwIf($currentParticipant->status !== ChatEnum::PARTICIPANT_ACTIVE, '你已退出群聊');
+
+                // 群主和管理员撤回自己的消息无时间限制,普通成员2分钟限制
+                if (!in_array($currentParticipant->role, [ChatEnum::ROLE_OWNER, ChatEnum::ROLE_ADMIN])) {
+                    $createdTime = strtotime($message->created_at);
+                    $now = time();
+                    self::throwIf($now - $createdTime > 120, '消息发送超过2分钟，无法撤回');
+                }
+            } else {
+                // 私聊:2分钟限制
+                $createdTime = strtotime($message->created_at);
+                $now = time();
+                self::throwIf($now - $createdTime > 120, '消息发送超过2分钟，无法撤回');
+            }
+        } else {
+            // 撤回别人的消息:仅群聊中的群主和管理员可以
+            self::throwIf(!$isGroupChat, '只能撤回自己的消息', self::CODE_FORBIDDEN);
+
+            // 使用事务和行锁,防止并发时角色变更
+            $this->withTransaction(function () use ($message, $currentUserId) {
+                // 使用行锁查询当前用户和消息发送者的角色
+                $currentParticipant = $this->participantDep->getParticipantForUpdate($message->conversation_id, $currentUserId);
+                self::throwNotFound($currentParticipant, '你不在群聊中');
+                self::throwIf($currentParticipant->status !== ChatEnum::PARTICIPANT_ACTIVE, '你已退出群聊');
+
+                $senderParticipant = $this->participantDep->getParticipantForUpdate($message->conversation_id, $message->sender_id);
+
+                // 权限判断
+                if ($currentParticipant->role === ChatEnum::ROLE_OWNER) {
+                    // 群主可以撤回所有人的消息
+                } elseif ($currentParticipant->role === ChatEnum::ROLE_ADMIN) {
+                    // 管理员只能撤回普通成员的消息
+                    self::throwIf(
+                        $senderParticipant && in_array($senderParticipant->role, [ChatEnum::ROLE_OWNER, ChatEnum::ROLE_ADMIN]),
+                        '管理员不能撤回群主或其他管理员的消息',
+                        self::CODE_FORBIDDEN
+                    );
+                } else {
+                    // 普通成员不能撤回别人的消息
+                    self::throwIf(true, '权限不足', self::CODE_FORBIDDEN);
+                }
+            });
+        }
 
         // 软删除消息
         $this->messageDep->update($messageId, ['is_del' => CommonEnum::YES]);
