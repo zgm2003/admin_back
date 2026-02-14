@@ -270,5 +270,17 @@ class ChatParticipantDep extends BaseDep
             ->toArray();
     }
 
+    /**
+     * 恢复用户已软删除的参与者记录（is_del=YES → NO）
+     * 用于用户重新打开已删除的私聊会话
+     */
+    public function restoreDeleted(int $conversationId, int $userId): int
+    {
+        return $this->query()
+            ->where('conversation_id', $conversationId)
+            ->where('user_id', $userId)
+            ->where('is_del', CommonEnum::YES)
+            ->update(['is_del' => CommonEnum::NO]);
+    }
 
 }

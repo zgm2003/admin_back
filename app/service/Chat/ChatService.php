@@ -48,7 +48,7 @@ class ChatService
      */
     public static function resetUnread(int $userId, int $conversationId): void
     {
-        Redis::hSet(self::UNREAD_KEY_PREFIX . $userId, (string)$conversationId, 0);
+        Redis::hDel(self::UNREAD_KEY_PREFIX . $userId, (string)$conversationId);
     }
 
     /**
@@ -300,5 +300,32 @@ class ChatService
         } catch (\Throwable $e) {
             Log::warning("[ChatService] WebSocket 推送失败: userId={$userId}, " . $e->getMessage());
         }
+    }
+
+    // ==================== 在线状态查询 ====================
+
+    /**
+     * 批量查询用户在线状态
+     *
+     * @param array $userIds 用户ID列表
+     * @return array 关联数组 [userId => bool]
+     */
+    public static function getOnlineStatusBatch(array $userIds): array
+    {
+        $result = [];
+        if (empty($userIds)) {
+            return $result;
+        }
+
+        Gateway::$registerAddress = self::GATEWAY_REGISTER_ADDRESS;
+        foreach ($userIds as $uid) {
+            try {
+                $result[$uid] = Gateway::isUidOnline((string)$uid);
+            } catch (\Throwable $e) {
+                $result[$uid] = false;
+            }
+        }
+
+        return $result;
     }
 }

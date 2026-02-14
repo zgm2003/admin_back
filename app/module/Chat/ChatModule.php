@@ -14,7 +14,6 @@ use app\service\Chat\ChatService;
 use app\service\System\NotificationService;
 use app\enum\NotificationEnum;
 use app\validate\Chat\ChatValidate;
-use GatewayWorker\Lib\Gateway;
 
 class ChatModule extends BaseModule
 {
@@ -53,14 +52,16 @@ class ChatModule extends BaseModule
         // 校验必须是已确认的联系人才能私聊（对标微信逻辑）
         self::throwIf(!$this->contactDep->isConfirmedContact($currentUserId, $targetUserId), '对方不是你的联系人，请先添加联系人');
 
-        // 幂等：查找已有私聊会话
-        $existing = $this->conversationDep->findPrivateConversation($currentUserId, $targetUserId);
-        if ($existing) {
-            return self::success(['conversation' => $existing->toArray()]);
-        }
-
-        // 事务创建新私聊会话 + 两个参与者
+        // 事务内查找+创建，防止并发创建重复私聊会话
         $conversation = $this->withTransaction(function () use ($currentUserId, $targetUserId) {
+            // 加锁查找已有私聊会话
+            $existing = $this->conversationDep->findPrivateConversationForUpdate($currentUserId, $targetUserId);
+            if ($existing) {
+                // 恢复当前用户可能已软删除的参与者记录
+                $this->participantDep->restoreDeleted($existing->id, $currentUserId);
+                return $existing;
+            }
+
             $conversationId = $this->conversationDep->createConversation([
                 'type'         => ChatEnum::CONVERSATION_PRIVATE,
                 'name'         => '',
@@ -424,18 +425,8 @@ class ChatModule extends BaseModule
         $participants = $this->participantDep->getActiveParticipantsWithProfile($conversationId);
 
         // 批量查询在线状态
-        $onlineMap = [];
         $memberUserIds = $participants->pluck('user_id')->toArray();
-        if (!empty($memberUserIds)) {
-            try {
-                Gateway::$registerAddress = ChatService::GATEWAY_REGISTER_ADDRESS;
-                foreach ($memberUserIds as $uid) {
-                    $onlineMap[$uid] = Gateway::isUidOnline((string)$uid);
-                }
-            } catch (\Throwable $e) {
-                // Gateway 不可用时全部默认离线
-            }
-        }
+        $onlineMap = ChatService::getOnlineStatusBatch($memberUserIds);
 
         $participantList = $participants->map(function ($p) use ($onlineMap) {
             $row = $p->toArray();
@@ -646,7 +637,10 @@ class ChatModule extends BaseModule
         // 发送系统消息
         $leaver = $this->usersDep->findWithProfile($currentUserId);
         $leaverName = $leaver->username ?? (string)$currentUserId;
-        $this->sendSystemMessage($conversationId, "{$leaverName} 退出了群聊");
+        [, $remainingUserIds] = $this->sendSystemMessage($conversationId, "{$leaverName} 退出了群聊");
+
+        // 推送群更新通知给剩余成员（刷新成员列表）
+        ChatService::pushGroupUpdate($conversationId, $remainingUserIds, ['action' => 'leave', 'user_id' => $currentUserId]);
 
         return self::success();
     }
@@ -730,10 +724,18 @@ class ChatModule extends BaseModule
         );
 
         // 检查是否有已软删除的记录（被拒绝/删除过），有则复活，否则新建
-        if ($this->contactDep->existsDeletedBidirectional($currentUserId, $targetUserId)) {
-            $this->contactDep->reactivateBidirectional($currentUserId, $targetUserId);
-        } else {
-            $this->contactDep->createBidirectional($currentUserId, $targetUserId);
+        try {
+            if ($this->contactDep->existsDeletedBidirectional($currentUserId, $targetUserId)) {
+                $this->contactDep->reactivateBidirectional($currentUserId, $targetUserId);
+            } else {
+                $this->contactDep->createBidirectional($currentUserId, $targetUserId);
+            }
+        } catch (\Throwable $e) {
+            // 唯一键冲突（并发请求），视为已存在
+            if (str_contains($e->getMessage(), 'Duplicate entry') || str_contains($e->getMessage(), 'uk_user_contact')) {
+                self::throwIf(true, '联系人已存在或请求待处理中');
+            }
+            throw $e;
         }
 
         // 推送好友请求通知给对方
@@ -868,19 +870,9 @@ class ChatModule extends BaseModule
 
         $contacts = $this->contactDep->getAllContacts($currentUserId);
 
-        // 批量查询在线状态（避免 N+1）
-        $onlineMap = [];
+        // 批量查询在线状态
         $contactUserIds = $contacts->pluck('contact_user_id')->toArray();
-        if (!empty($contactUserIds)) {
-            try {
-                Gateway::$registerAddress = ChatService::GATEWAY_REGISTER_ADDRESS;
-                foreach ($contactUserIds as $uid) {
-                    $onlineMap[$uid] = Gateway::isUidOnline((string)$uid);
-                }
-            } catch (\Throwable $e) {
-                // Gateway 不可用时全部默认离线
-            }
-        }
+        $onlineMap = ChatService::getOnlineStatusBatch($contactUserIds);
 
         $list = $contacts->map(function ($contact) use ($onlineMap) {
             $row = $contact->toArray();
@@ -949,23 +941,20 @@ class ChatModule extends BaseModule
 
     /**
      * 查询用户在线状态
-     * 通过 GatewayWorker 的 isUidOnline 方法查询各用户的在线状态
+     * 仅允许查询自己的联系人或同会话参与者的在线状态
      */
     public function onlineStatus($request): array
     {
         $param = $this->validate($request, ChatValidate::onlineStatus());
+        $currentUserId = $request->userId;
         $userIds = array_map('intval', $param['user_ids']);
 
-        $statusMap = [];
-        foreach ($userIds as $userId) {
-            try {
-                Gateway::$registerAddress = ChatService::GATEWAY_REGISTER_ADDRESS;
-                $statusMap[$userId] = Gateway::isUidOnline((string)$userId);
-            } catch (\Throwable $e) {
-                // Gateway 不可用时默认离线
-                $statusMap[$userId] = false;
-            }
-        }
+        // 安全过滤：只返回当前用户的联系人的在线状态
+        $contacts = $this->contactDep->getAllContacts($currentUserId);
+        $contactUserIds = $contacts->pluck('contact_user_id')->toArray();
+        $allowedIds = array_values(array_intersect($userIds, $contactUserIds));
+
+        $statusMap = ChatService::getOnlineStatusBatch($allowedIds);
 
         return self::success(['online_status' => $statusMap]);
     }

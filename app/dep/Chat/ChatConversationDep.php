@@ -42,6 +42,32 @@ class ChatConversationDep extends BaseDep
     }
 
     /**
+     * 查找两人之间的私聊会话（带行锁，用于事务内防止并发创建）
+     *
+     * @return object|null
+     */
+    public function findPrivateConversationForUpdate(int $userIdA, int $userIdB)
+    {
+        return $this->query()
+            ->from('chat_conversations as c')
+            ->join('chat_participants as pa', function ($join) use ($userIdA) {
+                $join->on('pa.conversation_id', '=', 'c.id')
+                    ->where('pa.user_id', $userIdA)
+                    ->where('pa.status', ChatEnum::PARTICIPANT_ACTIVE);
+            })
+            ->join('chat_participants as pb', function ($join) use ($userIdB) {
+                $join->on('pb.conversation_id', '=', 'c.id')
+                    ->where('pb.user_id', $userIdB)
+                    ->where('pb.status', ChatEnum::PARTICIPANT_ACTIVE);
+            })
+            ->where('c.type', ChatEnum::CONVERSATION_PRIVATE)
+            ->where('c.is_del', CommonEnum::NO)
+            ->lockForUpdate()
+            ->select('c.*')
+            ->first();
+    }
+
+    /**
      * 查找两人之间的私聊会话（不限参与者状态）
      * 用于删除联系人时清理关联的私聊会话
      */
