@@ -24,7 +24,7 @@ class ChatValidate
     {
         return [
             'name'       => v::stringType()->length(1, 100)->setName('群聊名称'),
-            'user_ids' => v::arrayType()->length(2, null)->setName('成员列表'),
+            'user_ids' => v::arrayType()->length(1, null)->setName('成员列表'),
         ];
     }
 
