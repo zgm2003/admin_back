@@ -89,4 +89,8 @@ return [
     'notification_task_scheduler' => [
         'handler' => app\process\NotificationTaskScheduler::class,
     ],
+    // 清理过期好友请求
+    'clean_expired_contact_request' => [
+        'handler' => app\process\CleanExpiredContactRequestTask::class,
+    ],
 ];
