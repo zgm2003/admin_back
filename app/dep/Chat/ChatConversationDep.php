@@ -110,6 +110,21 @@ class ChatConversationDep extends BaseDep
     }
 
     /**
+     * 查找群聊会话，不存在或不是群聊则抛异常
+     * @throws \RuntimeException
+     */
+    public function findGroupOrFail(int $conversationId)
+    {
+        $conversation = $this->findOrFail($conversationId);
+        
+        if ($conversation->type !== ChatEnum::CONVERSATION_GROUP) {
+            throw new \RuntimeException('该会话不是群聊');
+        }
+        
+        return $conversation;
+    }
+
+    /**
      * 用户会话列表查询
      * JOIN chat_participants 过滤当前用户参与的、未删除的、状态正常的会话
      * 按 last_message_at 降序排列

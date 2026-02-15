@@ -2,6 +2,8 @@
 
 namespace app\process;
 
+use app\enum\ChatEnum;
+use app\enum\CommonEnum;
 use support\Db;
 
 /**
@@ -24,10 +26,10 @@ class CleanExpiredContactRequestTask extends BaseCronTask
         
         // 软删除过期的待确认好友请求
         $count = Db::table('chat_contacts')
-            ->where('status', 1) // 待确认状态
-            ->where('is_del', 2) // 未删除
+            ->where('status', ChatEnum::CONTACT_PENDING) // 待确认状态
+            ->where('is_del', CommonEnum::NO) // 未删除
             ->where('created_at', '<', $expiredAt)
-            ->update(['is_del' => 1, 'updated_at' => date('Y-m-d H:i:s')]);
+            ->update(['is_del' => CommonEnum::YES, 'updated_at' => date('Y-m-d H:i:s')]);
         
         return $count > 0 ? "清理了 {$count} 条过期好友请求" : null;
     }

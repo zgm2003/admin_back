@@ -46,11 +46,11 @@ class ChatModule extends BaseModule
 
         self::throwIf($currentUserId === $targetUserId, '不能与自己创建私聊');
 
-        // 校验目标用户存在
-        self::throwIf(!$this->usersDep->find($targetUserId), '用户不存在');
+        // 校验目标用户存在（使用 findOrFail）
+        $this->usersDep->findOrFail($targetUserId);
 
         // 校验必须是已确认的联系人才能私聊（对标微信逻辑）
-        self::throwIf(!$this->contactDep->isConfirmedContact($currentUserId, $targetUserId), '对方不是你的联系人，请先添加联系人');
+        self::throwUnless($this->contactDep->isConfirmedContact($currentUserId, $targetUserId), '对方不是你的联系人，请先添加联系人');
 
         // 事务内查找+创建，防止并发创建重复私聊会话
         $conversation = $this->withTransaction(function () use ($currentUserId, $targetUserId) {
@@ -357,15 +357,13 @@ class ChatModule extends BaseModule
         $messageId = (int)$param['message_id'];
 
         // 查找消息
-        $message = $this->messageDep->find($messageId);
-        self::throwNotFound($message, '消息不存在');
-
+        $message = $this->messageDep->findOrFail($messageId);
+        
         // 校验消息是否已被删除
         self::throwIf($message->is_del === CommonEnum::YES, '消息已被删除');
 
         // 获取会话信息
-        $conversation = $this->conversationDep->find($message->conversation_id);
-        self::throwNotFound($conversation);
+        $conversation = $this->conversationDep->findOrFail($message->conversation_id);
 
         $isSelfMessage = $message->sender_id === $currentUserId;
         $isGroupChat = $conversation->type === ChatEnum::CONVERSATION_GROUP;
@@ -519,9 +517,7 @@ class ChatModule extends BaseModule
         $currentUserId = $request->userId;
         $conversationId = (int)$param['conversation_id'];
 
-        $conversation = $this->conversationDep->find($conversationId);
-        self::throwNotFound($conversation);
-        self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
+        $conversation = $this->conversationDep->findGroupOrFail($conversationId);
 
         // 校验当前用户是群成员
         self::throwIf(
@@ -558,9 +554,7 @@ class ChatModule extends BaseModule
         $currentUserId = $request->userId;
         $conversationId = (int)$param['conversation_id'];
 
-        $conversation = $this->conversationDep->find($conversationId);
-        self::throwNotFound($conversation);
-        self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
+        $conversation = $this->conversationDep->findGroupOrFail($conversationId);
 
         $this->checkOwnerOrAdmin($conversationId, $currentUserId);
 
@@ -598,9 +592,7 @@ class ChatModule extends BaseModule
         $conversationId = (int)$param['conversation_id'];
         $userIds = array_map('intval', $param['user_ids']);
 
-        $conversation = $this->conversationDep->find($conversationId);
-        self::throwNotFound($conversation);
-        self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
+        $conversation = $this->conversationDep->findGroupOrFail($conversationId);
 
         // 检查当前用户是否为群成员
         self::throwIf(
@@ -676,9 +668,7 @@ class ChatModule extends BaseModule
         $conversationId = (int)$param['conversation_id'];
         $targetUserId = (int)$param['user_id'];
 
-        $conversation = $this->conversationDep->find($conversationId);
-        self::throwNotFound($conversation);
-        self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
+        $conversation = $this->conversationDep->findGroupOrFail($conversationId);
 
         self::throwIf($targetUserId === $currentUserId, '不能移除自己');
 
@@ -752,13 +742,11 @@ class ChatModule extends BaseModule
         $currentUserId = $request->userId;
         $conversationId = (int)$param['conversation_id'];
 
-        $conversation = $this->conversationDep->find($conversationId);
-        self::throwNotFound($conversation);
-        self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
+        $conversation = $this->conversationDep->findGroupOrFail($conversationId);
 
         // 群主不能直接退出
         $participant = $this->participantDep->getParticipant($conversationId, $currentUserId);
-        self::throwIf(!$participant || $participant->status !== ChatEnum::PARTICIPANT_ACTIVE, '您不在该群聊中');
+        self::throwUnless($participant && $participant->status === ChatEnum::PARTICIPANT_ACTIVE, '您不在该群聊中');
         self::throwIf($participant->role === ChatEnum::ROLE_OWNER, '群主不能退出群聊，请先转让群主');
 
         // 更新状态为 LEFT
@@ -791,16 +779,14 @@ class ChatModule extends BaseModule
         $conversationId = (int)$param['conversation_id'];
         $targetUserId = (int)$param['user_id'];
 
-        $conversation = $this->conversationDep->find($conversationId);
-        self::throwNotFound($conversation);
-        self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
+        $conversation = $this->conversationDep->findGroupOrFail($conversationId);
 
         $this->checkOwner($conversationId, $currentUserId);
         self::throwIf($targetUserId === $currentUserId, '不能转让给自己');
 
         // 校验目标用户是活跃参与者
-        self::throwIf(
-            !$this->participantDep->isParticipant($conversationId, $targetUserId),
+        self::throwUnless(
+            $this->participantDep->isParticipant($conversationId, $targetUserId),
             '目标用户不在群聊中'
         );
 
@@ -850,7 +836,7 @@ class ChatModule extends BaseModule
         self::throwIf($currentUserId === $targetUserId, '不能添加自己为联系人');
 
         // 校验目标用户存在
-        self::throwIf(!$this->usersDep->find($targetUserId), '用户不存在');
+        $this->usersDep->findOrFail($targetUserId);
 
         // 检查联系人是否已存在（任一方向，未删除）
         self::throwIf(
@@ -902,9 +888,9 @@ class ChatModule extends BaseModule
 
         // 查找当前用户收到的联系人记录（current 的记录，对方是 fromUserId）
         $myRecord = $this->contactDep->getContact($currentUserId, $fromUserId);
-        self::throwIf(!$myRecord, '联系人请求不存在');
+        self::throwUnless($myRecord, '联系人请求不存在');
         self::throwIf($myRecord->status !== ChatEnum::CONTACT_PENDING, '该联系人请求已处理');
-        self::throwIf((int)$myRecord->is_initiator === 1, '不能确认自己发起的请求');
+        self::throwIf((int)$myRecord->is_initiator === CommonEnum::YES, '不能确认自己发起的请求');
 
         // 双向确认
         $this->contactDep->confirmBidirectional($currentUserId, $fromUserId);
@@ -949,7 +935,7 @@ class ChatModule extends BaseModule
         $isConfirmed = $myRecord && (int)$myRecord['status'] === ChatEnum::CONTACT_CONFIRMED;
         $isPendingReject = $myRecord
             && (int)$myRecord['status'] === ChatEnum::CONTACT_PENDING
-            && (int)$myRecord['is_initiator'] === 0;
+            && (int)$myRecord['is_initiator'] === CommonEnum::NO;
 
         // 双向软删除联系人
         $this->contactDep->softDeleteBidirectional($currentUserId, $targetUserId);
@@ -1052,8 +1038,7 @@ class ChatModule extends BaseModule
         $conversationId = (int)$param['conversation_id'];
 
         // 仅私聊支持输入状态
-        $conversation = $this->conversationDep->find($conversationId);
-        self::throwNotFound($conversation);
+        $conversation = $this->conversationDep->findOrFail($conversationId);
         if ($conversation->type !== ChatEnum::CONVERSATION_PRIVATE) {
             return self::success();
         }
@@ -1105,9 +1090,7 @@ class ChatModule extends BaseModule
         $targetUserId = (int)$param['user_id'];
         $isAdmin = (bool)$param['is_admin'];
 
-        $conversation = $this->conversationDep->find($conversationId);
-        self::throwNotFound($conversation);
-        self::throwIf($conversation->type !== ChatEnum::CONVERSATION_GROUP, '该会话不是群聊');
+        $conversation = $this->conversationDep->findGroupOrFail($conversationId);
 
         // 只有群主可以设置管理员
         $this->checkOwner($conversationId, $currentUserId);

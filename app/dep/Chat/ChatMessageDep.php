@@ -25,7 +25,7 @@ class ChatMessageDep extends BaseDep
 
     /**
      * 游标分页查询会话消息历史
-     * 使用 BaseDep::listCursor，checkDel=false（消息表无 is_del 字段）
+     * 使用 BaseDep::listCursor，checkDel=true（消息表使用 is_del 字段）
      *
      * @param int $conversationId 会话 ID
      * @param int|null $cursor 游标（上一页最后一条消息的 ID），null 表示从最新开始
@@ -38,7 +38,7 @@ class ChatMessageDep extends BaseDep
             ['page_size' => $limit, 'cursor' => $cursor],
             fn($q) => $q->where('conversation_id', $conversationId),
             ['*'],
-            false
+            true
         );
     }
 }

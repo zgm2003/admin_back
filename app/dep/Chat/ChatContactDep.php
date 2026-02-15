@@ -25,7 +25,7 @@ class ChatContactDep extends BaseDep
             [
                 'user_id' => $userIdA,
                 'contact_user_id' => $userIdB,
-                'is_initiator' => 1,
+                'is_initiator' => CommonEnum::YES,
                 'status' => ChatEnum::CONTACT_PENDING,
                 'is_del' => CommonEnum::NO,
                 'created_at' => $now,
@@ -34,7 +34,7 @@ class ChatContactDep extends BaseDep
             [
                 'user_id' => $userIdB,
                 'contact_user_id' => $userIdA,
-                'is_initiator' => 0,
+                'is_initiator' => CommonEnum::NO,
                 'status' => ChatEnum::CONTACT_PENDING,
                 'is_del' => CommonEnum::NO,
                 'created_at' => $now,
@@ -189,7 +189,7 @@ class ChatContactDep extends BaseDep
             ->where('contact_user_id', $targetId)
             ->where('is_del', CommonEnum::YES)
             ->update([
-                'is_initiator' => 1,
+                'is_initiator' => CommonEnum::YES,
                 'status' => ChatEnum::CONTACT_PENDING,
                 'is_del' => CommonEnum::NO,
                 'updated_at' => $now,
@@ -201,7 +201,7 @@ class ChatContactDep extends BaseDep
             ->where('contact_user_id', $initiatorId)
             ->where('is_del', CommonEnum::YES)
             ->update([
-                'is_initiator' => 0,
+                'is_initiator' => CommonEnum::NO,
                 'status' => ChatEnum::CONTACT_PENDING,
                 'is_del' => CommonEnum::NO,
                 'updated_at' => $now,
