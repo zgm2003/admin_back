@@ -28,6 +28,18 @@ class RoleDep extends BaseDep
     }
 
     /**
+     * 检查名称是否已存在（排除指定 ID）
+     */
+    public function existsByName(string $name, ?int $excludeId = null): bool
+    {
+        return $this->model
+            ->where('name', $name)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
+    }
+
+    /**
      * 获取超级管理员角色
      */
     public function getSuperAdmin()

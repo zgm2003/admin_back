@@ -32,8 +32,7 @@ class UploadDriverModule extends BaseModule
     public function add($request)
     {
         $param = $this->validate($request, UploadDriverValidate::add());
-        $exists = $this->uploadDriverDep->findByDriverBucket($param['driver'], $param['bucket']);
-        self::throwIf($exists, '同一驱动下该桶已存在');
+        self::throwIf($this->uploadDriverDep->existsByDriverBucket($param['driver'], $param['bucket']), '同一驱动下该桶已存在');
 
         $data = [
             'driver' => $param['driver'],
@@ -55,8 +54,7 @@ class UploadDriverModule extends BaseModule
     public function edit($request)
     {
         $param = $this->validate($request, UploadDriverValidate::edit());
-        $exists = $this->uploadDriverDep->findByDriverBucket($param['driver'], $param['bucket']);
-        self::throwIf($exists && $exists['id'] != $param['id'], '同一驱动下该桶已存在');
+        self::throwIf($this->uploadDriverDep->existsByDriverBucket($param['driver'], $param['bucket'], $param['id']), '同一驱动下该桶已存在');
 
         $data = [
             'driver' => $param['driver'],

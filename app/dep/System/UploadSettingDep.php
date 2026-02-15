@@ -29,6 +29,19 @@ class UploadSettingDep extends BaseDep
     }
 
     /**
+     * 检查 driver_id + rule_id 是否已存在（排除指定 ID）
+     */
+    public function existsByDriverRule(int $driverId, int $ruleId, ?int $excludeId = null): bool
+    {
+        return $this->model
+            ->where('driver_id', $driverId)
+            ->where('rule_id', $ruleId)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
+    }
+
+    /**
      * 获取当前启用的配置（关联 driver 和 rule）
      */
     public function getActive()

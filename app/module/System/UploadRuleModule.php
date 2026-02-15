@@ -31,8 +31,7 @@ class UploadRuleModule extends BaseModule
     public function add($request)
     {
         $param = $this->validate($request, UploadRuleValidate::add());
-        $resDep = $this->uploadRuleDep->findByTitle($param['title']);
-        self::throwIf($resDep, '规则标题已存在');
+        self::throwIf($this->uploadRuleDep->existsByTitle($param['title']), '规则标题已存在');
         $data = [
             'title'       => $param['title'],
             'max_size_mb' => $param['max_size_mb'],
@@ -46,8 +45,7 @@ class UploadRuleModule extends BaseModule
     public function edit($request)
     {
         $param = $this->validate($request, UploadRuleValidate::edit());
-        $resDep = $this->uploadRuleDep->findByTitle($param['title']);
-        self::throwIf($resDep && $resDep['id'] != $param['id'], '规则标题已存在');
+        self::throwIf($this->uploadRuleDep->existsByTitle($param['title'], $param['id']), '规则标题已存在');
         $data = [
             'title'       => $param['title'],
             'max_size_mb' => $param['max_size_mb'],

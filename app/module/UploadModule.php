@@ -34,7 +34,7 @@ class UploadModule extends BaseModule
 
         $setting = $this->uploadSettingDep->getActive();
 
-        self::throwIf(!$setting, '未配置有效的上传设置');
+        self::throwUnless($setting, '未配置有效的上传设置');
 
         $data = [];
         if ($setting['driver'] === 'cos') {

@@ -46,8 +46,7 @@ class ProfileModule extends BaseModule
      */
     public function init($request): array
     {
-        $user = $this->usersDep->find($request->userId);
-        self::throwNotFound($user, '用户不存在');
+        $user = $this->usersDep->findOrFail($request->userId);
 
         $profile = $this->userProfileDep->findByUserId($user->id);
         $role = $user->role_id ? $this->roleDep->find($user->role_id) : null;
@@ -80,8 +79,7 @@ class ProfileModule extends BaseModule
     {
         $param = $this->validate($request, UsersValidate::initPersonal());
 
-        $user = $this->usersDep->find($param['user_id']);
-        self::throwNotFound($user, '用户不存在');
+        $user = $this->usersDep->findOrFail($param['user_id']);
 
         $profile = $this->userProfileDep->findByUserId($user->id);
         $resRole = $this->roleDep->find($user->role_id);
@@ -118,8 +116,7 @@ class ProfileModule extends BaseModule
     {
         $param = $this->validate($request, UsersValidate::editPersonal());
 
-        $user = $this->usersDep->find($request->userId);
-        self::throwNotFound($user, '用户不存在');
+        $user = $this->usersDep->findOrFail($request->userId);
 
         $userData = [
             'username' => $param['username'],
@@ -193,8 +190,7 @@ class ProfileModule extends BaseModule
     {
         $param = $this->validate($request, UsersValidate::updatePassword());
 
-        $user = $this->usersDep->find($request->userId);
-        self::throwNotFound($user, '用户不存在');
+        $user = $this->usersDep->findOrFail($request->userId);
 
         $verifyType = $param['verify_type'];
 
@@ -209,7 +205,7 @@ class ProfileModule extends BaseModule
             self::throwIf(empty($param['code']), '请输入验证码');
 
             $account = $user->email ?: $user->phone;
-            self::throwIf(!$account, '请先绑定邮箱或手机号');
+            self::throwUnless($account, '请先绑定邮箱或手机号');
 
             $cacheKey = isValidEmail($account)
                 ? 'email_code_' . md5($account)
@@ -241,8 +237,7 @@ class ProfileModule extends BaseModule
     {
         $param = $this->validate($request, UsersValidate::editPassword());
 
-        $user = $this->usersDep->find($request->userId);
-        self::throwNotFound($user, '用户不存在');
+        $user = $this->usersDep->findOrFail($request->userId);
         self::throwIf(!password_verify($param['password'], $user->password), '原密码不正确');
         self::throwIf($param['newpassword'] !== $param['respassword'], '新密码不一致');
         self::throwIf(password_verify($param['newpassword'], $user->password), '新密码不能与原密码一致');

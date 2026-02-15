@@ -21,7 +21,22 @@ class UploadRuleDep extends BaseDep
      */
     public function findByTitle(string $title)
     {
-        return $this->model->where('title', $title)->first();
+        return $this->model
+            ->where('title', $title)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
+    }
+
+    /**
+     * 检查标题是否已存在（排除指定 ID）
+     */
+    public function existsByTitle(string $title, ?int $excludeId = null): bool
+    {
+        return $this->model
+            ->where('title', $title)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
     }
 
     /**

@@ -62,6 +62,18 @@ abstract class BaseDep
     }
 
     /**
+     * 根据 ID 查询（检查 is_del=NO），找不到抛异常
+     */
+    public function getOrFail(int $id)
+    {
+        $result = $this->get($id);
+        if (!$result) {
+            throw new RuntimeException('记录不存在: ' . $id);
+        }
+        return $result;
+    }
+
+    /**
      * 批量查询，返回 id => model 的 Collection
      * 不检查 is_del，用于关联查询（如显示已删除的关联数据）
      */

@@ -119,8 +119,7 @@ class AiModelModule extends BaseModule
         $param = $this->validate($request, AiModelValidate::edit());
 
         $id = (int)$param['id'];
-        $row = $this->dep->get($id);
-        self::throwNotFound($row, '记录不存在');
+        $row = $this->dep->getOrFail($id);
 
         // 唯一性校验
         self::throwIf($this->dep->existsByDriverAndName($param['driver'], $param['name'], $id), '该驱动下已存在同名模型');

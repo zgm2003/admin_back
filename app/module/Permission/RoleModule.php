@@ -37,8 +37,7 @@ class RoleModule extends BaseModule
     public function add($request)
     {
         $param = $this->validate($request, RoleValidate::add());
-        $resDep = $this->roleDep->findByName($param['name']);
-        self::throwIf($resDep, '角色名已存在');
+        self::throwIf($this->roleDep->existsByName($param['name']), '角色名已存在');
         $data = [
             'name' => $param['name'],
             'permission_id' => json_encode($param['permission_id']),
@@ -71,8 +70,7 @@ class RoleModule extends BaseModule
     {
         $param = $this->validate($request, RoleValidate::edit());
         $dep = $this->roleDep;
-        $resDep = $dep->findByName($param['name']);
-        self::throwIf($resDep && $resDep['id'] != $param['id'], '角色名已存在');
+        self::throwIf($dep->existsByName($param['name'], $param['id']), '角色名已存在');
         $data = [
             'name' => $param['name'],
             'permission_id' => json_encode($param['permission_id']),
@@ -119,8 +117,7 @@ class RoleModule extends BaseModule
 
         $dep = $this->roleDep;
         $id = (int)$param['id'];
-        $role = $dep->find($id);
-        self::throwIf(!$role || (isset($role['is_del']) && (int)$role['is_del'] !== CommonEnum::NO), '角色不存在');
+        $role = $dep->getOrFail($id);
         
         try {
             $this->withTransaction(function () use ($id) {

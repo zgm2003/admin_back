@@ -100,8 +100,7 @@ class CronTaskModule extends BaseModule
     {
         $param = $this->validate($request, CronTaskValidate::edit());
         
-        $task = $this->cronTaskDep->get($param['id']);
-        self::throwIf(!$task, '任务不存在');
+        $task = $this->cronTaskDep->getOrFail($param['id']);
         
         $data = [
             'title'         => $param['title'],
@@ -134,8 +133,7 @@ class CronTaskModule extends BaseModule
     {
         $param = $this->validate($request, CronTaskValidate::status());
         
-        $task = $this->cronTaskDep->get($param['id']);
-        self::throwIf(!$task, '任务不存在');
+        $task = $this->cronTaskDep->getOrFail($param['id']);
         
         $this->cronTaskDep->toggleStatus($param['id'], $param['status']);
         

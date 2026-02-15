@@ -56,6 +56,19 @@ class PermissionDep extends BaseDep
     }
 
     /**
+     * 检查平台+code是否已存在
+     */
+    public function existsByPlatformCode(string $platform, string $code, ?int $excludeId = null): bool
+    {
+        return $this->model
+            ->where('platform', $platform)
+            ->where('code', $code)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
+    }
+
+    /**
      * 根据平台+path查询（唯一性检查）
      */
     public function findByPlatformPath(string $platform, string $path, ?int $excludeId = null)
@@ -69,6 +82,19 @@ class PermissionDep extends BaseDep
     }
 
     /**
+     * 检查平台+path是否已存在
+     */
+    public function existsByPlatformPath(string $platform, string $path, ?int $excludeId = null): bool
+    {
+        return $this->model
+            ->where('platform', $platform)
+            ->where('path', $path)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
+    }
+
+    /**
      * 根据平台+i18n_key查询（唯一性检查）
      */
     public function findByPlatformI18nKey(string $platform, string $i18nKey, ?int $excludeId = null)
@@ -79,6 +105,19 @@ class PermissionDep extends BaseDep
             ->where('is_del', CommonEnum::NO)
             ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
             ->first();
+    }
+
+    /**
+     * 检查平台+i18n_key是否已存在
+     */
+    public function existsByPlatformI18nKey(string $platform, string $i18nKey, ?int $excludeId = null): bool
+    {
+        return $this->model
+            ->where('platform', $platform)
+            ->where('i18n_key', $i18nKey)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
     }
 
     /**

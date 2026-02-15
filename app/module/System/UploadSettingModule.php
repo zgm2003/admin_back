@@ -39,8 +39,7 @@ class UploadSettingModule extends BaseModule
     {
         $param = $this->validate($request, UploadSettingValidate::add());
         
-        $exists = $this->uploadSettingDep->findByDriverRule($param['driver_id'], $param['rule_id']);
-        self::throwIf($exists, '该驱动与规则组合已存在');
+        self::throwIf($this->uploadSettingDep->existsByDriverRule($param['driver_id'], $param['rule_id']), '该驱动与规则组合已存在');
 
         $data = [
             'driver_id' => $param['driver_id'],
@@ -64,8 +63,7 @@ class UploadSettingModule extends BaseModule
     {
         $param = $this->validate($request, UploadSettingValidate::edit());
         
-        $exists = $this->uploadSettingDep->findByDriverRule($param['driver_id'], $param['rule_id']);
-        self::throwIf($exists && $exists['id'] != $param['id'], '该驱动与规则组合已存在');
+        self::throwIf($this->uploadSettingDep->existsByDriverRule($param['driver_id'], $param['rule_id'], $param['id']), '该驱动与规则组合已存在');
 
         $data = [
             'driver_id' => $param['driver_id'],

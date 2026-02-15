@@ -64,4 +64,16 @@ class TauriVersionDep extends BaseDep
         }
         return $query->first();
     }
+
+    /**
+     * 检查版本+平台是否已存在（排除指定 ID）
+     */
+    public function existsByVersionPlatform(string $version, string $platform, ?int $excludeId = null): bool
+    {
+        return $this->model
+            ->where('version', $version)
+            ->where('platform', $platform)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
+    }
 }

@@ -47,7 +47,7 @@ class AuthModule extends BaseModule
     public function getLoginConfig(): array
     {
         $platform = request()->header('platform', '');
-        self::throwIf(!$platform, '缺少平台标识');
+        self::throwUnless($platform, '缺少平台标识');
 
         $allowedTypes = AuthPlatformService::getLoginTypes($platform);
         $filtered = [];
@@ -161,7 +161,7 @@ class AuthModule extends BaseModule
         // 自动注册
         if (!$user) {
             $platform = $request->header('platform');
-            self::throwIf(!$platform, '缺少平台标识');
+            self::throwUnless($platform, '缺少平台标识');
             if (!AuthPlatformService::isRegisterEnabled($platform)) {
                 return ['error' => '暂未开放注册', 'user' => null];
             }
@@ -219,7 +219,7 @@ class AuthModule extends BaseModule
     public function refresh($request): array
     {
         $refreshToken = $request->post('refresh_token');
-        self::throwIf(!$refreshToken, '缺少刷新令牌', self::CODE_UNAUTHORIZED);
+        self::throwUnless($refreshToken, '缺少刷新令牌', self::CODE_UNAUTHORIZED);
 
         try {
             $hash = TokenService::hashToken($refreshToken);
@@ -229,12 +229,12 @@ class AuthModule extends BaseModule
         }
 
         $session = $this->userSessionsDep->findValidByRefreshHash($hash);
-        self::throwIf(!$session, '刷新令牌无效或已过期', self::CODE_UNAUTHORIZED);
+        self::throwUnless($session, '刷新令牌无效或已过期', self::CODE_UNAUTHORIZED);
 
         self::throwIf(Carbon::parse($session['refresh_expires_at'])->isPast(), '刷新令牌已过期，请重新登录', self::CODE_UNAUTHORIZED);
 
         $platform = $session['platform'];
-        self::throwIf(!$this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id']), '账号已在其他设备登录，请重新登录', self::CODE_UNAUTHORIZED);
+        self::throwUnless($this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id']), '账号已在其他设备登录，请重新登录', self::CODE_UNAUTHORIZED);
 
         $tokens = TokenService::generateTokenPair($platform);
 

@@ -49,8 +49,7 @@ class PermissionModule extends BaseModule
             self::throwIf(empty($param['show_menu']), 'show_menu 不能为空');
             
             // 唯一性检查：platform + i18n_key
-            $exist = $this->permissionDep->findByPlatformI18nKey($platform, $param['i18n_key']);
-            self::throwIf($exist, '该平台下 i18n_key 已存在');
+            self::throwIf($this->permissionDep->existsByPlatformI18nKey($platform, $param['i18n_key']), '该平台下 i18n_key 已存在');
             
             $data = [
                 'name' => $param['name'],
@@ -70,12 +69,10 @@ class PermissionModule extends BaseModule
             }
             
             // 唯一性检查：platform + path
-            $existPath = $this->permissionDep->findByPlatformPath($platform, $param['path']);
-            self::throwIf($existPath, '该平台下路由 path 已存在');
+            self::throwIf($this->permissionDep->existsByPlatformPath($platform, $param['path']), '该平台下路由 path 已存在');
             
             // 唯一性检查：platform + i18n_key
-            $existI18n = $this->permissionDep->findByPlatformI18nKey($platform, $param['i18n_key']);
-            self::throwIf($existI18n, '该平台下 i18n_key 已存在');
+            self::throwIf($this->permissionDep->existsByPlatformI18nKey($platform, $param['i18n_key']), '该平台下 i18n_key 已存在');
             
             $data = [
                 'name' => $param['name'],
@@ -99,8 +96,7 @@ class PermissionModule extends BaseModule
             self::throwIf(empty($param['code']), 'code 不能为空');
             
             // 唯一性检查：platform + code
-            $exist = $this->permissionDep->findByPlatformCode($platform, $param['code']);
-            self::throwIf($exist, '该平台下权限标识已存在');
+            self::throwIf($this->permissionDep->existsByPlatformCode($platform, $param['code']), '该平台下权限标识已存在');
             
             $data = [
                 'name' => $param['name'],
@@ -137,8 +133,7 @@ class PermissionModule extends BaseModule
             self::throwIf(empty($param['show_menu']), 'show_menu 不能为空');
             
             // 唯一性检查：platform + i18n_key（排除自己）
-            $exist = $this->permissionDep->findByPlatformI18nKey($platform, $param['i18n_key'], $id);
-            self::throwIf($exist, '该平台下 i18n_key 已存在');
+            self::throwIf($this->permissionDep->existsByPlatformI18nKey($platform, $param['i18n_key'], $id), '该平台下 i18n_key 已存在');
             
             $data = [
                 'name' => $param['name'],
@@ -158,12 +153,10 @@ class PermissionModule extends BaseModule
             }
             
             // 唯一性检查：platform + path（排除自己）
-            $existPath = $this->permissionDep->findByPlatformPath($platform, $param['path'], $id);
-            self::throwIf($existPath, '该平台下路由 path 已存在');
+            self::throwIf($this->permissionDep->existsByPlatformPath($platform, $param['path'], $id), '该平台下路由 path 已存在');
             
             // 唯一性检查：platform + i18n_key（排除自己）
-            $existI18n = $this->permissionDep->findByPlatformI18nKey($platform, $param['i18n_key'], $id);
-            self::throwIf($existI18n, '该平台下 i18n_key 已存在');
+            self::throwIf($this->permissionDep->existsByPlatformI18nKey($platform, $param['i18n_key'], $id), '该平台下 i18n_key 已存在');
             
             $data = [
                 'name' => $param['name'],
@@ -184,8 +177,7 @@ class PermissionModule extends BaseModule
             self::throwIf(empty($param['code']), 'code 不能为空');
             
             // 唯一性检查：platform + code（排除自己）
-            $exist = $this->permissionDep->findByPlatformCode($platform, $param['code'], $id);
-            self::throwIf($exist, '该平台下权限标识已存在');
+            self::throwIf($this->permissionDep->existsByPlatformCode($platform, $param['code'], $id), '该平台下权限标识已存在');
             
             $data = [
                 'name' => $param['name'],
@@ -295,8 +287,7 @@ class PermissionModule extends BaseModule
         self::throwIf(empty($param['code']), 'code 不能为空');
         
         // 唯一性检查：platform + code
-        $exist = $this->permissionDep->findByPlatformCode($platform, $param['code']);
-        self::throwIf($exist, '该平台下权限标识已存在');
+        self::throwIf($this->permissionDep->existsByPlatformCode($platform, $param['code']), '该平台下权限标识已存在');
         
         $data = [
             'name' => $param['name'],
@@ -328,8 +319,7 @@ class PermissionModule extends BaseModule
         self::throwIf(empty($param['code']), 'code 不能为空');
         
         // 唯一性检查：platform + code（排除自己）
-        $exist = $this->permissionDep->findByPlatformCode($platform, $param['code'], $id);
-        self::throwIf($exist, '该平台下权限标识已存在');
+        self::throwIf($this->permissionDep->existsByPlatformCode($platform, $param['code'], $id), '该平台下权限标识已存在');
         
         $data = [
             'name' => $param['name'],

@@ -29,6 +29,19 @@ class UploadDriverDep extends BaseDep
     }
 
     /**
+     * 检查 driver + bucket 是否已存在（排除指定 ID）
+     */
+    public function existsByDriverBucket(string $driver, string $bucket, ?int $excludeId = null): bool
+    {
+        return $this->model
+            ->where('driver', $driver)
+            ->where('bucket', $bucket)
+            ->where('is_del', CommonEnum::NO)
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->exists();
+    }
+
+    /**
      * 获取字典列表
      */
     public function getDict()
