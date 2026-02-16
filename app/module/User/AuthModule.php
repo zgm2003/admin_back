@@ -5,20 +5,14 @@ namespace app\module\User;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UserProfileDep;
 use app\dep\User\UsersDep;
-use app\dep\User\UserSessionsDep;
-use app\enum\CacheTTLEnum;
 use app\enum\CommonEnum;
-use app\enum\EmailEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
-use app\service\DictService;
 use app\service\System\AuthPlatformService;
 use app\service\System\SettingService;
-use app\service\User\TokenService;
+use app\service\User\SessionService;
+use app\service\User\VerifyCodeService;
 use app\validate\User\UsersValidate;
-use Carbon\Carbon;
-use support\Cache;
-use support\Redis;
 
 /**
  * 认证模块
@@ -26,20 +20,7 @@ use support\Redis;
  */
 class AuthModule extends BaseModule
 {
-    protected UsersDep $usersDep;
-    protected UserSessionsDep $userSessionsDep;
-    protected RoleDep $roleDep;
-    protected UserProfileDep $userProfileDep;
-    protected DictService $dictService;
-
-    public function __construct()
-    {
-        $this->usersDep = $this->dep(UsersDep::class);
-        $this->userSessionsDep = $this->dep(UserSessionsDep::class);
-        $this->roleDep = $this->dep(RoleDep::class);
-        $this->userProfileDep = $this->dep(UserProfileDep::class);
-        $this->dictService = $this->svc(DictService::class);
-    }
+    // ==================== 公开接口 ====================
 
     /**
      * 获取登录配置（按平台返回允许的登录方式）
@@ -56,6 +37,7 @@ class AuthModule extends BaseModule
                 $filtered[] = ['label' => $label, 'value' => $key];
             }
         }
+
         return self::success(['login_type_arr' => $filtered]);
     }
 
@@ -67,150 +49,39 @@ class AuthModule extends BaseModule
         $param = $this->validate($request, UsersValidate::login());
 
         $loginType = $param['login_type'];
+        $account = trim($param['login_account']);
         $isNewUser = false;
 
-        // 1. 验证阶段
         if ($loginType === SystemEnum::LOGIN_TYPE_PASSWORD) {
-            $result = $this->loginByPassword($param, $request);
+            $user = $this->loginByPassword($account, $param['password'] ?? '');
         } else {
-            $result = $this->loginByCode($param, $loginType, $request);
-            $isNewUser = $result['is_new_user'] ?? false;
+            [$user, $isNewUser] = $this->loginByCode($account, $param['code'] ?? '', $loginType, $request);
         }
 
-        self::throwIf($result['error'], $result['error'] ?? '登录失败');
+        // 用户状态检查
+        $this->assertUserActive($user);
 
-        $session = $this->createSession($result['user']['id'], $param['login_account'], $request, $loginType);
+        // 平台校验
+        $platform = $request->header('platform');
+        self::throwIf(
+            !$platform || !AuthPlatformService::isValidPlatform($platform),
+            '无效的平台标识'
+        );
+
+        // 创建会话
+        $session = SessionService::create(
+            $user['id'],
+            $platform,
+            $request->header('device-id', ''),
+            $request->getRealIp(),
+            $request->header('user-agent')
+        );
+
+        // 记录登录日志
+        $this->logLoginAttempt($user['id'], $account, $loginType, $request, CommonEnum::YES);
+
         $session['is_new_user'] = $isNewUser;
-
         return self::success($session);
-    }
-
-    /**
-     * 密码登录
-     */
-    private function loginByPassword(array $param, $request): array
-    {
-        if (empty($param['password'])) {
-            return ['error' => '请输入密码', 'user' => null];
-        }
-
-        $account = $param['login_account'];
-
-        // 智能判断账号类型
-        if (isValidEmail($account)) {
-            $user = $this->usersDep->findByEmail($account);
-        } elseif (isValidPhone($account)) {
-            $user = $this->usersDep->findByPhone($account);
-        } else {
-            return ['error' => '请输入正确的邮箱或手机号', 'user' => null];
-        }
-
-        if (!$user) {
-            $this->logLoginAttempt(null, $account, SystemEnum::LOGIN_TYPE_PASSWORD, $request, CommonEnum::NO, 'account_not_found');
-            return ['error' => '账号或密码错误', 'user' => null];
-        }
-
-        if (empty($user['password'])) {
-            $this->logLoginAttempt($user['id'], $account, SystemEnum::LOGIN_TYPE_PASSWORD, $request, CommonEnum::NO, 'no_password_set');
-            return ['error' => '该账号未设置密码，请使用验证码登录后设置密码', 'user' => null];
-        }
-
-        if (!password_verify($param['password'], $user['password'])) {
-            $this->logLoginAttempt($user['id'], $account, SystemEnum::LOGIN_TYPE_PASSWORD, $request, CommonEnum::NO, 'wrong_password');
-            return ['error' => '账号或密码错误', 'user' => null];
-        }
-
-        return ['error' => false, 'user' => $user];
-    }
-
-    /**
-     * 验证码登录（支持自动注册）
-     */
-    private function loginByCode(array $param, string $loginType, $request): array
-    {
-        if (empty($param['code'])) {
-            return ['error' => '请输入验证码', 'user' => null];
-        }
-
-        // 验证码校验
-        if ($loginType === SystemEnum::LOGIN_TYPE_EMAIL) {
-            if (!isValidEmail($param['login_account'])) {
-                return ['error' => '邮箱格式不正确', 'user' => null];
-            }
-            $cacheKey = 'email_code_' . md5($param['login_account']);
-        } else {
-            if (!isValidPhone($param['login_account'])) {
-                return ['error' => '手机号格式不正确', 'user' => null];
-            }
-            $cacheKey = 'phone_code_' . md5($param['login_account']);
-        }
-
-        $code = Cache::get($cacheKey);
-        if (!$code || $code != $param['code']) {
-            $this->logLoginAttempt(null, $param['login_account'], $loginType, $request, CommonEnum::NO, 'invalid_code');
-            return ['error' => '验证码错误或已失效', 'user' => null];
-        }
-        Cache::delete($cacheKey);
-
-        // 查找用户
-        $user = $loginType === SystemEnum::LOGIN_TYPE_EMAIL
-            ? $this->usersDep->findByEmail($param['login_account'])
-            : $this->usersDep->findByPhone($param['login_account']);
-
-        $isNewUser = false;
-        // 自动注册
-        if (!$user) {
-            $platform = $request->header('platform');
-            self::throwUnless($platform, '缺少平台标识');
-            if (!AuthPlatformService::isRegisterEnabled($platform)) {
-                return ['error' => '暂未开放注册', 'user' => null];
-            }
-            $user = $this->autoRegister($param['login_account'], $loginType);
-            if (!$user) {
-                return ['error' => '自动注册失败，请稍后重试', 'user' => null];
-            }
-            $isNewUser = true;
-        }
-
-        return ['error' => false, 'user' => $user, 'is_new_user' => $isNewUser];
-    }
-
-    /**
-     * 自动注册新用户
-     */
-    private function autoRegister(string $account, string $loginType)
-    {
-        try {
-            return $this->withTransaction(function () use ($account, $loginType) {
-                $defaultRole = $this->roleDep->getDefault();
-                $roleId = $defaultRole ? $defaultRole['id'] : 0;
-
-                $userData = [
-                    'username' => 'User_' . rand(100000, 999999),
-                    'password' => null,
-                    'role_id' => $roleId,
-                    'email' => $loginType === SystemEnum::LOGIN_TYPE_EMAIL ? $account : null,
-                    'phone' => $loginType === SystemEnum::LOGIN_TYPE_PHONE ? $account : null,
-                ];
-                $userId = $this->usersDep->add($userData);
-
-                $this->userProfileDep->add([
-                    'user_id' => $userId,
-                    'avatar' => SettingService::getDefaultAvatar(),
-                    'sex' => CommonEnum::SEX_UNKNOWN,
-                ]);
-
-                return $this->usersDep->find($userId);
-            });
-        } catch (\Exception $e) {
-            // 幂等处理：唯一键冲突时重试查找
-            if ($this->isDuplicateKey($e)) {
-                return $loginType === SystemEnum::LOGIN_TYPE_EMAIL
-                    ? $this->usersDep->findByEmail($account)
-                    : $this->usersDep->findByPhone($account);
-            }
-            return null;
-        }
     }
 
     /**
@@ -221,45 +92,13 @@ class AuthModule extends BaseModule
         $refreshToken = $request->post('refresh_token');
         self::throwUnless($refreshToken, '缺少刷新令牌', self::CODE_UNAUTHORIZED);
 
-        try {
-            $hash = TokenService::hashToken($refreshToken);
-        } catch (\Exception $e) {
-            self::throw('令牌格式错误', self::CODE_UNAUTHORIZED);
-            return []; // unreachable, but satisfies static analysis
-        }
+        $result = SessionService::refresh(
+            $refreshToken,
+            $request->getRealIp(),
+            $request->header('user-agent')
+        );
 
-        $session = $this->userSessionsDep->findValidByRefreshHash($hash);
-        self::throwUnless($session, '刷新令牌无效或已过期', self::CODE_UNAUTHORIZED);
-
-        self::throwIf(Carbon::parse($session['refresh_expires_at'])->isPast(), '刷新令牌已过期，请重新登录', self::CODE_UNAUTHORIZED);
-
-        $platform = $session['platform'];
-        self::throwUnless($this->checkSingleSessionPolicy($session['user_id'], $platform, $session['id']), '账号已在其他设备登录，请重新登录', self::CODE_UNAUTHORIZED);
-
-        $tokens = TokenService::generateTokenPair($platform);
-
-        $this->userSessionsDep->rotate($session['id'], [
-            'access_token_hash' => $tokens['access_token_hash'],
-            'refresh_token_hash' => $tokens['refresh_token_hash'],
-            'expires_at' => $tokens['access_expires']->toDateTimeString(),
-            'refresh_expires_at' => $session['refresh_expires_at'],
-            'last_seen_at' => $tokens['now']->toDateTimeString(),
-            'ip' => $request->getRealIp(),
-            'ua' => $request->header('user-agent'),
-        ]);
-
-        if (!empty($session['access_token_hash'])) {
-            Redis::connection('token')->del($session['access_token_hash']);
-        }
-
-        $this->updateSessionPointer($session['user_id'], $platform, $session['id']);
-
-        return self::success([
-            'access_token' => $tokens['access_token'],
-            'refresh_token' => $tokens['refresh_token'],
-            'expires_in' => $tokens['access_ttl'],
-            'refresh_expires_in' => $tokens['refresh_ttl'],
-        ]);
+        return self::success($result);
     }
 
     /**
@@ -268,22 +107,8 @@ class AuthModule extends BaseModule
     public function logout($request): array
     {
         $bearer = $request->header('authorization');
-        if (!$bearer) {
-            return self::success([], '退出成功');
-        }
-
-        try {
-            $token = str_replace('Bearer ', '', $bearer);
-            $hash = TokenService::hashToken($token);
-            $session = $this->userSessionsDep->findValidByAccessHash($hash);
-
-            if ($session) {
-                $this->userSessionsDep->revoke($session['id']);
-                Redis::connection('token')->del($hash);
-                $this->clearSessionPointerIfMatches($session['user_id'], $session['platform'], $session['id']);
-            }
-        } catch (\Exception $e) {
-            // ignore
+        if ($bearer) {
+            SessionService::revoke($bearer);
         }
 
         return self::success([], '退出成功');
@@ -295,207 +120,41 @@ class AuthModule extends BaseModule
     public function sendCode($request): array
     {
         $param = $this->validate($request, UsersValidate::sendCode());
-
-        $account = $param['account'];
-        $scene = $param['scene'];
-        $theme = EmailEnum::getTheme($scene);
-
-        if (isValidEmail($account)) {
-            $code = rand(100000, 999999);
-            \Webman\RedisQueue\Redis::send('email_send', [
-                'email' => $account,
-                'theme' => $theme,
-                'code' => $code,
-            ]);
-            Cache::set('email_code_' . md5($account), $code, CacheTTLEnum::VERIFY_CODE);
-            return self::success([], '验证码发送成功');
-        }
-
-        if (isValidPhone($account)) {
-            $code = 123456; // TODO: 接入真实短信服务
-            Cache::set('phone_code_' . md5($account), $code, CacheTTLEnum::VERIFY_CODE);
-            return self::success([], '验证码发送成功(测试:123456)');
-        }
-
-        self::throw('请输入正确的邮箱或手机号');
-        return [];
+        $msg = VerifyCodeService::send($param['account'], $param['scene']);
+        return self::success([], $msg);
     }
 
     /**
-     * 忘记密码（未登录状态重置密码）
-     * 支持邮箱/手机号两种方式
+     * 忘记密码
      */
     public function forgetPassword($request): array
     {
         $param = $this->validate($request, UsersValidate::forgetPassword());
 
         $account = $param['account'];
-        
-        // 确认密码一致性
+
         self::throwIf(
             $param['new_password'] !== $param['confirm_password'],
             '两次输入的密码不一致'
         );
 
-        // 判断账号类型并查找用户
-        if (isValidEmail($account)) {
-            $cacheKey = 'email_code_' . md5($account);
-            $user = $this->usersDep->findByEmail($account);
-        } elseif (isValidPhone($account)) {
-            $cacheKey = 'phone_code_' . md5($account);
-            $user = $this->usersDep->findByPhone($account);
-        } else {
-            self::throw('请输入正确的邮箱或手机号');
-            return [];
-        }
-
+        // 查找用户
+        $user = $this->resolveUser($account);
         self::throwNotFound($user, '该账号未注册');
+        $this->assertUserActive($user);
 
         // 验证码校验
-        $code = Cache::get($cacheKey);
-        self::throwIf(!$code || $code != $param['code'], '验证码错误或已失效');
+        self::throwIf(
+            !VerifyCodeService::verify($account, $param['code'], 'forget'),
+            '验证码错误或已失效'
+        );
 
         // 更新密码
-        $this->usersDep->update($user->id, [
+        $this->dep(UsersDep::class)->update($user->id, [
             'password' => password_hash($param['new_password'], PASSWORD_DEFAULT),
         ]);
-        Cache::delete($cacheKey);
 
         return self::success([], '密码重置成功');
-    }
-
-    // ==================== 私有方法 ====================
-
-    /**
-     * 创建会话
-     */
-    private function createSession(int $userId, string $loginAccount, $request, string $loginType = 'email'): array
-    {
-        $platformHeader = $request->header('platform');
-        
-        // 平台校验（动态读取 auth_platforms 表）
-        self::throwIf(
-            !$platformHeader || !AuthPlatformService::isValidPlatform($platformHeader),
-            '无效的平台标识'
-        );
-        
-        $deviceId = $request->header('device-id', '');
-
-        // 按平台生成不同 TTL 的 token
-        $tokens = TokenService::generateTokenPair($platformHeader);
-
-        // 会话淘汰策略（单端互踢 > 最大会话数限制）
-        $policy = AuthPlatformService::getAuthPolicy($platformHeader);
-        if (!empty($policy['single_session_per_platform'])) {
-            // 单端登录：踢掉该用户在此平台的所有旧会话
-            $oldSessions = $this->userSessionsDep->listActiveByUserPlatform($userId, $platformHeader);
-            foreach ($oldSessions as $old) {
-                Redis::connection('token')->del($old->access_token_hash);
-            }
-            $this->userSessionsDep->revokeByUserPlatform($userId, $platformHeader);
-        } elseif ($policy['max_sessions'] > 0) {
-            // 多会话上限：FIFO 淘汰最早的超额会话
-            $activeSessions = $this->userSessionsDep->listActiveByUserPlatform($userId, $platformHeader);
-            $overCount = $activeSessions->count() - $policy['max_sessions'] + 1;
-            if ($overCount > 0) {
-                $toRevoke = $activeSessions->sortBy('id')->take($overCount);
-                foreach ($toRevoke as $old) {
-                    Redis::connection('token')->del($old->access_token_hash);
-                    $this->userSessionsDep->revoke($old->id);
-                }
-            }
-        }
-
-        $sessionData = [
-            'user_id' => $userId,
-            'access_token_hash' => $tokens['access_token_hash'],
-            'refresh_token_hash' => $tokens['refresh_token_hash'],
-            'platform' => $platformHeader,
-            'device_id' => $deviceId,
-            'ip' => $request->getRealIp(),
-            'ua' => $request->header('user-agent'),
-            'expires_at' => $tokens['access_expires']->toDateTimeString(),
-            'refresh_expires_at' => $tokens['refresh_expires']->toDateTimeString(),
-            'last_seen_at' => $tokens['now']->toDateTimeString(),
-            'is_del' => CommonEnum::NO,
-        ];
-
-        $sessionId = $this->userSessionsDep->add($sessionData);
-        $this->updateSessionPointer($userId, $platformHeader, $sessionId);
-        $this->logLoginAttempt($userId, $loginAccount, $loginType, $request, CommonEnum::YES);
-
-        return [
-            'access_token' => $tokens['access_token'],
-            'refresh_token' => $tokens['refresh_token'],
-            'expires_in' => $tokens['access_ttl'],
-            'refresh_expires_in' => $tokens['refresh_ttl'],
-        ];
-    }
-
-    private function logLoginAttempt(?int $userId, string $loginAccount, string $loginType, $request, int $isSuccess, string $reason = ''): void
-    {
-        $platformHeader = $request->header('platform') ?? '';
-        \Webman\RedisQueue\Redis::send('user_login_log', [
-            'user_id' => $userId,
-            'login_account' => $loginAccount,
-            'login_type' => $loginType,
-            'platform' => $platformHeader,
-            'ip' => $request->getRealIp(),
-            'ua' => $request->header('user-agent'),
-            'is_success' => $isSuccess,
-            'reason' => $reason,
-        ]);
-    }
-
-    private function updateSessionPointer(int $userId, string $platform, int $sessionId): void
-    {
-        $key = "cur_sess:" . strtolower(trim($platform)) . ":{$userId}";
-        Redis::connection('token')->set($key, $sessionId, CacheTTLEnum::SINGLE_SESSION_POINTER);
-    }
-
-    private function checkSingleSessionPolicy(int $userId, string $platform, int $currentSessionId): bool
-    {
-        $policyConfig = AuthPlatformService::getAuthPolicy($platform);
-        if (empty($policyConfig['single_session_per_platform'])) {
-            return true;
-        }
-
-        $key = "cur_sess:" . strtolower(trim($platform)) . ":{$userId}";
-        $allowedId = Redis::connection('token')->get($key);
-
-        if (!$allowedId) {
-            $latest = $this->userSessionsDep->findLatestActiveByUserPlatform($userId, $platform);
-            if ($latest) {
-                $allowedId = $latest->id;
-                Redis::connection('token')->set($key, $allowedId, CacheTTLEnum::SINGLE_SESSION_POINTER);
-            }
-        }
-
-        return (!$allowedId || (int)$allowedId === (int)$currentSessionId);
-    }
-
-    private function clearSessionPointerIfMatches(int $userId, string $platform, int $sessionId): void
-    {
-        if (!$platform) return;
-        $key = "cur_sess:" . strtolower(trim($platform)) . ":{$userId}";
-        $currentPtr = Redis::connection('token')->get($key);
-        if ($currentPtr && (int)$currentPtr === (int)$sessionId) {
-            Redis::connection('token')->del($key);
-        }
-    }
-
-    private function isDuplicateKey(\Throwable $e): bool
-    {
-        if (property_exists($e, 'errorInfo') && is_array($e->errorInfo)) {
-            if (isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
-                return true;
-            }
-        }
-        if ($e instanceof \PDOException && isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
-            return true;
-        }
-        $msg = $e->getMessage();
-        return (strpos($msg, 'Duplicate entry') !== false) || (strpos($msg, '1062') !== false);
     }
 
     /**
@@ -505,4 +164,168 @@ class AuthModule extends BaseModule
     {
         return request()->post('login_account', request()->post('account', ''));
     }
+
+    // ==================== 私有方法 ====================
+
+    /**
+     * 密码登录
+     * @throws \app\exception\BusinessException
+     */
+    private function loginByPassword(string $account, string $password)
+    {
+        self::throwUnless($password, '请输入密码');
+
+        $user = $this->resolveUser($account);
+        self::throwUnless($user, '账号或密码错误');
+
+        if (empty($user['password'])) {
+            self::throw('该账号未设置密码，请使用验证码登录后设置密码');
+        }
+
+        if (!password_verify($password, $user['password'])) {
+            $this->logLoginAttempt($user['id'], $account, SystemEnum::LOGIN_TYPE_PASSWORD, request(), CommonEnum::NO, 'wrong_password');
+            self::throw('账号或密码错误');
+        }
+
+        return $user;
+    }
+
+    /**
+     * 验证码登录（支持自动注册）
+     * @return array [user, isNewUser]
+     * @throws \app\exception\BusinessException
+     */
+    private function loginByCode(string $account, string $code, string $loginType, $request): array
+    {
+        self::throwUnless($code, '请输入验证码');
+
+        $accountType = $this->getAccountType($account);
+        self::throwUnless($accountType, $loginType === SystemEnum::LOGIN_TYPE_EMAIL ? '邮箱格式不正确' : '手机号格式不正确');
+
+        // 验证码校验（绑定 login 场景）
+        if (!VerifyCodeService::verify($account, $code, 'login', false)) {
+            $this->logLoginAttempt(null, $account, $loginType, $request, CommonEnum::NO, 'invalid_code');
+            self::throw('验证码错误或已失效');
+        }
+
+        // 查找用户
+        $user = $this->resolveUser($account);
+        $isNewUser = false;
+
+        if (!$user) {
+            // 先检查注册策略，再消费验证码
+            $platform = $request->header('platform');
+            self::throwUnless($platform, '缺少平台标识');
+            self::throwIf(!AuthPlatformService::isRegisterEnabled($platform), '暂未开放注册');
+
+            // 注册策略通过，消费验证码
+            VerifyCodeService::verify($account, $code, 'login', true);
+            $user = $this->autoRegister($account, $loginType);
+            self::throwUnless($user, '自动注册失败，请稍后重试');
+            $isNewUser = true;
+        } else {
+            // 用户存在，消费验证码
+            VerifyCodeService::verify($account, $code, 'login', true);
+        }
+
+        return [$user, $isNewUser];
+    }
+
+    /**
+     * 智能解析账号 → 用户
+     */
+    private function resolveUser(string $account)
+    {
+        $dep = $this->dep(UsersDep::class);
+
+        if (isValidEmail($account)) {
+            return $dep->findByEmail($account);
+        }
+        if (isValidPhone($account)) {
+            return $dep->findByPhone($account);
+        }
+
+        self::throw('请输入正确的邮箱或手机号');
+        return null;
+    }
+
+    /**
+     * 获取账号类型
+     */
+    private function getAccountType(string $account): ?string
+    {
+        if (isValidEmail($account)) return 'email';
+        if (isValidPhone($account)) return 'phone';
+        return null;
+    }
+
+    /**
+     * 检查用户是否可用（未删除 + 未禁用）
+     * @throws \app\exception\BusinessException
+     */
+    private function assertUserActive($user): void
+    {
+        self::throwIf(
+            isset($user['is_del']) && $user['is_del'] == CommonEnum::YES,
+            '账号不存在'
+        );
+        self::throwIf(
+            isset($user['status']) && $user['status'] != CommonEnum::YES,
+            '账号已被禁用，请联系管理员'
+        );
+    }
+
+    /**
+     * 自动注册新用户
+     */
+    private function autoRegister(string $account, string $loginType)
+    {
+        try {
+            return $this->withTransaction(function () use ($account, $loginType) {
+                $defaultRole = $this->dep(RoleDep::class)->getDefault();
+                self::throwUnless($defaultRole, '系统未配置默认角色，无法注册');
+
+                $userId = $this->dep(UsersDep::class)->add([
+                    'username' => 'User_' . substr(uniqid(), -8),
+                    'password' => null,
+                    'role_id'  => $defaultRole['id'],
+                    'email'    => $loginType === SystemEnum::LOGIN_TYPE_EMAIL ? $account : null,
+                    'phone'    => $loginType === SystemEnum::LOGIN_TYPE_PHONE ? $account : null,
+                ]);
+
+                $this->dep(UserProfileDep::class)->add([
+                    'user_id' => $userId,
+                    'avatar'  => SettingService::getDefaultAvatar(),
+                    'sex'     => CommonEnum::SEX_UNKNOWN,
+                ]);
+
+                return $this->dep(UsersDep::class)->find($userId);
+            });
+        } catch (\Exception $e) {
+            if (self::isDuplicateKey($e)) {
+                return $loginType === SystemEnum::LOGIN_TYPE_EMAIL
+                    ? $this->dep(UsersDep::class)->findByEmail($account)
+                    : $this->dep(UsersDep::class)->findByPhone($account);
+            }
+            return null;
+        }
+    }
+
+    /**
+     * 记录登录日志（异步队列）
+     */
+    private function logLoginAttempt(?int $userId, string $account, string $loginType, $request, int $isSuccess, string $reason = ''): void
+    {
+        \Webman\RedisQueue\Redis::send('user_login_log', [
+            'user_id'       => $userId,
+            'login_account' => $account,
+            'login_type'    => $loginType,
+            'platform'      => $request->header('platform') ?? '',
+            'ip'            => $request->getRealIp(),
+            'ua'            => $request->header('user-agent'),
+            'is_success'    => $isSuccess,
+            'reason'        => $reason,
+        ]);
+    }
+
 }

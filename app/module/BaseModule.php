@@ -173,4 +173,16 @@ class BaseModule
         $msg = config('app.debug') ? $e->getMessage() : 'server error';
         return [[], self::CODE_SERVER_ERROR, $msg];
     }
+
+    /**
+     * 判断是否为唯一键冲突（MySQL 1062）
+     */
+    protected static function isDuplicateKey(\Throwable $e): bool
+    {
+        if ($e instanceof \PDOException && isset($e->errorInfo[1]) && (int)$e->errorInfo[1] === 1062) {
+            return true;
+        }
+        return str_contains($e->getMessage(), 'Duplicate entry');
+    }
+
 }

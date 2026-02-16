@@ -15,6 +15,8 @@ class UsersController extends Controller
     public function getLoginConfig(Request $request) { return $this->run([AuthModule::class, 'getLoginConfig'], $request); }
     public function refresh(Request $request) { return $this->run([AuthModule::class, 'refresh'], $request); }
     public function logout(Request $request) { return $this->run([AuthModule::class, 'logout'], $request); }
+    #[RateLimiter(limit: 5, ttl: 60, key: RateLimiter::IP, message: '请求过于频繁，请稍后再试')]
+    #[RateLimiter(limit: 5, ttl: 60, key: [AuthModule::class, 'getRateLimitEmail'], message: '该账号操作过于频繁，请稍后再试')]
     public function forgetPassword(Request $request) { return $this->run([AuthModule::class, 'forgetPassword'], $request); }
 
     #[RateLimiter(limit: 10, ttl: 60, key: RateLimiter::IP, message: '登录请求过于频繁，请稍后再试')]
