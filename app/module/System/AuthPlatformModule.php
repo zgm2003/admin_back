@@ -8,72 +8,79 @@ use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\System\AuthPlatformValidate;
 
+/**
+ * 认证平台模块
+ * 负责：平台列表、新增、编辑、删除、状态切换
+ */
 class AuthPlatformModule extends BaseModule
 {
-    protected AuthPlatformDep $authPlatformDep;
-    protected DictService $dictService;
+    // ==================== 公开接口 ====================
 
-    public function __construct()
-    {
-        $this->authPlatformDep = $this->dep(AuthPlatformDep::class);
-        $this->dictService = $this->svc(DictService::class);
-    }
-
+    /**
+     * 初始化（获取字典数据）
+     */
     public function init($request): array
     {
-        $data['dict'] = $this->dictService
+        $dict = $this->svc(DictService::class)
             ->setCommonStatusArr()
             ->setAuthPlatformLoginTypeArr()
             ->getDict();
-        return self::success($data);
+
+        return self::success(['dict' => $dict]);
     }
 
+    /**
+     * 平台列表
+     */
     public function list($request): array
     {
         $param = $this->validate($request, AuthPlatformValidate::list());
-        $res = $this->authPlatformDep->list($param);
+        $paginator = $this->dep(AuthPlatformDep::class)->list($param);
 
-        $list = $res->map(function ($it) {
-            return [
-                'id'             => $it['id'],
-                'code'           => $it['code'],
-                'name'           => $it['name'],
-                'login_types'    => $it['login_types'],
-                'access_ttl'     => $it['access_ttl'],
-                'refresh_ttl'    => $it['refresh_ttl'],
-                'bind_platform'  => $it['bind_platform'],
-                'bind_device'    => $it['bind_device'],
-                'bind_ip'        => $it['bind_ip'],
-                'single_session' => $it['single_session'],
-                'max_sessions'   => $it['max_sessions'],
-                'allow_register' => $it['allow_register'],
-                'status'         => $it['status'],
-                'status_name'    => CommonEnum::$statusArr[$it['status']] ?? '',
-                'created_at'     => $it['created_at'],
-                'updated_at'     => $it['updated_at'],
-            ];
-        });
+        $list = $paginator->map(fn($it) => [
+            'id'             => $it['id'],
+            'code'           => $it['code'],
+            'name'           => $it['name'],
+            'login_types'    => $it['login_types'],
+            'access_ttl'     => $it['access_ttl'],
+            'refresh_ttl'    => $it['refresh_ttl'],
+            'bind_platform'  => $it['bind_platform'],
+            'bind_device'    => $it['bind_device'],
+            'bind_ip'        => $it['bind_ip'],
+            'single_session' => $it['single_session'],
+            'max_sessions'   => $it['max_sessions'],
+            'allow_register' => $it['allow_register'],
+            'status'         => $it['status'],
+            'status_name'    => CommonEnum::$statusArr[$it['status']] ?? '',
+            'created_at'     => $it['created_at'],
+            'updated_at'     => $it['updated_at'],
+        ]);
 
         $page = [
-            'page_size'    => $res->perPage(),
-            'current_page' => $res->currentPage(),
-            'total_page'   => $res->lastPage(),
-            'total'        => $res->total(),
+            'page_size'    => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+            'total_page'   => $paginator->lastPage(),
+            'total'        => $paginator->total(),
         ];
 
         return self::paginate($list, $page);
     }
 
+    /**
+     * 新增平台
+     */
     public function add($request): array
     {
         $param = $this->validate($request, AuthPlatformValidate::add());
 
+        $dep = $this->dep(AuthPlatformDep::class);
+
         self::throwIf(
-            $this->authPlatformDep->existsByCode($param['code']),
+            $dep->existsByCode($param['code']),
             "平台标识 [{$param['code']}] 已存在"
         );
 
-        $this->authPlatformDep->addPlatform([
+        $dep->addPlatform([
             'code'           => $param['code'],
             'name'           => $param['name'],
             'login_types'    => \json_encode($param['login_types']),
@@ -92,14 +99,18 @@ class AuthPlatformModule extends BaseModule
         return self::success();
     }
 
+    /**
+     * 编辑平台
+     */
     public function edit($request): array
     {
         $param = $this->validate($request, AuthPlatformValidate::edit());
 
-        $row = $this->authPlatformDep->get((int)$param['id']);
+        $dep = $this->dep(AuthPlatformDep::class);
+        $row = $dep->get((int)$param['id']);
         self::throwNotFound($row);
 
-        $ok = $this->authPlatformDep->updateById((int)$param['id'], [
+        $ok = $dep->updateById((int)$param['id'], [
             'name'           => $param['name'],
             'login_types'    => \json_encode($param['login_types']),
             'access_ttl'     => (int)$param['access_ttl'],
@@ -116,17 +127,23 @@ class AuthPlatformModule extends BaseModule
         return self::success();
     }
 
+    /**
+     * 删除平台
+     */
     public function del($request): array
     {
         $param = $this->validate($request, AuthPlatformValidate::del());
-        $this->authPlatformDep->deleteByIds($param['id']);
+        $this->dep(AuthPlatformDep::class)->deleteByIds($param['id']);
         return self::success();
     }
 
+    /**
+     * 切换平台状态
+     */
     public function status($request): array
     {
         $param = $this->validate($request, AuthPlatformValidate::status());
-        $ok = $this->authPlatformDep->setStatusById((int)$param['id'], (int)$param['status']);
+        $ok = $this->dep(AuthPlatformDep::class)->setStatusById((int)$param['id'], (int)$param['status']);
         self::throwIf(!$ok, '平台不存在');
         return self::success();
     }
