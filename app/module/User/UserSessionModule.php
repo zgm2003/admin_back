@@ -22,20 +22,19 @@ class UserSessionModule extends BaseModule
         $paginator = $this->dep(UserSessionsDep::class)->listWithUser($param);
 
         $now = date('Y-m-d H:i:s');
-        $data = $paginator->getCollection()->map(function ($item) use ($now) {
+        $list = $paginator->getCollection()->map(function ($item) use ($now) {
             $item->status = $item->revoked_at ? 'revoked' : ($item->refresh_expires_at <= $now ? 'expired' : 'active');
             $item->platform_name = AuthPlatformService::getPlatformName($item->platform);
             return $item;
         });
 
-        return self::success([
-            'list' => $data,
-            'page' => [
-                'total'        => $paginator->total(),
-                'current_page' => $paginator->currentPage(),
-                'page_size'    => $paginator->perPage(),
-            ],
-        ]);
+        $page = [
+            'total'        => $paginator->total(),
+            'current_page' => $paginator->currentPage(),
+            'page_size'    => $paginator->perPage(),
+        ];
+
+        return self::paginate($list, $page);
     }
 
     /**

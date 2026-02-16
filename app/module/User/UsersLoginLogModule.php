@@ -10,115 +10,100 @@ use app\enum\SystemEnum;
 use app\service\System\AuthPlatformService;
 use app\validate\User\UsersLoginLogValidate;
 
+/**
+ * 用户登录日志模块
+ * 负责：日志列表初始化、分页列表、游标分页列表
+ */
 class UsersLoginLogModule extends BaseModule
 {
-    protected UsersLoginLogDep $usersLoginLogDep;
-    protected UsersDep $usersDep;
-    protected DictService $dictService;
+    // ==================== 公开接口 ====================
 
-    public function __construct()
+    /**
+     * 初始化（获取字典数据）
+     */
+    public function init(): array
     {
-        $this->usersLoginLogDep = $this->dep(UsersLoginLogDep::class);
-        $this->usersDep = $this->dep(UsersDep::class);
-        $this->dictService = $this->svc(DictService::class);
-    }
-
-    // 用户列表不需要了，前端使用远程搜索
-    public function init()
-    {
-        $dict = $this->dictService
+        $dict = $this->svc(DictService::class)
             ->setPlatformArr()
             ->setLoginTypeArr()
             ->getDict();
 
-        $data['dict'] = $dict;
-
-        return self::success($data);
-    }
-
-    public function list($request)
-    {
-        $param = $this->validate($request, UsersLoginLogValidate::list());
-        $resList = $this->usersLoginLogDep->list($param);
-        
-        // === 优化：批量预加载用户数据 ===
-        $userIds = $resList->pluck('user_id')->filter()->unique()->toArray();
-        $userMap = $this->usersDep->getMap($userIds);
-
-        $data['list'] = $resList->map(function ($item) use ($userMap) {
-            // 使用预加载的Map获取用户
-            $username = 'Unknown';
-            if (!empty($item['user_id'])) {
-                $resUser = $userMap->get($item['user_id']);
-                if ($resUser) {
-                    $username = $resUser->username;
-                }
-            }
-            
-            return [
-                'id' => $item['id'],
-                'user_name' => $username,
-                'login_account' => $item['login_account'],
-                'login_type' => $item['login_type'],
-                'login_type_name' => SystemEnum::$loginTypeArr[$item['login_type']] ?? '',
-                'platform' => $item['platform'],
-                'platform_name' => AuthPlatformService::getPlatformName($item['platform']),
-                'ip' => $item['ip'],
-                'ua' => $item['ua'],
-                'is_success' => $item['is_success'],
-                'reason' => $item['reason'] ?? '',
-                'created_at' => $item['created_at'],
-            ];
-        });
-        
-        $data['page'] = [
-            'page_size' => $resList->perPage(),
-            'current_page' => $resList->currentPage(),
-            'total_page' => $resList->lastPage(),
-            'total' => $resList->total(),
-        ];
-
-        return self::paginate($data['list'], $data['page']);
+        return self::success(['dict' => $dict]);
     }
 
     /**
-     * 游标分页列表（深分页优化）
+     * 登录日志列表（传统分页）
      */
-    public function listCursor($request)
+    public function list($request): array
+    {
+        $param = $this->validate($request, UsersLoginLogValidate::list());
+        $paginator = $this->dep(UsersLoginLogDep::class)->list($param);
+
+        // 批量预加载用户数据
+        $userMap = $this->preloadUsers($paginator);
+
+        $list = $paginator->map(fn($item) => $this->formatLogItem($item, $userMap));
+
+        $page = [
+            'page_size'    => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+            'total_page'   => $paginator->lastPage(),
+            'total'        => $paginator->total(),
+        ];
+
+        return self::paginate($list, $page);
+    }
+
+    /**
+     * 登录日志列表（游标分页，深分页优化）
+     */
+    public function listCursor($request): array
     {
         $param = $this->validate($request, UsersLoginLogValidate::listCursor());
+        $result = $this->dep(UsersLoginLogDep::class)->listByCursor($param);
 
-        $result = $this->usersLoginLogDep->listByCursor($param);
-        
         // 批量预加载用户数据
-        $userIds = $result['list']->pluck('user_id')->filter()->unique()->toArray();
-        $userMap = $this->usersDep->getMap($userIds);
+        $userMap = $this->preloadUsers($result['list']);
 
-        $list = $result['list']->map(function ($item) use ($userMap) {
-            $username = 'Unknown';
-            if (!empty($item['user_id'])) {
-                $resUser = $userMap->get($item['user_id']);
-                if ($resUser) {
-                    $username = $resUser->username;
-                }
-            }
-            
-            return [
-                'id' => $item['id'],
-                'user_name' => $username,
-                'login_account' => $item['login_account'],
-                'login_type' => $item['login_type'],
-                'login_type_name' => SystemEnum::$loginTypeArr[$item['login_type']] ?? '',
-                'platform' => $item['platform'],
-                'platform_name' => AuthPlatformService::getPlatformName($item['platform']),
-                'ip' => $item['ip'],
-                'ua' => $item['ua'],
-                'is_success' => $item['is_success'],
-                'reason' => $item['reason'] ?? '',
-                'created_at' => $item['created_at'],
-            ];
-        });
+        $list = $result['list']->map(fn($item) => $this->formatLogItem($item, $userMap));
 
         return self::cursorPaginate($list, $result['next_cursor'], $result['has_more']);
+    }
+
+    // ==================== 私有方法 ====================
+
+    /**
+     * 批量预加载用户数据
+     */
+    private function preloadUsers($collection): mixed
+    {
+        $userIds = $collection->pluck('user_id')->filter()->unique()->toArray();
+        return $this->dep(UsersDep::class)->getMap($userIds);
+    }
+
+    /**
+     * 格式化单条日志数据
+     */
+    private function formatLogItem($item, $userMap): array
+    {
+        $username = 'Unknown';
+        if (!empty($item['user_id'])) {
+            $username = $userMap->get($item['user_id'])?->username ?? 'Unknown';
+        }
+
+        return [
+            'id'              => $item['id'],
+            'user_name'       => $username,
+            'login_account'   => $item['login_account'],
+            'login_type'      => $item['login_type'],
+            'login_type_name' => SystemEnum::$loginTypeArr[$item['login_type']] ?? '',
+            'platform'        => $item['platform'],
+            'platform_name'   => AuthPlatformService::getPlatformName($item['platform']),
+            'ip'              => $item['ip'],
+            'ua'              => $item['ua'],
+            'is_success'      => $item['is_success'],
+            'reason'          => $item['reason'] ?? '',
+            'created_at'      => $item['created_at'],
+        ];
     }
 }

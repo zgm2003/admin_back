@@ -8,38 +8,31 @@ use app\validate\User\UsersQuickEntryValidate;
 
 /**
  * 用户快捷入口模块
+ * 负责：快捷入口的添加、删除、排序
  */
 class UsersQuickEntryModule extends BaseModule
 {
-    protected UsersQuickEntryDep $usersQuickEntryDep;
-
-    public function __construct()
-    {
-        $this->usersQuickEntryDep = $this->dep(UsersQuickEntryDep::class);
-    }
-
     /**
      * 添加快捷入口
      */
     public function add($request): array
     {
         $param = $this->validate($request, UsersQuickEntryValidate::add());
-        
+
         $userId = $request->userId;
         $permissionId = (int)$param['permission_id'];
 
+        $dep = $this->dep(UsersQuickEntryDep::class);
+
         // 检查是否已添加
-        $exists = $this->usersQuickEntryDep->existsByUserAndPermission($userId, $permissionId);
-        self::throwIf($exists, '该入口已添加');
+        self::throwIf($dep->existsByUserAndPermission($userId, $permissionId), '该入口已添加');
 
-        // 获取当前最大 sort
-        $maxSort = $this->usersQuickEntryDep->getMaxSort($userId);
-
-        // 添加
-        $id = $this->usersQuickEntryDep->add([
-            'user_id' => $userId,
+        // 获取当前最大 sort，添加记录
+        $maxSort = $dep->getMaxSort($userId);
+        $id = $dep->add([
+            'user_id'       => $userId,
             'permission_id' => $permissionId,
-            'sort' => $maxSort + 1,
+            'sort'          => $maxSort + 1,
         ]);
 
         return self::success(['id' => $id]);
@@ -51,9 +44,7 @@ class UsersQuickEntryModule extends BaseModule
     public function del($request): array
     {
         $param = $this->validate($request, UsersQuickEntryValidate::del());
-        
-        $this->usersQuickEntryDep->delete($param['id']);
-
+        $this->dep(UsersQuickEntryDep::class)->delete($param['id']);
         return self::success();
     }
 
@@ -63,9 +54,7 @@ class UsersQuickEntryModule extends BaseModule
     public function sort($request): array
     {
         $param = $this->validate($request, UsersQuickEntryValidate::sort());
-        
-        $this->usersQuickEntryDep->updateSort($param['items']);
-
+        $this->dep(UsersQuickEntryDep::class)->updateSort($param['items']);
         return self::success();
     }
 }
