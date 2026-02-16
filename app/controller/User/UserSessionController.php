@@ -11,9 +11,9 @@ class UserSessionController extends Controller
     public function list(Request $request) { return $this->run([UserSessionModule::class, 'list'], $request); }
     public function stats(Request $request) { return $this->run([UserSessionModule::class, 'stats'], $request); }
 
-    /** @OperationLog("会话踢下线") @Permission("user.session.kick") */
+    /** @OperationLog("会话踢下线") @Permission("user_userManager_kick") */
     public function kick(Request $request) { return $this->run([UserSessionModule::class, 'kick'], $request); }
 
-    /** @OperationLog("会话批量踢下线") @Permission("user.session.kick") */
+    /** @OperationLog("会话批量踢下线") @Permission("user_userManager_kick") */
     public function batchKick(Request $request) { return $this->run([UserSessionModule::class, 'batchKick'], $request); }
 }
