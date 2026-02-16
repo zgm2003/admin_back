@@ -197,6 +197,32 @@ class SessionService
     }
 
     /**
+     * 踢下线：撤销会话 + 清 Redis token + 清指针
+     * @return int 实际撤销数量
+     */
+    public static function kick(array $ids): int
+    {
+        if (empty($ids)) return 0;
+
+        $sessions = self::dep()->getByIds($ids);
+        if ($sessions->isEmpty()) return 0;
+
+        $tokenKeys = [];
+        foreach ($sessions as $session) {
+            if (!empty($session->access_token_hash)) {
+                $tokenKeys[] = $session->access_token_hash;
+            }
+            self::clearPointerIfMatches($session->user_id, $session->platform, $session->id);
+        }
+
+        if (!empty($tokenKeys)) {
+            Redis::connection('token')->del(...$tokenKeys);
+        }
+
+        return self::dep()->batchRevoke(array_column($sessions->all(), 'id'));
+    }
+
+    /**
      * 清除会话指针（仅当匹配时）
      */
     private static function clearPointerIfMatches(int $userId, string $platform, int $sessionId): void
