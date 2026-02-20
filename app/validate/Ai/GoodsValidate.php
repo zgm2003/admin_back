@@ -82,8 +82,9 @@ class GoodsValidate
     public static function generate(): array
     {
         return [
-            'id'   => v::intVal()->positive()->setName('ID'),
-            'tips' => v::optional(v::stringType())->setName('提示词'),
+            'id'       => v::intVal()->positive()->setName('ID'),
+            'agent_id' => v::intVal()->positive()->setName('智能体ID'),
+            'tips'     => v::optional(v::stringType())->setName('提示词'),
         ];
     }
 

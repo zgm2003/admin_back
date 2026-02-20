@@ -2,6 +2,7 @@
 
 namespace app\module\Ai;
 
+use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\GoodsDep;
 use app\enum\CommonEnum;
 use app\enum\GoodsEnum;
@@ -40,6 +41,14 @@ class GoodsModule extends BaseModule
             ->setGoodsPlatformArr()
             ->setGoodsStatusArr()
             ->getDict();
+
+        // 商品口播专用智能体列表
+        $agents = $this->dep(AiAgentsDep::class)->getActiveByScene('goods_script');
+        $data['dict']['goods_agent_list'] = $agents->map(fn($item) => [
+            'value' => $item->id,
+            'label' => $item->name,
+        ])->toArray();
+
         return self::success($data);
     }
 
@@ -234,9 +243,10 @@ class GoodsModule extends BaseModule
 
         // 入队列
         \Webman\RedisQueue\Client::send('goods_process', [
-            'id'   => $id,
-            'step' => 'generate',
-            'tips' => $param['tips'] ?? '',
+            'id'       => $id,
+            'step'     => 'generate',
+            'agent_id' => (int)$param['agent_id'],
+            'tips'     => $param['tips'] ?? '',
         ]);
 
         return self::success(['msg' => '生成任务已提交']);

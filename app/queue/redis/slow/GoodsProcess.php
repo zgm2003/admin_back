@@ -4,7 +4,11 @@ namespace app\queue\redis\slow;
 
 use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\AiModelsDep;
+use app\dep\Ai\AiRunsDep;
+use app\dep\Ai\AiRunStepsDep;
 use app\dep\Ai\GoodsDep;
+use app\enum\AiEnum;
+use app\enum\CommonEnum;
 use app\enum\GoodsEnum;
 use app\lib\OcrSdk;
 use app\service\Ai\AiChatService;
@@ -62,7 +66,7 @@ class GoodsProcess implements Consumer
     }
 
     /**
-     * AI生成口播词 — 复用已有的智能体 + 模型体系
+     * AI生成口播词 — 使用指定智能体 + 记录运行日志
      */
     private function handleGenerate(GoodsDep $dep, $goods, array $data): void
     {
@@ -70,11 +74,12 @@ class GoodsProcess implements Consumer
         $ocrText = $goods->ocr ?? '';
         $title   = $goods->title ?? '';
 
-        // 查找商品口播专用智能体
+        // 使用前端指定的智能体
+        $agentId   = (int)($data['agent_id'] ?? 0);
         $agentsDep = new AiAgentsDep();
-        $agent     = $agentsDep->getByScene('goods_script');
+        $agent     = $agentId ? $agentsDep->get($agentId) : $agentsDep->getByScene('goods_script');
         if (!$agent) {
-            throw new \RuntimeException('未配置商品口播智能体，请在AI智能体管理中创建 scene=goods_script 的智能体');
+            throw new \RuntimeException('智能体不存在或未启用，请检查配置');
         }
 
         // 获取关联模型
@@ -98,9 +103,82 @@ class GoodsProcess implements Consumer
         $messages[] = ['role' => 'user', 'content' => $userMessage];
 
         $payload = $chatService->buildPayload($agent, $model, $messages);
-        $result  = $chatService->chat($client, $payload, $config);
 
-        $content = $result['content'] ?? '';
+        // 创建运行记录
+        $runsDep   = new AiRunsDep();
+        $stepsDep  = new AiRunStepsDep();
+        $requestId = $chatService->generateRequestId();
+        $startTime = microtime(true);
+        $stepNo    = 0;
+
+        $runId = $runsDep->add([
+            'request_id'      => $requestId,
+            'user_id'         => 0,
+            'agent_id'        => $agent->id,
+            'conversation_id' => 0,
+            'user_message_id' => 0,
+            'run_status'      => AiEnum::RUN_STATUS_RUNNING,
+            'model_snapshot'  => $model->model_code,
+            'is_del'          => CommonEnum::NO,
+        ]);
+
+        // Step 1: 提示词构建
+        $stepsDep->add([
+            'run_id'       => $runId,
+            'step_no'      => ++$stepNo,
+            'step_type'    => AiEnum::STEP_TYPE_PROMPT,
+            'status'       => AiEnum::STEP_STATUS_SUCCESS,
+            'payload_json' => json_encode(['messages_count' => count($messages), 'model' => $model->model_code], JSON_UNESCAPED_UNICODE),
+            'is_del'       => CommonEnum::NO,
+        ]);
+
+        // Step 2: LLM 调用
+        $llmStart  = microtime(true);
+        $llmStepId = $stepsDep->add([
+            'run_id'       => $runId,
+            'step_no'      => ++$stepNo,
+            'step_type'    => AiEnum::STEP_TYPE_LLM,
+            'status'       => AiEnum::STEP_STATUS_SUCCESS,
+            'payload_json' => json_encode(['model' => $model->model_code, 'stream' => false], JSON_UNESCAPED_UNICODE),
+            'is_del'       => CommonEnum::NO,
+        ]);
+
+        try {
+            $result  = $chatService->chat($client, $payload, $config);
+            $content = $result['content'] ?? '';
+            $llmLatency = (int)((microtime(true) - $llmStart) * 1000);
+            $totalLatency = (int)((microtime(true) - $startTime) * 1000);
+
+            // 更新 LLM 步骤
+            $stepsDep->updateStepStatus($llmStepId, AiEnum::STEP_STATUS_SUCCESS, null, $llmLatency);
+
+            // Step 3: 最终化
+            $stepsDep->add([
+                'run_id'       => $runId,
+                'step_no'      => ++$stepNo,
+                'step_type'    => AiEnum::STEP_TYPE_FINALIZE,
+                'status'       => AiEnum::STEP_STATUS_SUCCESS,
+                'payload_json' => json_encode([
+                    'prompt_tokens'     => $result['usage']['prompt_tokens'] ?? null,
+                    'completion_tokens' => $result['usage']['completion_tokens'] ?? null,
+                    'total_tokens'      => $result['usage']['total_tokens'] ?? null,
+                ], JSON_UNESCAPED_UNICODE),
+                'is_del'       => CommonEnum::NO,
+            ]);
+
+            // 标记运行成功
+            $runsDep->markSuccess($runId, [
+                'prompt_tokens'     => $result['usage']['prompt_tokens'] ?? 0,
+                'completion_tokens' => $result['usage']['completion_tokens'] ?? 0,
+                'total_tokens'      => $result['usage']['total_tokens'] ?? 0,
+                'latency_ms'        => $totalLatency,
+            ]);
+        } catch (\Throwable $e) {
+            $llmLatency = (int)((microtime(true) - $llmStart) * 1000);
+            $stepsDep->updateStepStatus($llmStepId, AiEnum::STEP_STATUS_FAIL, $e->getMessage(), $llmLatency);
+            $runsDep->markFailed($runId, $e->getMessage());
+            throw $e;
+        }
 
         // 解析AI返回的卖点和口播词
         $parsed = $this->parseAiResponse($content);
