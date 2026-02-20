@@ -136,6 +136,10 @@ class BaseModule
 
     /**
      * Lazy load dependencies for modules (Dep/Service).
+     *
+     * @template T
+     * @param class-string<T> $class
+     * @return T
      */
     protected function dep(string $class)
     {
@@ -147,6 +151,10 @@ class BaseModule
 
     /**
      * Alias for service dependencies.
+     *
+     * @template T
+     * @param class-string<T> $class
+     * @return T
      */
     protected function svc(string $class)
     {
