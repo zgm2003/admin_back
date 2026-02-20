@@ -1,0 +1,290 @@
+<?php
+
+namespace app\module\Ai;
+
+use app\dep\Ai\GoodsDep;
+use app\enum\CommonEnum;
+use app\enum\GoodsEnum;
+use app\module\BaseModule;
+use app\service\DictService;
+use app\validate\Ai\GoodsValidate;
+
+class GoodsModule extends BaseModule
+{
+    /**
+     * 平台域名 → 枚举映射
+     */
+    private static array $platformMap = [
+        'item.taobao.com'          => GoodsEnum::PLATFORM_TAOBAO,
+        'item.jd.com'              => GoodsEnum::PLATFORM_JD,
+        'detail.tmall.com'         => GoodsEnum::PLATFORM_TMALL,
+        'chaoshi.detail.tmall.com' => GoodsEnum::PLATFORM_TMALL_CHAOSHI,
+        'yangkeduo.com'            => GoodsEnum::PLATFORM_PDD,
+        'mobile.yangkeduo.com'     => GoodsEnum::PLATFORM_PDD,
+        'douyin.com'               => GoodsEnum::PLATFORM_DOUYIN,
+        'kuaishou.com'             => GoodsEnum::PLATFORM_KUAISHOU,
+        'xiaohongshu.com'          => GoodsEnum::PLATFORM_XIAOHONGSHU,
+        'xhslink.com'              => GoodsEnum::PLATFORM_XIAOHONGSHU,
+        '1688.com'                 => GoodsEnum::PLATFORM_1688,
+        'detail.1688.com'          => GoodsEnum::PLATFORM_1688,
+        'vip.com'                  => GoodsEnum::PLATFORM_VIP,
+        'suning.com'               => GoodsEnum::PLATFORM_SUNING,
+    ];
+
+    // ==================== 查询类 ====================
+
+    public function init($request): array
+    {
+        $dictService = new DictService();
+        $data['dict'] = $dictService
+            ->setGoodsPlatformArr()
+            ->setGoodsStatusArr()
+            ->getDict();
+        return self::success($data);
+    }
+
+    public function statusCount($request): array
+    {
+        $title    = $request->input('title', '');
+        $platform = $request->input('platform');
+
+        $countMap = $this->dep(GoodsDep::class)->statusCount(
+            $title ?: null,
+            ($platform !== null && $platform !== '') ? (int)$platform : null
+        );
+
+        $total  = array_sum($countMap);
+        $result = [['label' => '全部', 'value' => '', 'num' => $total]];
+        foreach (GoodsEnum::$statusArr as $val => $label) {
+            $result[] = ['label' => $label, 'value' => $val, 'num' => $countMap[$val] ?? 0];
+        }
+
+        return self::success($result);
+    }
+
+    public function list($request): array
+    {
+        $param = $this->validate($request, GoodsValidate::list());
+        $res   = $this->dep(GoodsDep::class)->list($param);
+
+        $list = $res->map(fn($item) => [
+            'id'                 => $item->id,
+            'title'              => $item->title,
+            'main_img'           => $item->main_img,
+            'platform'           => $item->platform,
+            'platform_name'      => GoodsEnum::$platformArr[$item->platform] ?? '未知',
+            'link'               => $item->link,
+            'tips'               => $item->tips,
+            'ocr'                => $item->ocr,
+            'point'              => $item->point,
+            'script_text'        => $item->script_text,
+            'model_origin'       => $item->model_origin,
+            'status'             => $item->status,
+            'status_name'        => GoodsEnum::$statusArr[$item->status] ?? '',
+            'status_msg'         => $item->status_msg,
+            'image_list'         => $item->image_list,
+            'image_list_success' => $item->image_list_success,
+            'audio_url'          => $item->audio_url,
+            'created_at'         => $item->created_at,
+            'updated_at'         => $item->updated_at,
+        ]);
+
+        $page = [
+            'page_size'    => $res->perPage(),
+            'current_page' => $res->currentPage(),
+            'total_page'   => $res->lastPage(),
+            'total'        => $res->total(),
+        ];
+
+        return self::paginate($list, $page);
+    }
+
+    // ==================== 写入类 ====================
+
+    public function add($request): array
+    {
+        $param = $this->validate($request, GoodsValidate::add());
+
+        $data = [
+            'title'      => $param['title'] ?? '',
+            'main_img'   => $param['main_img'] ?? '',
+            'platform'   => (int)($param['platform'] ?? -1),
+            'link'       => $param['link'] ?? '',
+            'image_list' => !empty($param['image_list']) ? json_encode($param['image_list']) : null,
+            'status'     => GoodsEnum::STATUS_PENDING,
+            'is_del'     => CommonEnum::NO,
+        ];
+
+        $id = $this->dep(GoodsDep::class)->add($data);
+        return self::success(['id' => $id]);
+    }
+
+    public function edit($request): array
+    {
+        $param = $this->validate($request, GoodsValidate::edit());
+        $id    = (int)$param['id'];
+        $dep   = $this->dep(GoodsDep::class);
+
+        $dep->getOrFail($id);
+
+        $data   = [];
+        $fields = ['title', 'main_img', 'link', 'tips', 'point', 'script_text'];
+        foreach ($fields as $field) {
+            if (isset($param[$field])) {
+                $data[$field] = $param[$field];
+            }
+        }
+        if (isset($param['image_list'])) {
+            $data['image_list'] = json_encode($param['image_list']);
+        }
+        if (isset($param['image_list_success'])) {
+            $data['image_list_success'] = json_encode($param['image_list_success']);
+        }
+
+        if (!empty($data)) {
+            $dep->update($id, $data);
+        }
+
+        return self::success();
+    }
+
+    public function del($request): array
+    {
+        $param    = $this->validate($request, GoodsValidate::del());
+        $affected = $this->dep(GoodsDep::class)->delete($param['id']);
+        return self::success(['affected' => $affected]);
+    }
+
+    /**
+     * 插件提交商品数据
+     */
+    public function submit($request): array
+    {
+        $param = $this->validate($request, GoodsValidate::submit());
+
+        $platformId = $this->resolvePlatform($param['platform'] ?? '');
+        $images     = $param['images'] ?? [];
+
+        $data = [
+            'title'      => $param['title'] ?? '',
+            'main_img'   => $images[0] ?? '',
+            'platform'   => $platformId,
+            'link'       => $param['link'] ?? '',
+            'image_list' => json_encode($images),
+            'status'     => GoodsEnum::STATUS_PENDING,
+            'is_del'     => CommonEnum::NO,
+        ];
+
+        $id = $this->dep(GoodsDep::class)->add($data);
+        return self::success(['id' => $id]);
+    }
+
+    // ==================== 流水线操作（状态校验 + 入队列） ====================
+
+    /**
+     * OCR识别（异步）
+     */
+    public function ocr($request): array
+    {
+        $param = $this->validate($request, GoodsValidate::ocr());
+        $id    = (int)$param['id'];
+        $dep   = $this->dep(GoodsDep::class);
+        $goods = $dep->getOrFail($id);
+
+        $images = $param['image_list_success'] ?? $goods->image_list_success ?? $goods->image_list ?? [];
+        self::throwIf(empty($images), '没有可识别的图片');
+
+        // 乐观锁切状态 → OCR中
+        $affected = $dep->transitStatus($id, $goods->status, GoodsEnum::STATUS_OCR, [
+            'image_list_success' => json_encode($images),
+        ]);
+        self::throwIf($affected === 0, '状态已变更，请刷新后重试');
+
+        // 入队列
+        \Webman\RedisQueue\Client::send('goods_process', [
+            'id'                 => $id,
+            'step'               => 'ocr',
+            'image_list_success' => $images,
+        ]);
+
+        return self::success(['msg' => 'OCR任务已提交']);
+    }
+
+    /**
+     * AI生成口播词（异步）
+     */
+    public function generate($request): array
+    {
+        $param = $this->validate($request, GoodsValidate::generate());
+        $id    = (int)$param['id'];
+        $dep   = $this->dep(GoodsDep::class);
+        $goods = $dep->getOrFail($id);
+
+        $ocrText = $goods->ocr ?? '';
+        $title   = $goods->title ?? '';
+        self::throwIf(empty($ocrText) && empty($title), '请先进行OCR识别或填写商品标题');
+
+        // 乐观锁切状态 → 生成中
+        $extra = [];
+        if (!empty($param['tips'])) {
+            $extra['tips'] = $param['tips'];
+        }
+        $affected = $dep->transitStatus($id, $goods->status, GoodsEnum::STATUS_GENERATING, $extra);
+        self::throwIf($affected === 0, '状态已变更，请刷新后重试');
+
+        // 入队列
+        \Webman\RedisQueue\Client::send('goods_process', [
+            'id'   => $id,
+            'step' => 'generate',
+            'tips' => $param['tips'] ?? '',
+        ]);
+
+        return self::success(['msg' => '生成任务已提交']);
+    }
+
+    /**
+     * TTS语音合成（异步）
+     */
+    public function tts($request): array
+    {
+        $param = $this->validate($request, GoodsValidate::tts());
+        $id    = (int)$param['id'];
+        $dep   = $this->dep(GoodsDep::class);
+        $goods = $dep->getOrFail($id);
+
+        $scriptText = $param['script_text'] ?? $goods->script_text ?? '';
+        self::throwIf(empty($scriptText), '没有口播词内容，请先生成口播词');
+
+        // 乐观锁切状态 → TTS中
+        $extra = [];
+        if (!empty($param['script_text'])) {
+            $extra['script_text'] = $param['script_text'];
+        }
+        $affected = $dep->transitStatus($id, $goods->status, GoodsEnum::STATUS_TTS, $extra);
+        self::throwIf($affected === 0, '状态已变更，请刷新后重试');
+
+        // 入队列
+        \Webman\RedisQueue\Client::send('goods_process', [
+            'id'          => $id,
+            'step'        => 'tts',
+            'script_text' => $scriptText,
+        ]);
+
+        return self::success(['msg' => 'TTS任务已提交']);
+    }
+
+    // ==================== 私有方法 ====================
+
+    /**
+     * 解析平台域名 → 枚举值
+     */
+    private function resolvePlatform(string $host): int
+    {
+        foreach (self::$platformMap as $domain => $enumVal) {
+            if (str_contains($host, $domain)) {
+                return $enumVal;
+            }
+        }
+        return -1;
+    }
+}

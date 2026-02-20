@@ -27,6 +27,9 @@ Route::group('/api/admin', function () {
     
     // 测试接口
     Route::post('/test', [controller\TestController::class, 'test']);
+
+    // 插件提交商品（无需鉴权，插件直接调用）
+    Route::post('/Goods/submit', [controller\Ai\GoodsController::class, 'submit']);
 });
 
 Route::group('/api/admin', function () {
@@ -247,6 +250,17 @@ Route::group('/api/admin', function () {
     Route::post('/NotificationTask/add', [controller\System\NotificationTaskController::class, 'add']);
     Route::post('/NotificationTask/del', [controller\System\NotificationTaskController::class, 'del']);
     Route::post('/NotificationTask/cancel', [controller\System\NotificationTaskController::class, 'cancel']);
+
+    // 电商商品管理
+    Route::post('/Goods/init', [controller\Ai\GoodsController::class, 'init']);
+    Route::post('/Goods/statusCount', [controller\Ai\GoodsController::class, 'statusCount']);
+    Route::post('/Goods/list', [controller\Ai\GoodsController::class, 'list']);
+    Route::post('/Goods/add', [controller\Ai\GoodsController::class, 'add']);
+    Route::post('/Goods/edit', [controller\Ai\GoodsController::class, 'edit']);
+    Route::post('/Goods/del', [controller\Ai\GoodsController::class, 'del']);
+    Route::post('/Goods/ocr', [controller\Ai\GoodsController::class, 'ocr']);
+    Route::post('/Goods/generate', [controller\Ai\GoodsController::class, 'generate']);
+    Route::post('/Goods/tts', [controller\Ai\GoodsController::class, 'tts']);
 
     // 聊天管理
     Route::post('/Chat/conversationList', [controller\Chat\ChatController::class, 'conversationList']);

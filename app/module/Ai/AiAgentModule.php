@@ -27,6 +27,7 @@ class AiAgentModule extends BaseModule
         $dictService = new DictService();
         $data['dict'] = $dictService
             ->setAiModeArr()
+            ->setAiSceneArr()
             ->setCommonStatusArr()
             ->getDict();
 
@@ -68,6 +69,8 @@ class AiAgentModule extends BaseModule
                 'system_prompt' => $item->system_prompt,
                 'mode' => $item->mode,
                 'mode_name' => AiEnum::$modeArr[$item->mode] ?? $item->mode,
+                'scene' => $item->scene ?? 'chat',
+                'scene_name' => AiEnum::$sceneArr[$item->scene ?? 'chat'] ?? $item->scene,
                 'temperature' => $item->temperature,
                 'max_tokens' => $item->max_tokens,
                 'extra_params' => $item->extra_params,
@@ -109,6 +112,7 @@ class AiAgentModule extends BaseModule
             'avatar' => $param['avatar'] ?? null,
             'system_prompt' => $param['system_prompt'] ?? null,
             'mode' => $param['mode'] ?? 'chat',
+            'scene' => $param['scene'] ?? 'chat',
             'temperature' => $param['temperature'] ?? 1.00,
             'max_tokens' => $param['max_tokens'] ?? null,
             'extra_params' => $extraParams ? json_encode($extraParams) : null,
@@ -140,6 +144,7 @@ class AiAgentModule extends BaseModule
             'avatar' => $param['avatar'] ?? null,
             'system_prompt' => $param['system_prompt'] ?? null,
             'mode' => $param['mode'],
+            'scene' => $param['scene'] ?? $row->scene ?? 'chat',
             'temperature' => $param['temperature'],
             'max_tokens' => $param['max_tokens'] ?? null,
             'status' => (int)$param['status'],

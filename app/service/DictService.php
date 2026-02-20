@@ -13,6 +13,7 @@ use app\enum\PermissionEnum;
 use app\enum\UploadConfigEnum;
 use app\enum\SystemEnum;
 use app\enum\AiEnum;
+use app\enum\GoodsEnum;
 use app\enum\CronEnum;
 use app\enum\NotificationEnum;
 use app\service\System\AuthPlatformService;
@@ -200,6 +201,21 @@ class DictService
 
     public function setAiModeArr(){
         $this->dict['ai_mode_arr'] = $this->enumToDict(AiEnum::$modeArr);
+        return $this;
+    }
+
+    public function setAiSceneArr(){
+        $this->dict['ai_scene_arr'] = $this->enumToDict(AiEnum::$sceneArr);
+        return $this;
+    }
+
+    public function setGoodsPlatformArr(){
+        $this->dict['goods_platform_arr'] = $this->enumToDict(GoodsEnum::$platformArr);
+        return $this;
+    }
+
+    public function setGoodsStatusArr(){
+        $this->dict['goods_status_arr'] = $this->enumToDict(GoodsEnum::$statusArr);
         return $this;
     }
 

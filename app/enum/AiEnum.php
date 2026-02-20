@@ -49,7 +49,14 @@ class AiEnum
         self::MODE_WORKFLOW => '工作流',
     ];
 
-    // AI 运行状态 (ai_runs.run_status)
+    // AI 智能体场景
+    const SCENE_CHAT = 'chat';
+    const SCENE_GOODS_SCRIPT = 'goods_script';
+
+    public static $sceneArr = [
+        self::SCENE_CHAT => '对话',
+        self::SCENE_GOODS_SCRIPT => '商品口播生成',
+    ];
     const RUN_STATUS_RUNNING = 1;   // 运行中
     const RUN_STATUS_SUCCESS = 2;   // 成功
     const RUN_STATUS_FAIL = 3;      // 失败
