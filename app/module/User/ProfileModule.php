@@ -40,7 +40,7 @@ class ProfileModule extends BaseModule
         ];
 
         $platform = $request->platform;
-        $perm = $this->svc(PermissionService::class)->buildPermissionContextByUser($user, $platform);
+        $perm = PermissionService::buildPermissionContextByUser($user, $platform);
 
         Cache::set("auth_perm_uid_{$user->id}_{$platform}", $perm['buttonCodes'], CacheTTLEnum::PERMISSION_BUTTONS);
 

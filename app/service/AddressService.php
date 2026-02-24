@@ -5,40 +5,43 @@ namespace app\service;
 use app\dep\AddressDep;
 
 /**
- * 地址服务 - 业务格式化逻辑
+ * 地址服务
+ * 负责：根据区县 ID 向上回溯构建完整地址路径（省-市-区）
  */
 class AddressService
 {
-    private AddressDep $addressDep;
+    private static ?AddressDep $dep = null;
 
-    public function __construct()
+    private static function dep(): AddressDep
     {
-        $this->addressDep = new AddressDep();
+        return self::$dep ??= new AddressDep();
     }
 
     /**
      * 根据 district_id 构建完整地址路径（省-市-区）
-     * 业务格式化逻辑，不属于纯数据访问
+     * 从叶子节点向上回溯至根节点（parent_id = -1），带环检测
      */
-    public function buildAddressPath(int $districtId): string
+    public static function buildAddressPath(int $districtId): string
     {
         if (!$districtId) {
             return '';
         }
 
-        $map = $this->addressDep->getAllMap();
+        $map = self::dep()->getAllMap();
         $parts = [];
         $currentId = $districtId;
-        $visited = []; // 防止死循环
+        $visited = [];
 
         while (isset($map[$currentId]) && !isset($visited[$currentId])) {
             $visited[$currentId] = true;
             $node = $map[$currentId];
-            // Redis 反序列化后是数组
-            $name = is_array($node) ? $node['name'] : $node->name;
-            $parentId = is_array($node) ? $node['parent_id'] : $node->parent_id;
+
+            // Redis 反序列化后是数组，ORM 查询是对象
+            $name     = \is_array($node) ? $node['name'] : $node->name;
+            $parentId = \is_array($node) ? $node['parent_id'] : $node->parent_id;
 
             array_unshift($parts, $name);
+
             if ($parentId === -1) {
                 break;
             }

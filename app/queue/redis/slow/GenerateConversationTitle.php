@@ -31,7 +31,6 @@ class GenerateConversationTitle implements Consumer
         $conversationsDep = new AiConversationsDep();
         $agentsDep = new AiAgentsDep();
         $modelsDep = new AiModelsDep();
-        $chatService = new AiChatService();
 
         // 检查会话是否存在且标题为空
         $conversation = $conversationsDep->getByUser($conversationId, $userId);
@@ -59,7 +58,7 @@ class GenerateConversationTitle implements Consumer
         }
 
         // 创建客户端
-        [$client, $config, $error] = $chatService->createClient($model);
+        [$client, $config, $error] = AiChatService::createClient($model);
         if ($error) {
             $this->log('Failed to create client', ['error' => $error]);
             return;
@@ -67,7 +66,7 @@ class GenerateConversationTitle implements Consumer
 
         // 生成标题
         try {
-            $title = $chatService->generateTitle($client, $config, $model->model_code, $userMessage);
+            $title = AiChatService::generateTitle($client, $config, $model->model_code, $userMessage);
             if ($title) {
                 $conversationsDep->updateTitle($conversationId, $title, $userId);
                 $this->log('Title generated', [

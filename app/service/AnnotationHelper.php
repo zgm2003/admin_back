@@ -3,46 +3,36 @@
 namespace app\service;
 
 use Webman\Http\Request;
-use ReflectionMethod;
 
+/**
+ * 注解解析助手
+ * 通过反射读取控制器方法的 DocBlock 注解
+ * 支持：@OperationLog("描述") / @Permission("权限码")
+ */
 class AnnotationHelper
 {
     /**
-     * 从当前 Webman 请求中反射出控制器方法，提取 @OperationLog("描述") 注解内容
-     *
-     * @param Request $request
-     * @return string|null  注解中的描述，没找到返回 null
+     * 提取 @OperationLog("描述") 注解内容
      */
     public static function getOperationLogAnnotation(Request $request): ?string
     {
-        // Webman 自动将 controller 类名和方法名注入到请求对象
-        $controllerClass = $request->controller; // 如 app\controller\YourController
-        $method          = $request->action;     // 如 "add"
-
-        if (empty($controllerClass) || empty($method)) {
-            return null;
-        }
-
-        try {
-            $refMethod  = new ReflectionMethod($controllerClass, $method);
-            $docComment = $refMethod->getDocComment();
-            if (! $docComment) {
-                return null;
-            }
-
-            // 匹配 @OperationLog("描述内容")
-            if (preg_match('/@OperationLog\("(.+?)"\)/', $docComment, $matches)) {
-                return $matches[1];
-            }
-        } catch (\ReflectionException $e) {
-            // 类或方法不存在
-            return null;
-        }
-
-        return null;
+        return self::extractAnnotation($request, 'OperationLog');
     }
 
+    /**
+     * 提取 @Permission("权限码") 注解内容
+     */
     public static function getPermissionAnnotation(Request $request): ?string
+    {
+        return self::extractAnnotation($request, 'Permission');
+    }
+
+    // ==================== 私有方法 ====================
+
+    /**
+     * 通用注解提取：反射控制器方法 DocBlock，匹配 @{tag}("value")
+     */
+    private static function extractAnnotation(Request $request, string $tag): ?string
     {
         $controllerClass = $request->controller;
         $method          = $request->action;
@@ -54,19 +44,14 @@ class AnnotationHelper
         try {
             $refMethod  = new \ReflectionMethod($controllerClass, $method);
             $docComment = $refMethod->getDocComment();
-            if (! $docComment) {
-                return null;
-            }
 
-            // 匹配 @Permission("xxx.xxx")
-            if (preg_match('/@Permission\("(.+?)"\)/', $docComment, $matches)) {
+            if ($docComment && preg_match("/@{$tag}\(\"(.+?)\"\)/", $docComment, $matches)) {
                 return $matches[1];
             }
-        } catch (\ReflectionException $e) {
-            return null;
+        } catch (\ReflectionException) {
+            // 类或方法不存在，静默返回 null
         }
 
         return null;
     }
-
 }

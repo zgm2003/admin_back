@@ -2,17 +2,23 @@
 
 namespace app\service;
 
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
+/**
+ * Excel 导出服务
+ * 负责：通用数据导出为 .xlsx 文件，保存到 public/export/{日期}/ 目录
+ */
 class ExportService
 {
     /**
-     * 通用导出方法 - 保存到 public/export
-     * @param array $headers ['字段名'=>'列标题']
-     * @param array $data 数据数组
-     * @param string $prefix 文件名前缀
-     * @return array ['url' => '下载URL', 'file_name' => '文件名', 'file_size' => '文件大小', 'row_count' => '行数']
+     * 通用导出方法
+     *
+     * @param array  $headers ['字段名' => '列标题']
+     * @param array  $data    数据数组
+     * @param string $prefix  文件名前缀
+     * @return array{url: string, file_name: string, file_size: int, row_count: int, file_path: string}
      */
     public function export(array $headers, array $data, string $prefix = 'export'): array
     {
@@ -21,49 +27,42 @@ class ExportService
 
         // 写表头
         $colLetter = 'A';
-        foreach ($headers as $key => $title) {
-            $sheet->setCellValue($colLetter . '1', $title);
+        foreach ($headers as $title) {
+            $sheet->setCellValue("{$colLetter}1", $title);
             $colLetter++;
         }
 
-        // 写数据
+        // 写数据（全部以字符串类型写入，避免数字被科学计数法转换）
         $rowNum = 2;
         foreach ($data as $row) {
             $colLetter = 'A';
             foreach ($headers as $key => $title) {
-                $sheet->setCellValueExplicit(
-                    $colLetter . $rowNum, 
-                    strval($row[$key] ?? ''), 
-                    \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
-                );
+                $sheet->setCellValueExplicit("{$colLetter}{$rowNum}", (string)($row[$key] ?? ''), DataType::TYPE_STRING);
                 $colLetter++;
             }
             $rowNum++;
         }
 
-        // 文件路径（按日期分类）
-        $dateDir = date('Ymd');
-        $exportDir = public_path() . '/export/' . $dateDir;
+        // 按日期分目录存储
+        $dateDir   = date('Ymd');
+        $exportDir = public_path() . "/export/{$dateDir}";
         if (!is_dir($exportDir)) {
             mkdir($exportDir, 0777, true);
         }
 
-        $fileName = $prefix . '_' . date('Ymd_His') . '_' . uniqid() . '.xlsx';
-        $filePath = $exportDir . '/' . $fileName;
+        $fileName = "{$prefix}_" . date('Ymd_His') . '_' . uniqid() . '.xlsx';
+        $filePath = "{$exportDir}/{$fileName}";
 
-        // 保存 Excel
-        $writer = new Xlsx($spreadsheet);
-        $writer->save($filePath);
+        (new Xlsx($spreadsheet))->save($filePath);
 
-        // 返回下载 URL（拼接完整地址）
         $appUrl = rtrim(getenv('APP_URL') ?: '', '/');
-        $relativeUrl = '/export/' . $dateDir . '/' . $fileName;
+
         return [
-            'url' => $appUrl . $relativeUrl,
+            'url'       => "{$appUrl}/export/{$dateDir}/{$fileName}",
             'file_name' => $fileName,
             'file_size' => filesize($filePath),
-            'row_count' => count($data),
-            'file_path' => $filePath,  // 本地路径，方便清理
+            'row_count' => \count($data),
+            'file_path' => $filePath,
         ];
     }
 }

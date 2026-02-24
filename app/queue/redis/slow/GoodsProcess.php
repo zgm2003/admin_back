@@ -89,9 +89,8 @@ class GoodsProcess implements Consumer
         // 构建用户消息
         $userMessage = $this->buildPrompt($title, $ocrText, $tips);
 
-        // 通过 AiChatService 调用
-        $chatService = new AiChatService();
-        [$client, $config, $error] = $chatService->createClient($model);
+        // 通过 AiChatService 调用（静态方法）
+        [$client, $config, $error] = AiChatService::createClient($model);
         if ($error) {
             throw new \RuntimeException("AI客户端创建失败: {$error}");
         }
@@ -102,12 +101,12 @@ class GoodsProcess implements Consumer
         }
         $messages[] = ['role' => 'user', 'content' => $userMessage];
 
-        $payload = $chatService->buildPayload($agent, $model, $messages);
+        $payload = AiChatService::buildPayload($agent, $model, $messages);
 
         // 创建运行记录
         $runsDep   = new AiRunsDep();
         $stepsDep  = new AiRunStepsDep();
-        $requestId = $chatService->generateRequestId();
+        $requestId = AiChatService::generateRequestId();
         $startTime = microtime(true);
         $stepNo    = 0;
 
@@ -144,7 +143,7 @@ class GoodsProcess implements Consumer
         ]);
 
         try {
-            $result  = $chatService->chat($client, $payload, $config);
+            $result  = AiChatService::chat($client, $payload, $config);
             $content = $result['content'] ?? '';
             $llmLatency = (int)((microtime(true) - $llmStart) * 1000);
             $totalLatency = (int)((microtime(true) - $startTime) * 1000);

@@ -4,46 +4,43 @@ namespace app\service;
 
 use Qcloud\Cos\Client;
 
+/**
+ * 腾讯云 COS 上传服务
+ * 负责：从远程 URL 下载文件并上传到 COS，返回公网访问地址
+ */
 class CosUploadService
 {
-    protected $cosClient;
-    protected $bucket;
-    protected $region;
+    private Client $cosClient;
+    private string $bucket;
 
     public function __construct()
     {
         $this->cosClient = new Client([
-            'region' => getenv('COS_REGION'),
+            'region'      => getenv('COS_REGION'),
             'credentials' => [
-                'secretId' => getenv('TENCENTCLOUD_SECRET_ID'),
+                'secretId'  => getenv('TENCENTCLOUD_SECRET_ID'),
                 'secretKey' => getenv('TENCENTCLOUD_SECRET_KEY'),
-            ]
+            ],
         ]);
         $this->bucket = getenv('COS_BUCKET');
-        $this->region = getenv('COS_REGION');
     }
 
     /**
-     * 从远程图片 URL 上传到 COS，返回上传后的公网 URL
+     * 从远程 URL 下载文件并上传到 COS
      *
-     * @param string $imageUrl 远程图片地址
-     * @param string|null $folderName 存储目录，如 'ai_image_video'
-     * @return string|null 上传后的 COS 访问地址，失败返回 null
+     * @param string      $imageUrl   远程文件地址
+     * @param string|null $folderName 存储目录（如 'ai_image_video'）
+     * @return string|null 上传后的 COS 公网地址，失败返回 null
      */
     public function uploadFromUrl(string $imageUrl, string $folderName = 'ai_image_video'): ?string
     {
         $imageData = @file_get_contents($imageUrl);
         if ($imageData === false) {
-            return null; // 下载失败
+            return null;
         }
 
-        $fileExt = pathinfo(parse_url($imageUrl, PHP_URL_PATH), PATHINFO_EXTENSION);
-        if (!$fileExt) {
-            $fileExt = 'jpg'; // 默认后缀
-        }
-
-        $fileName = time() . '_' . uniqid() . '.' . $fileExt;
-        $key = "{$folderName}/{$fileName}";
+        $fileExt = pathinfo(parse_url($imageUrl, PHP_URL_PATH), PATHINFO_EXTENSION) ?: 'jpg';
+        $key = "{$folderName}/" . time() . '_' . uniqid() . ".{$fileExt}";
 
         try {
             $result = $this->cosClient->putObject([
@@ -55,13 +52,8 @@ class CosUploadService
 
             return 'https://' . $result['Location'];
         } catch (\Exception $e) {
-            $this->log("COS 上传失败: " . $e->getMessage());
+            log_daily('CosUploadService')->info("COS 上传失败: {$e->getMessage()}");
             return null;
         }
-    }
-    private function log($msg, $context = [])
-    {
-        $logger = log_daily("CosUploadService"); // 获取 Logger 实例
-        $logger->info($msg, $context);
     }
 }

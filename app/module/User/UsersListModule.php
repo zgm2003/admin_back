@@ -178,7 +178,7 @@ class UsersListModule extends BaseModule
     {
         $role = $roleMap->get($item->role_id);
         $districtId = (int)($item->address_id ?? 0);
-        $addressPath = $this->svc(AddressService::class)->buildAddressPath($districtId);
+        $addressPath = AddressService::buildAddressPath($districtId);
         $detail = $item->detail_address ?? '';
 
         return [

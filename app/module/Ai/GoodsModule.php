@@ -10,12 +10,16 @@ use app\module\BaseModule;
 use app\service\DictService;
 use app\validate\Ai\GoodsValidate;
 
+/**
+ * 电商商品口播词管理模块
+ * 负责：商品 CRUD、插件提交、OCR识别、AI生成口播词、TTS语音合成
+ * 流水线：待处理 → OCR中 → OCR完成 → 生成中 → 生成完成 → TTS中 → TTS完成
+ * 状态流转使用乐观锁 + Redis 异步队列
+ */
 class GoodsModule extends BaseModule
 {
-    /**
-     * 平台域名 → 枚举映射
-     */
-    private static array $platformMap = [
+    /** @var array 平台域名 → 枚举映射 */
+    private const PLATFORM_MAP = [
         'item.taobao.com'          => GoodsEnum::PLATFORM_TAOBAO,
         'item.jd.com'              => GoodsEnum::PLATFORM_JD,
         'detail.tmall.com'         => GoodsEnum::PLATFORM_TMALL,
@@ -26,10 +30,12 @@ class GoodsModule extends BaseModule
 
     // ==================== 查询类 ====================
 
+    /**
+     * 初始化（返回平台、状态、音色字典 + 商品口播专用智能体列表）
+     */
     public function init($request): array
     {
-        $dictService = new DictService();
-        $data['dict'] = $dictService
+        $data['dict'] = $this->svc(DictService::class)
             ->setGoodsPlatformArr()
             ->setGoodsStatusArr()
             ->setGoodsVoiceArr()
@@ -45,6 +51,9 @@ class GoodsModule extends BaseModule
         return self::success($data);
     }
 
+    /**
+     * 各状态数量统计（用于前端 tab 角标）
+     */
     public function statusCount($request): array
     {
         $title    = $request->input('title', '');
@@ -64,6 +73,9 @@ class GoodsModule extends BaseModule
         return self::success($result);
     }
 
+    /**
+     * 商品列表（分页，含平台名称、状态名称）
+     */
     public function list($request): array
     {
         $param = $this->validate($request, GoodsValidate::list());
@@ -103,6 +115,9 @@ class GoodsModule extends BaseModule
 
     // ==================== 写入类 ====================
 
+    /**
+     * 新增商品（手动录入）
+     */
     public function add($request): array
     {
         $param = $this->validate($request, GoodsValidate::add());
@@ -112,7 +127,7 @@ class GoodsModule extends BaseModule
             'main_img'   => $param['main_img'] ?? '',
             'platform'   => (int)($param['platform'] ?? -1),
             'link'       => $param['link'] ?? '',
-            'image_list' => !empty($param['image_list']) ? json_encode($param['image_list']) : null,
+            'image_list' => !empty($param['image_list']) ? \json_encode($param['image_list']) : null,
             'status'     => GoodsEnum::STATUS_PENDING,
             'is_del'     => CommonEnum::NO,
         ];
@@ -121,6 +136,9 @@ class GoodsModule extends BaseModule
         return self::success(['id' => $id]);
     }
 
+    /**
+     * 编辑商品（部分更新，JSON 字段序列化）
+     */
     public function edit($request): array
     {
         $param = $this->validate($request, GoodsValidate::edit());
@@ -137,10 +155,10 @@ class GoodsModule extends BaseModule
             }
         }
         if (isset($param['image_list'])) {
-            $data['image_list'] = json_encode($param['image_list']);
+            $data['image_list'] = \json_encode($param['image_list']);
         }
         if (isset($param['image_list_success'])) {
-            $data['image_list_success'] = json_encode($param['image_list_success']);
+            $data['image_list_success'] = \json_encode($param['image_list_success']);
         }
 
         if (!empty($data)) {
@@ -150,6 +168,9 @@ class GoodsModule extends BaseModule
         return self::success();
     }
 
+    /**
+     * 删除商品（支持批量，软删除）
+     */
     public function del($request): array
     {
         $param    = $this->validate($request, GoodsValidate::del());
@@ -172,7 +193,7 @@ class GoodsModule extends BaseModule
             'main_img'   => $images[0] ?? '',
             'platform'   => $platformId,
             'link'       => $param['link'] ?? '',
-            'image_list' => json_encode($images),
+            'image_list' => \json_encode($images),
             'status'     => GoodsEnum::STATUS_PENDING,
             'is_del'     => CommonEnum::NO,
         ];
@@ -198,7 +219,7 @@ class GoodsModule extends BaseModule
 
         // 乐观锁切状态 → OCR中
         $affected = $dep->transitStatus($id, $goods->status, GoodsEnum::STATUS_OCR, [
-            'image_list_success' => json_encode($images),
+            'image_list_success' => \json_encode($images),
         ]);
         self::throwIf($affected === 0, '状态已变更，请刷新后重试');
 
@@ -285,8 +306,8 @@ class GoodsModule extends BaseModule
      */
     private function resolvePlatform(string $host): int
     {
-        foreach (self::$platformMap as $domain => $enumVal) {
-            if (str_contains($host, $domain)) {
+        foreach (self::PLATFORM_MAP as $domain => $enumVal) {
+            if (\str_contains($host, $domain)) {
                 return $enumVal;
             }
         }

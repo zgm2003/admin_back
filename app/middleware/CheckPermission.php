@@ -30,15 +30,13 @@ class CheckPermission implements MiddlewareInterface
         if (!is_array($buttonCodes)) {
             // 尝试重新加载权限，而不是直接返回错误
             try {
-                // 实例化依赖 (手动实例化以确保在中间件中可用)
                 $usersDep = new UsersDep();
-                $permissionService = new PermissionService();
 
                 $user = $usersDep->find($request->userId);
                 
                 if ($user) {
                     // 重新计算权限（按平台过滤）
-                    $perm = $permissionService->buildPermissionContextByUser($user, $platform);
+                    $perm = PermissionService::buildPermissionContextByUser($user, $platform);
                     $buttonCodes = $perm['buttonCodes'];
                     
                     // 重新写入缓存
