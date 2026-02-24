@@ -22,14 +22,6 @@ class GoodsModule extends BaseModule
         'chaoshi.detail.tmall.com' => GoodsEnum::PLATFORM_TMALL_CHAOSHI,
         'yangkeduo.com'            => GoodsEnum::PLATFORM_PDD,
         'mobile.yangkeduo.com'     => GoodsEnum::PLATFORM_PDD,
-        'douyin.com'               => GoodsEnum::PLATFORM_DOUYIN,
-        'kuaishou.com'             => GoodsEnum::PLATFORM_KUAISHOU,
-        'xiaohongshu.com'          => GoodsEnum::PLATFORM_XIAOHONGSHU,
-        'xhslink.com'              => GoodsEnum::PLATFORM_XIAOHONGSHU,
-        '1688.com'                 => GoodsEnum::PLATFORM_1688,
-        'detail.1688.com'          => GoodsEnum::PLATFORM_1688,
-        'vip.com'                  => GoodsEnum::PLATFORM_VIP,
-        'suning.com'               => GoodsEnum::PLATFORM_SUNING,
     ];
 
     // ==================== 查询类 ====================
@@ -40,6 +32,7 @@ class GoodsModule extends BaseModule
         $data['dict'] = $dictService
             ->setGoodsPlatformArr()
             ->setGoodsStatusArr()
+            ->setGoodsVoiceArr()
             ->getDict();
 
         // 商品口播专用智能体列表
@@ -259,6 +252,7 @@ class GoodsModule extends BaseModule
     {
         $param = $this->validate($request, GoodsValidate::tts());
         $id    = (int)$param['id'];
+        $voice = $param['voice'] ?? GoodsEnum::VOICE_XIAOXIAO;
         $dep   = $this->dep(GoodsDep::class);
         $goods = $dep->getOrFail($id);
 
@@ -277,6 +271,7 @@ class GoodsModule extends BaseModule
         \Webman\RedisQueue\Client::send('goods_process', [
             'id'          => $id,
             'step'        => 'tts',
+            'voice'       => $voice,
             'script_text' => $scriptText,
         ]);
 

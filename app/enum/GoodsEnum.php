@@ -10,12 +10,6 @@ class GoodsEnum
     const PLATFORM_TMALL = 3;
     const PLATFORM_TMALL_CHAOSHI = 4;
     const PLATFORM_PDD = 5;
-    const PLATFORM_DOUYIN = 6;
-    const PLATFORM_KUAISHOU = 7;
-    const PLATFORM_XIAOHONGSHU = 8;
-    const PLATFORM_1688 = 9;
-    const PLATFORM_VIP = 10;
-    const PLATFORM_SUNING = 11;
 
     public static $platformArr = [
         self::PLATFORM_TAOBAO => '淘宝',
@@ -23,12 +17,27 @@ class GoodsEnum
         self::PLATFORM_TMALL => '天猫',
         self::PLATFORM_TMALL_CHAOSHI => '天猫超市',
         self::PLATFORM_PDD => '拼多多',
-        self::PLATFORM_DOUYIN => '抖音',
-        self::PLATFORM_KUAISHOU => '快手',
-        self::PLATFORM_XIAOHONGSHU => '小红书',
-        self::PLATFORM_1688 => '1688',
-        self::PLATFORM_VIP => '唯品会',
-        self::PLATFORM_SUNING => '苏宁',
+    ];
+
+    // TTS音色
+    const VOICE_XIAOXIAO   = 'zh-CN-XiaoxiaoNeural';   // 女-温暖
+    const VOICE_XIAOYI     = 'zh-CN-XiaoyiNeural';     // 女-活泼
+    const VOICE_YUNJIAN    = 'zh-CN-YunjianNeural';     // 男-激情
+    const VOICE_YUNXI      = 'zh-CN-YunxiNeural';       // 男-阳光
+    const VOICE_YUNXIA     = 'zh-CN-YunxiaNeural';      // 男-可爱
+    const VOICE_YUNYANG    = 'zh-CN-YunyangNeural';     // 男-专业
+    const VOICE_XIAOBEI    = 'zh-CN-liaoning-XiaobeiNeural'; // 女-东北方言
+    const VOICE_XIAONI     = 'zh-CN-shaanxi-XiaoniNeural';  // 女-陕西方言
+
+    public static $voiceArr = [
+        self::VOICE_XIAOXIAO => '晓晓（女-温暖）',
+        self::VOICE_XIAOYI   => '晓伊（女-活泼）',
+        self::VOICE_YUNJIAN  => '云健（男-激情）',
+        self::VOICE_YUNXI    => '云希（男-阳光）',
+        self::VOICE_YUNXIA   => '云夏（男-可爱）',
+        self::VOICE_YUNYANG  => '云扬（男-专业）',
+        self::VOICE_XIAOBEI  => '晓北（女-东北方言）',
+        self::VOICE_XIAONI   => '晓妮（女-陕西方言）',
     ];
 
     // 状态（线性递进）

@@ -191,8 +191,7 @@ class GoodsProcess implements Consumer
     }
 
     /**
-     * TTS语音合成
-     * TODO: 对接实际的TTS服务（阿里云 / SiliconFlow）
+     * TTS语音合成 — 调用 edge-tts 命令行
      */
     private function handleTts(GoodsDep $dep, $goods, array $data): void
     {
@@ -201,8 +200,45 @@ class GoodsProcess implements Consumer
             throw new \RuntimeException('没有口播词内容');
         }
 
-        // TODO: 替换为实际TTS调用
-        throw new \RuntimeException('TTS服务尚未对接，请实现 GoodsProcess::handleTts()');
+        $voice = $data['voice'] ?? GoodsEnum::VOICE_XIAOXIAO;
+
+        // 生成文件路径：public/audio/tts/{date}/{id}_{timestamp}.mp3
+        $dateDir  = date('Ymd');
+        $audioDir = public_path() . '/audio/tts/' . $dateDir;
+        if (!is_dir($audioDir)) {
+            mkdir($audioDir, 0755, true);
+        }
+        $filename = $goods->id . '_' . time() . '.mp3';
+        $filePath = $audioDir . '/' . $filename;
+
+        // 写入临时文本文件（避免命令行转义问题）
+        $tmpFile = runtime_path() . '/tts_' . $goods->id . '.txt';
+        file_put_contents($tmpFile, $scriptText);
+
+        // 调用 edge-tts
+        $cmd = sprintf(
+            'edge-tts --voice %s --file %s --write-media %s 2>&1',
+            escapeshellarg($voice),
+            escapeshellarg($tmpFile),
+            escapeshellarg($filePath)
+        );
+
+        $this->log('执行TTS命令', ['cmd' => $cmd]);
+        exec($cmd, $output, $exitCode);
+
+        // 清理临时文件
+        @unlink($tmpFile);
+
+        if ($exitCode !== 0 || !file_exists($filePath)) {
+            throw new \RuntimeException('edge-tts执行失败: ' . implode("\n", $output));
+        }
+
+        // 生成访问URL
+        $audioUrl = '/audio/tts/' . $dateDir . '/' . $filename;
+
+        $dep->transitStatus($goods->id, GoodsEnum::STATUS_TTS, GoodsEnum::STATUS_COMPLETED, [
+            'audio_url' => $audioUrl,
+        ]);
     }
 
     // ==================== 工具方法 ====================

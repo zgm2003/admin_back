@@ -219,6 +219,11 @@ class DictService
         return $this;
     }
 
+    public function setGoodsVoiceArr(){
+        $this->dict['goods_voice_arr'] = $this->enumToDict(GoodsEnum::$voiceArr);
+        return $this;
+    }
+
     public function setRunStatusArr(){
         $this->dict['run_status_arr'] = $this->enumToDict(AiEnum::$runStatusArr);
         return $this;
