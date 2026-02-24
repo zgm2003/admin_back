@@ -7,91 +7,92 @@ use app\dep\User\UsersDep;
 use app\module\BaseModule;
 use app\validate\DevTools\OperationLogValidate;
 
+/**
+ * 操作日志模块
+ * 负责：后台操作日志的列表查询（普通分页 + 游标分页）、删除
+ * 列表返回时批量预加载用户信息，避免 N+1 查询
+ */
 class OperationLogModule extends BaseModule
 {
-    protected OperationLogDep $operationLogDep;
-    protected UsersDep $usersDep;
-
-    public function __construct()
-    {
-        $this->operationLogDep = new OperationLogDep();
-        $this->usersDep = new UsersDep();
-    }
-
-    // init 无需返回用户列表，前端使用远程搜索
+    /**
+     * 初始化（当前无需返回字典，前端用户搜索走远程接口）
+     */
     public function init($request)
     {
         return self::success();
     }
 
+    /**
+     * 删除操作日志（支持批量）
+     */
     public function del($request)
     {
         $param = $this->validate($request, OperationLogValidate::del());
-
-        $this->operationLogDep->delete($param['id']);
+        $this->dep(OperationLogDep::class)->delete($param['id']);
 
         return self::success();
     }
 
+    /**
+     * 操作日志列表（普通分页，批量预加载用户数据）
+     */
     public function list($request)
     {
         $param = $this->validate($request, OperationLogValidate::list());
-        $resList = $this->operationLogDep->list($param);
-        
-        // === 优化：批量预加载用户数据 ===
-        $userIds = $resList->pluck('user_id')->unique()->toArray();
-        $userMap = $this->usersDep->getMap($userIds);
+        $resList = $this->dep(OperationLogDep::class)->list($param);
 
-        $data['list'] = $resList->map(function ($item) use ($userMap){
-            $resUser = $userMap->get($item['user_id']);
-            return [
-                'id' => $item['id'],
-                'user_name' => $resUser->username ?? 'Unknown',
-                'user_email' => $resUser->email ?? '',
-                'action' => $item['action'],
-                'request_data' => $item['request_data'],
-                'response_data' => $item['response_data'],
-                'is_success' => $item['is_success'],
-                'created_at' => $item['created_at'],
-            ];
-        });
+        // 批量预加载用户数据，避免 N+1
+        $userIds = $resList->pluck('user_id')->unique()->toArray();
+        $userMap = $this->dep(UsersDep::class)->getMap($userIds);
+
+        $data['list'] = $resList->map(fn($item) => $this->buildLogItem($item, $userMap));
+
         $data['page'] = [
-            'page_size' => $resList->perPage(),
+            'page_size'    => $resList->perPage(),
             'current_page' => $resList->currentPage(),
-            'total_page' => $resList->lastPage(),
-            'total' => $resList->total(),
+            'total_page'   => $resList->lastPage(),
+            'total'        => $resList->total(),
         ];
 
         return self::paginate($data['list'], $data['page']);
     }
 
+
     /**
-     * 游标分页列表（深分页优化）
+     * 操作日志列表（游标分页，适用于深分页场景）
      */
     public function listCursor($request)
     {
         $param = $this->validate($request, OperationLogValidate::listCursor());
+        $result = $this->dep(OperationLogDep::class)->listByCursor($param);
 
-        $result = $this->operationLogDep->listByCursor($param);
-        
-        // 批量预加载用户数据
+        // 批量预加载用户数据，避免 N+1
         $userIds = $result['list']->pluck('user_id')->unique()->toArray();
-        $userMap = $this->usersDep->getMap($userIds);
+        $userMap = $this->dep(UsersDep::class)->getMap($userIds);
 
-        $list = $result['list']->map(function ($item) use ($userMap) {
-            $resUser = $userMap->get($item['user_id']);
-            return [
-                'id' => $item['id'],
-                'user_name' => $resUser->username ?? 'Unknown',
-                'user_email' => $resUser->email ?? '',
-                'action' => $item['action'],
-                'request_data' => $item['request_data'],
-                'response_data' => $item['response_data'],
-                'is_success' => $item['is_success'],
-                'created_at' => $item['created_at'],
-            ];
-        });
+        $list = $result['list']->map(fn($item) => $this->buildLogItem($item, $userMap));
 
         return self::cursorPaginate($list, $result['next_cursor'], $result['has_more']);
+    }
+
+    // ==================== 私有方法 ====================
+
+    /**
+     * 组装单条日志数据（关联用户名和邮箱）
+     */
+    private function buildLogItem($item, $userMap): array
+    {
+        $user = $userMap->get($item['user_id']);
+
+        return [
+            'id'            => $item['id'],
+            'user_name'     => $user->username ?? 'Unknown',
+            'user_email'    => $user->email ?? '',
+            'action'        => $item['action'],
+            'request_data'  => $item['request_data'],
+            'response_data' => $item['response_data'],
+            'is_success'    => $item['is_success'],
+            'created_at'    => $item['created_at'],
+        ];
     }
 }
