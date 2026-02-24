@@ -5,23 +5,18 @@ namespace app\module\System;
 use app\module\BaseModule;
 use app\service\DictService;
 
+/**
+ * 系统日志模块
+ * 负责：运行日志文件浏览、日志内容读取（支持关键字/级别过滤、尾部读取）
+ */
 class SystemLogModule extends BaseModule
 {
-    private string $logDir;
-    protected DictService $dictService;
-
-    public function __construct()
-    {
-        $this->logDir = base_path() . '/runtime/logs';
-        $this->dictService = $this->svc(DictService::class);
-    }
-
     /**
-     * 初始化字典数据
+     * 初始化（返回日志级别、尾部行数等字典）
      */
     public function init($request): array
     {
-        $data['dict'] = $this->dictService
+        $data['dict'] = $this->svc(DictService::class)
             ->setLogLevelArr()
             ->setLogTailArr()
             ->getDict();
@@ -30,41 +25,31 @@ class SystemLogModule extends BaseModule
 
     /**
      * 获取日志文件列表
+     * 扫描 runtime/logs 目录及一级子目录（如 redis-queue），返回文件名、大小、修改时间
      */
     public function files($request): array
     {
+        $logDir = $this->getLogDir();
         $files = [];
 
-        if (!is_dir($this->logDir)) {
+        if (!is_dir($logDir)) {
             return self::success(['list' => []]);
         }
 
         // 扫描主目录下的 .log 文件
-        foreach (glob($this->logDir . '/*.log') as $file) {
-            $filename = basename($file);
-            $files[] = [
-                'name'       => $filename,
-                'size'       => filesize($file),
-                'size_human' => $this->formatSize(filesize($file)),
-                'mtime'      => date('Y-m-d H:i:s', filemtime($file)),
-            ];
+        foreach (glob("{$logDir}/*.log") as $file) {
+            $files[] = $this->buildFileInfo(basename($file), $file);
         }
 
-        // 扫描子目录（如 redis-queue）
-        foreach (glob($this->logDir . '/*', GLOB_ONLYDIR) as $dir) {
+        // 扫描一级子目录（如 redis-queue/xxx.log）
+        foreach (glob("{$logDir}/*", GLOB_ONLYDIR) as $dir) {
             $dirName = basename($dir);
-            foreach (glob($dir . '/*.log') as $file) {
-                $filename = $dirName . '/' . basename($file);
-                $files[] = [
-                    'name'       => $filename,
-                    'size'       => filesize($file),
-                    'size_human' => $this->formatSize(filesize($file)),
-                    'mtime'      => date('Y-m-d H:i:s', filemtime($file)),
-                ];
+            foreach (glob("{$dir}/*.log") as $file) {
+                $files[] = $this->buildFileInfo("{$dirName}/" . basename($file), $file);
             }
         }
 
-        // 按修改时间倒序
+        // 按修改时间倒序，最新的排前面
         usort($files, fn($a, $b) => strcmp($b['mtime'], $a['mtime']));
 
         return self::success(['list' => $files]);
@@ -72,39 +57,39 @@ class SystemLogModule extends BaseModule
 
     /**
      * 读取日志文件内容
+     * 支持：尾部 N 行读取、关键字过滤、日志级别过滤
      */
     public function content($request): array
     {
+        $logDir  = $this->getLogDir();
         $filename = $request->post('filename', '');
         $keyword  = $request->post('keyword', '');
         $level    = $request->post('level', '');
-        $tail     = (int) $request->post('tail', 500); // 默认读取最后500行
+        $tail     = (int) $request->post('tail', 500);
 
-        // 安全校验：防止目录穿越
+        // 安全校验：防止 ../ 目录穿越和空字节注入
         self::throwIf(
             empty($filename) || str_contains($filename, '..') || str_contains($filename, "\0"),
             '文件名不合法'
         );
 
-        $filepath = $this->logDir . '/' . $filename;
-
+        $filepath = "{$logDir}/{$filename}";
         self::throwIf(!is_file($filepath), '日志文件不存在');
 
-        // 限制最大读取行数
+        // 限制最大读取行数，防止内存溢出
         $tail = min($tail, 2000);
 
-        // 从文件末尾读取指定行数
         $lines = $this->tailFile($filepath, $tail);
 
-        // 按关键字过滤
+        // 关键字过滤（不区分大小写）
         if ($keyword !== '') {
             $lines = array_values(array_filter($lines, fn($line) => stripos($line, $keyword) !== false));
         }
 
-        // 按日志级别过滤
+        // 日志级别过滤（匹配 monolog 格式：channel.LEVEL:）
         if ($level !== '') {
             $levelUpper = strtoupper($level);
-            $lines = array_values(array_filter($lines, fn($line) => str_contains($line, '.' . $levelUpper . ':')));
+            $lines = array_values(array_filter($lines, fn($line) => str_contains($line, ".{$levelUpper}:")));
         }
 
         return self::success([
@@ -114,8 +99,32 @@ class SystemLogModule extends BaseModule
         ]);
     }
 
+    // ==================== 私有方法 ====================
+
     /**
-     * 从文件末尾读取 N 行（高效实现，不会一次性读入整个文件）
+     * 获取日志根目录路径
+     */
+    private function getLogDir(): string
+    {
+        return base_path() . '/runtime/logs';
+    }
+
+    /**
+     * 构建单个文件信息数组
+     */
+    private function buildFileInfo(string $name, string $fullPath): array
+    {
+        return [
+            'name'       => $name,
+            'size'       => filesize($fullPath),
+            'size_human' => $this->formatSize(filesize($fullPath)),
+            'mtime'      => date('Y-m-d H:i:s', filemtime($fullPath)),
+        ];
+    }
+
+    /**
+     * 从文件末尾高效读取 N 行
+     * 采用反向分块读取策略，不会一次性加载整个文件到内存
      */
     private function tailFile(string $filepath, int $lines): array
     {
@@ -124,7 +133,6 @@ class SystemLogModule extends BaseModule
 
         $result = [];
         $buffer = '';
-        $pos = -1;
         $fileSize = filesize($filepath);
 
         if ($fileSize === 0) {
@@ -132,21 +140,19 @@ class SystemLogModule extends BaseModule
             return [];
         }
 
-        // 从文件末尾向前读取
         fseek($fp, 0, SEEK_END);
         $pos = ftell($fp);
 
+        // 每次读取 4KB 块，从文件尾部向前推进
         while ($pos > 0 && count($result) < $lines) {
             $readSize = min(4096, $pos);
             $pos -= $readSize;
             fseek($fp, $pos);
             $buffer = fread($fp, $readSize) . $buffer;
 
-            // 按行分割
             $parts = explode("\n", $buffer);
-            $buffer = array_shift($parts); // 第一段可能不完整，留到下次
+            $buffer = array_shift($parts); // 第一段可能不完整，留到下一轮
 
-            // 将完整行加入结果
             foreach (array_reverse($parts) as $line) {
                 if (trim($line) !== '') {
                     array_unshift($result, $line);
@@ -155,19 +161,18 @@ class SystemLogModule extends BaseModule
             }
         }
 
-        // 处理剩余的 buffer
+        // 处理最后剩余的不完整行
         if (count($result) < $lines && trim($buffer) !== '') {
             array_unshift($result, $buffer);
         }
 
         fclose($fp);
 
-        // 只返回最后 N 行
         return array_slice($result, -$lines);
     }
 
     /**
-     * 格式化文件大小
+     * 格式化文件大小为人类可读格式
      */
     private function formatSize(int $bytes): string
     {

@@ -10,100 +10,134 @@ use app\service\DictService;
 use app\service\System\SettingService;
 use app\validate\System\SystemSettingValidate;
 
+/**
+ * 系统配置模块
+ * 负责：键值对形式的系统配置项 CRUD + 状态切换（带缓存自动清理）
+ */
 class SystemSettingModule extends BaseModule
 {
-    protected SystemSettingDep $systemSettingDep;
-    protected DictService $dictService;
-
-    public function __construct()
+    /**
+     * 初始化（返回配置值类型字典）
+     */
+    public function init($request): array
     {
-        $this->systemSettingDep = $this->dep(SystemSettingDep::class);
-        $this->dictService = $this->svc(DictService::class);
-    }
-
-    public function init($request)
-    {
-        $data['dict'] = $this->dictService
+        $data['dict'] = $this->svc(DictService::class)
             ->setSystemSettingValueTypeArr()
             ->getDict();
         return self::success($data);
     }
 
-    public function list($request)
+    /**
+     * 配置列表（分页，支持按 key 前缀和状态过滤）
+     */
+    public function list($request): array
     {
         $param = $this->validate($request, SystemSettingValidate::list());
-        $res = $this->systemSettingDep->list($param);
-        $list = $res->map(function ($it) {
-            return [
-                'id' => $it['id'],
-                'setting_key' => $it['setting_key'],
-                'setting_value' => $it['setting_value'],
-                'value_type' => $it['value_type'],
-                'value_type_name' => SystemEnum::$valueTypeArr[$it['value_type']],
-                'remark' => $it['remark'],
-                'status' => $it['status'],
-                'status_name' => CommonEnum::$statusArr[$it['status']],
-                'is_del' => $it['is_del'],
-                'created_at' => $it['created_at'],
-                'updated_at' => $it['updated_at'],
-            ];
-        });
+        $res = $this->dep(SystemSettingDep::class)->list($param);
+
+        $list = $res->map(fn($it) => [
+            'id'              => $it['id'],
+            'setting_key'     => $it['setting_key'],
+            'setting_value'   => $it['setting_value'],
+            'value_type'      => $it['value_type'],
+            'value_type_name' => SystemEnum::$valueTypeArr[$it['value_type']],
+            'remark'          => $it['remark'],
+            'status'          => $it['status'],
+            'status_name'     => CommonEnum::$statusArr[$it['status']],
+            'is_del'          => $it['is_del'],
+            'created_at'      => $it['created_at'],
+            'updated_at'      => $it['updated_at'],
+        ]);
+
         $page = [
-            'page_size' => $res->perPage(),
+            'page_size'    => $res->perPage(),
             'current_page' => $res->currentPage(),
-            'total_page' => $res->lastPage(),
-            'total' => $res->total(),
+            'total_page'   => $res->lastPage(),
+            'total'        => $res->total(),
         ];
+
         return self::paginate($list, $page);
     }
 
-    public function add($request)
+    /**
+     * 新增配置
+     * 流程：校验入参 → 值类型合法性校验 → 通过 SettingService 写入（自动类型转换+缓存管理）
+     */
+    public function add($request): array
     {
         $param = $this->validate($request, SystemSettingValidate::add());
-        
-        self::throwIf((int)$param['type'] === 2 && !is_numeric($param['value']), '数值类型需为数字');
-        self::throwIf((int)$param['type'] === 3 && !in_array(strtolower((string)$param['value']), ['0', '1', 'true', 'false'], true), '布尔类型需为 true/false 或 0/1');
-        if ((int)$param['type'] === 4) {
-            $j = json_decode((string)$param['value'], true);
-            self::throwIf(!is_array($j), 'JSON 类型需为合法 JSON');
-        }
+
+        // 按值类型校验合法性
+        $this->validateValueType((int)$param['type'], $param['value'] ?? '');
+
         SettingService::set($param['key'], $param['value'], (int)$param['type'], $param['remark'] ?? '');
+
         return self::success();
     }
 
-    public function edit($request)
+    /**
+     * 编辑配置
+     * 流程：校验入参 → 值类型合法性校验 → 按 ID 更新（Dep 层自动清理缓存）
+     */
+    public function edit($request): array
     {
         $param = $this->validate($request, SystemSettingValidate::edit());
-        
-        self::throwIf((int)$param['type'] === 2 && !is_numeric($param['value']), '数值类型需为数字');
-        self::throwIf((int)$param['type'] === 3 && !in_array(strtolower((string)$param['value']), ['0', '1', 'true', 'false'], true), '布尔类型需为 true/false 或 0/1');
-        if ((int)$param['type'] === 4) {
-            $j = json_decode((string)$param['value'], true);
-            self::throwIf(!is_array($j), 'JSON 类型需为合法 JSON');
-        }
-        $ok = $this->systemSettingDep->updateById((int)$param['id'], [
-            'setting_value' => (int)$param['type'] === 4 ? (is_string($param['value']) ? $param['value'] : json_encode($param['value'])) : (string)$param['value'],
-            'value_type' => (int)$param['type'],
-            'remark' => $param['remark'] ?? '',
+
+        // 按值类型校验合法性
+        $this->validateValueType((int)$param['type'], $param['value'] ?? '');
+
+        // JSON 类型：非字符串值需 encode 后存储
+        $settingValue = (int)$param['type'] === 4
+            ? (is_string($param['value']) ? $param['value'] : json_encode($param['value']))
+            : (string)$param['value'];
+
+        $ok = $this->dep(SystemSettingDep::class)->updateById((int)$param['id'], [
+            'setting_value' => $settingValue,
+            'value_type'    => (int)$param['type'],
+            'remark'        => $param['remark'] ?? '',
         ]);
         self::throwIf(!$ok, '配置不存在');
+
         return self::success();
     }
 
-    public function del($request)
+    /**
+     * 删除配置（软删，支持批量，Dep 层自动清理缓存）
+     */
+    public function del($request): array
     {
         $param = $this->validate($request, SystemSettingValidate::del());
-        $this->systemSettingDep->deleteById($param['id']);
+        $this->dep(SystemSettingDep::class)->deleteById($param['id']);
         return self::success();
     }
 
-    public function status($request)
+    /**
+     * 切换配置状态（启用/禁用，Dep 层自动清理缓存）
+     */
+    public function status($request): array
     {
         $param = $this->validate($request, SystemSettingValidate::status());
-        $ok = $this->systemSettingDep->setStatusById((int)$param['id'], (int)$param['status']);
-        self::throwIf(!$ok, '配置不存在');
+        $ok = $this->dep(SystemSettingDep::class)->setStatusById((int)$param['id'], (int)$param['status']);
+        self::throwIf(!$ok, '配置项不存在');
         return self::success();
     }
 
-    // 保留 clearCache 可选方法（可不暴露路由）
+    // ==================== 私有方法 ====================
+
+    /**
+     * 按值类型校验合法性
+     * type: 1=字符串 2=数值 3=布尔 4=JSON
+     */
+    private function validateValueType(int $type, mixed $value): void
+    {
+        self::throwIf($type === 2 && !is_numeric($value), '数值类型需为数字');
+        self::throwIf(
+            $type === 3 && !in_array(strtolower((string)$value), ['0', '1', 'true', 'false'], true),
+            '布尔类型需为 true/false 或 0/1'
+        );
+        if ($type === 4) {
+            $j = json_decode((string)$value, true);
+            self::throwIf(!is_array($j), 'JSON 类型需为合法 JSON');
+        }
+    }
 }
