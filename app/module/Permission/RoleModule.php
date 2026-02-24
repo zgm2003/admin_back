@@ -5,60 +5,63 @@ namespace app\module\Permission;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
-use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\service\System\AuthPlatformService;
 use app\validate\Permission\RoleValidate;
 use support\Cache;
 
+/**
+ * 角色管理模块
+ * 负责：角色 CRUD、设置默认角色、权限分配（修改角色后自动清理关联用户的权限缓存）
+ */
 class RoleModule extends BaseModule
 {
-    protected RoleDep $roleDep;
-    protected UsersDep $usersDep;
-    protected DictService $dictService;
-
-    public function __construct()
-    {
-        $this->roleDep = $this->dep(RoleDep::class);
-        $this->usersDep = $this->dep(UsersDep::class);
-        $this->dictService = $this->svc(DictService::class);
-    }
-
+    /**
+     * 初始化（返回权限树字典，供角色分配权限时使用）
+     */
     public function init($request)
     {
-        $data['dict'] = $this->dictService
+        $data['dict'] = $this->svc(DictService::class)
             ->setPermissionTree()
             ->getDict();
 
         return self::success($data);
     }
 
+    /**
+     * 新增角色（角色名不可重复）
+     */
     public function add($request)
     {
         $param = $this->validate($request, RoleValidate::add());
-        self::throwIf($this->roleDep->existsByName($param['name']), '角色名已存在');
-        $data = [
-            'name' => $param['name'],
+        self::throwIf($this->dep(RoleDep::class)->existsByName($param['name']), '角色名已存在');
+
+        $this->dep(RoleDep::class)->add([
+            'name'          => $param['name'],
             'permission_id' => json_encode($param['permission_id']),
-        ];
-        $this->roleDep->add($data);
-        
+        ]);
+
         return self::success();
     }
 
+    /**
+     * 删除角色（支持批量）
+     * 校验：角色必须存在、不能删除默认角色
+     * 删除后清理关联用户的权限缓存
+     */
     public function del($request)
     {
         $param = $this->validate($request, RoleValidate::del());
-        
+
         $ids = is_array($param['id']) ? array_map('intval', $param['id']) : [(int)$param['id']];
-        $dep = $this->roleDep;
+        $dep = $this->dep(RoleDep::class);
         $roles = $dep->getMapActive($ids);
-        
+
         self::throwIf($roles->isEmpty(), '角色不存在');
         self::throwIf($roles->count() !== count($ids), '包含不存在的角色');
         self::throwIf($dep->hasDefaultIn($ids), '默认角色不能删除');
-        
+
         $dep->delete($ids);
 
         $this->clearPermissionCacheByRoleIds($ids);
@@ -66,63 +69,68 @@ class RoleModule extends BaseModule
         return self::success();
     }
 
+    /**
+     * 编辑角色（角色名排除自身的唯一校验）
+     * 编辑后清理关联用户的权限缓存
+     */
     public function edit($request)
     {
         $param = $this->validate($request, RoleValidate::edit());
-        $dep = $this->roleDep;
+
+        $dep = $this->dep(RoleDep::class);
         self::throwIf($dep->existsByName($param['name'], $param['id']), '角色名已存在');
-        $data = [
-            'name' => $param['name'],
+
+        $dep->update($param['id'], [
+            'name'          => $param['name'],
             'permission_id' => json_encode($param['permission_id']),
-        ];
-        $dep->update($param['id'], $data);
+        ]);
 
         $this->clearPermissionCacheByRoleIds([(int)$param['id']]);
 
         return self::success();
     }
 
+    /**
+     * 角色列表（分页，permission_id JSON 解码后返回数组）
+     */
     public function list($request)
     {
-        $dep = $this->roleDep;
         $param = $this->validate($request, RoleValidate::list());
-        $resList = $dep->list($param);
+        $resList = $this->dep(RoleDep::class)->list($param);
 
-        $data['list'] = $resList->map(function ($item) {
-            return [
-                'id' => $item['id'],
-                'name' => $item['name'],
-                'permission_id' => json_decode($item['permission_id']),
-                'is_default' => $item['is_default'] ?? CommonEnum::NO,
-                'created_at' => $item['created_at'],
-                'updated_at' => $item['updated_at']
-            ];
-        });
+        $data['list'] = $resList->map(fn($item) => [
+            'id'            => $item['id'],
+            'name'          => $item['name'],
+            'permission_id' => json_decode($item['permission_id']),
+            'is_default'    => $item['is_default'] ?? CommonEnum::NO,
+            'created_at'    => $item['created_at'],
+            'updated_at'    => $item['updated_at'],
+        ]);
         $data['page'] = [
-            'page_size' => $resList->perPage(),
+            'page_size'    => $resList->perPage(),
             'current_page' => $resList->currentPage(),
-            'total_page' => $resList->lastPage(),
-            'total' => $resList->total(),
+            'total_page'   => $resList->lastPage(),
+            'total'        => $resList->total(),
         ];
 
         return self::paginate($data['list'], $data['page']);
     }
 
     /**
-     * 设置默认角色（唯一）
+     * 设置默认角色（唯一，事务内先清除再设置）
      */
     public function setDefault($request)
     {
         $param = $this->validate($request, RoleValidate::setDefault());
 
-        $dep = $this->roleDep;
+        $dep = $this->dep(RoleDep::class);
         $id = (int)$param['id'];
-        $role = $dep->getOrFail($id);
-        
+        $dep->getOrFail($id);
+
         try {
-            $this->withTransaction(function () use ($id) {
-                $this->roleDep->clearDefault();
-                $this->roleDep->update($id, ['is_default' => CommonEnum::YES]);
+            $this->withTransaction(function () use ($dep, $id) {
+                $dep->clearDefault();
+                $dep->update($id, ['is_default' => CommonEnum::YES]);
             });
         } catch (\Throwable $e) {
             self::throw('设置默认角色失败');
@@ -130,12 +138,18 @@ class RoleModule extends BaseModule
         return self::success();
     }
 
+    // ==================== 私有方法 ====================
+
+    /**
+     * 清理指定角色关联的所有用户权限缓存
+     * 遍历角色下所有用户 × 所有平台，逐一删除缓存 key
+     */
     private function clearPermissionCacheByRoleIds(array $roleIds): void
     {
-        $userIds = $this->usersDep->getIdsByRoleIds($roleIds);
+        $userIds = $this->dep(UsersDep::class)->getIdsByRoleIds($roleIds);
         foreach ($userIds as $uid) {
             foreach (AuthPlatformService::getAllowedPlatforms() as $platform) {
-                Cache::delete('auth_perm_uid_' . $uid . '_' . $platform);
+                Cache::delete("auth_perm_uid_{$uid}_{$platform}");
             }
         }
     }
