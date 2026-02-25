@@ -69,4 +69,15 @@ class GoodsDep extends BaseDep
             ->pluck('num', 'status')
             ->toArray();
     }
+
+    /**
+     * 批量清除音频链接（定时清理用）
+     */
+    public function clearAudioUrl(array $ids): int
+    {
+        return $this->model
+            ->whereIn('id', $ids)
+            ->whereNotNull('audio_url')
+            ->update(['audio_url' => null]);
+    }
 }
