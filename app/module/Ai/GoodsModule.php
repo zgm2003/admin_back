@@ -100,6 +100,7 @@ class GoodsModule extends BaseModule
             'image_list'         => $item->image_list,
             'image_list_success' => $item->image_list_success,
             'audio_url'          => $item->audio_url,
+            'meta'               => $item->meta,
             'created_at'         => $item->created_at,
             'updated_at'         => $item->updated_at,
         ]);
@@ -161,6 +162,9 @@ class GoodsModule extends BaseModule
         if (isset($param['image_list_success'])) {
             $data['image_list_success'] = \json_encode($param['image_list_success']);
         }
+        if (isset($param['meta'])) {
+            $data['meta'] = \json_encode($param['meta']);
+        }
 
         if (!empty($data)) {
             $dep->update($id, $data);
@@ -195,6 +199,7 @@ class GoodsModule extends BaseModule
             'platform'   => $platformId,
             'link'       => $param['link'] ?? '',
             'image_list' => \json_encode($images),
+            'meta'       => !empty($param['meta']) ? \json_encode($param['meta']) : null,
             'status'     => GoodsEnum::STATUS_PENDING,
             'is_del'     => CommonEnum::NO,
         ];

@@ -9,14 +9,12 @@ class GoodsEnum
     const PLATFORM_JD = 2;
     const PLATFORM_TMALL = 3;
     const PLATFORM_TMALL_CHAOSHI = 4;
-    const PLATFORM_PDD = 5;
 
     public static $platformArr = [
         self::PLATFORM_TAOBAO => '淘宝',
         self::PLATFORM_JD => '京东',
         self::PLATFORM_TMALL => '天猫',
         self::PLATFORM_TMALL_CHAOSHI => '天猫超市',
-        self::PLATFORM_PDD => '拼多多',
     ];
 
     // TTS音色

@@ -86,8 +86,9 @@ class GoodsProcess implements Consumer
         $modelsDep = new AiModelsDep();
         $model     = $modelsDep->getOrFail($agent->model_id);
 
-        // 构建用户消息
-        $userMessage = $this->buildPrompt($title, $ocrText, $tips);
+        // 构建用户消息（含爬虫采集的结构化元数据）
+        $meta = $goods->meta ?? null;
+        $userMessage = $this->buildPrompt($title, $ocrText, $tips, $meta);
 
         // 通过 AiChatService 调用（静态方法）
         [$client, $config, $error] = AiChatService::createClient($model);
@@ -251,10 +252,29 @@ class GoodsProcess implements Consumer
     /**
      * 构建AI提示词（用户消息部分）
      */
-    private function buildPrompt(string $title, string $ocrText, string $tips): string
+    private function buildPrompt(string $title, string $ocrText, string $tips, ?array $meta = null): string
     {
         $parts = ["请根据以下商品信息，生成直播口播词。\n"];
         $parts[] = "【商品标题】{$title}";
+
+        // 结构化元数据（爬虫采集）
+        if (!empty($meta)) {
+            $metaLabels = [
+                'price' => '价格', 'originalPrice' => '原价', 'sales' => '销量',
+                'brand' => '品牌', 'shop' => '店铺', 'specs' => '规格',
+                'description' => '商品描述', 'reviews' => '用户评价',
+            ];
+            $metaParts = [];
+            foreach ($metaLabels as $key => $label) {
+                $val = $meta[$key] ?? '';
+                if (is_array($val)) $val = implode('、', $val);
+                if (!empty($val)) $metaParts[] = "{$label}: {$val}";
+            }
+            if ($metaParts) {
+                $parts[] = "【商品信息】\n" . implode("\n", $metaParts);
+            }
+        }
+
         if ($ocrText) $parts[] = "【商品详情(OCR识别)】\n{$ocrText}";
         if ($tips)    $parts[] = "【额外要求】{$tips}";
         $parts[] = "\n请严格按以下格式输出：";

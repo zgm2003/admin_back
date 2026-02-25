@@ -31,6 +31,7 @@ class GoodsValidate
             'script_text'        => v::optional(v::stringType())->setName('口播词'),
             'image_list'         => v::optional(v::arrayType())->setName('图片列表'),
             'image_list_success' => v::optional(v::arrayType())->setName('选中图片列表'),
+            'meta'               => v::optional(v::arrayType())->setName('采集元数据'),
         ];
     }
 
@@ -62,6 +63,7 @@ class GoodsValidate
             'title'       => v::optional(v::stringType()->length(0, 255))->setName('商品标题'),
             'platform'    => v::optional(v::stringType())->setName('平台域名'),
             'link'        => v::optional(v::stringType())->setName('商品链接'),
+            'meta'        => v::optional(v::arrayType())->setName('采集元数据'),
         ];
     }
 

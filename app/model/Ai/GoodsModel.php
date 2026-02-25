@@ -11,5 +11,6 @@ class GoodsModel extends BaseModel
     protected $casts = [
         'image_list' => 'array',
         'image_list_success' => 'array',
+        'meta' => 'json',
     ];
 }
