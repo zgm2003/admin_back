@@ -24,7 +24,6 @@ class GoodsModule extends BaseModule
         'item.jd.com'              => GoodsEnum::PLATFORM_JD,
         'detail.tmall.com'         => GoodsEnum::PLATFORM_TMALL,
         'chaoshi.detail.tmall.com' => GoodsEnum::PLATFORM_TMALL_CHAOSHI,
-        'yangkeduo.com'            => GoodsEnum::PLATFORM_PDD,
         'mobile.yangkeduo.com'     => GoodsEnum::PLATFORM_PDD,
     ];
 
@@ -100,6 +99,7 @@ class GoodsModule extends BaseModule
             'image_list'         => $item->image_list,
             'image_list_success' => $item->image_list_success,
             'audio_url'          => $item->audio_url,
+            'srt_url'            => $item->srt_url,
             'meta'               => $item->meta,
             'created_at'         => $item->created_at,
             'updated_at'         => $item->updated_at,

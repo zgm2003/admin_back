@@ -217,15 +217,21 @@ class GoodsProcess implements Consumer
         $tmpFile = runtime_path() . '/tts_' . $goods->id . '.txt';
         file_put_contents($tmpFile, $scriptText);
 
-        // 调用 edge-tts（含情绪预设的 rate/pitch/volume）
+        // VTT 字幕输出路径（edge-tts --write-subtitles 生成）
+        $vttFilename = $goods->id . '_' . time() . '.vtt';
+        $vttPath     = $audioDir . '/' . $vttFilename;
+
+        // 调用 edge-tts（含情绪预设的 rate/pitch/volume + 字幕输出）
+        // 注意：rate/pitch/volume 来自枚举常量，不用 escapeshellarg（Windows 下 % 会被 cmd 吞掉）
         $cmd = sprintf(
-            'edge-tts --voice %s --rate=%s --pitch=%s --volume=%s --file %s --write-media %s 2>&1',
+            'edge-tts --voice %s --rate=%s --pitch=%s --volume=%s --file %s --write-media %s --write-subtitles %s 2>&1',
             escapeshellarg($voice),
-            escapeshellarg($emotionParams['rate']),
-            escapeshellarg($emotionParams['pitch']),
-            escapeshellarg($emotionParams['volume']),
+            $emotionParams['rate'],
+            $emotionParams['pitch'],
+            $emotionParams['volume'],
             escapeshellarg($tmpFile),
-            escapeshellarg($filePath)
+            escapeshellarg($filePath),
+            escapeshellarg($vttPath)
         );
 
         $this->log('执行TTS命令', ['cmd' => $cmd]);
@@ -238,13 +244,29 @@ class GoodsProcess implements Consumer
             throw new \RuntimeException('edge-tts执行失败: ' . implode("\n", $output));
         }
 
+        // VTT → SRT 转换
+        $srtUrl = null;
+        if (file_exists($vttPath)) {
+            $srtFilename = str_replace('.vtt', '.srt', $vttFilename);
+            $srtPath     = $audioDir . '/' . $srtFilename;
+            $srtContent  = $this->vttToSrt(file_get_contents($vttPath));
+            file_put_contents($srtPath, $srtContent);
+            @unlink($vttPath); // VTT 已转换，删除
+
+            $appUrl = rtrim(getenv('APP_URL') ?: '', '/');
+            $srtUrl = $appUrl . '/audio/tts/' . $dateDir . '/' . $srtFilename;
+        }
+
         // 生成完整访问URL（与导出任务一致，使用 APP_URL 拼接）
         $appUrl   = rtrim(getenv('APP_URL') ?: '', '/');
         $audioUrl = $appUrl . '/audio/tts/' . $dateDir . '/' . $filename;
 
-        $dep->transitStatus($goods->id, GoodsEnum::STATUS_TTS, GoodsEnum::STATUS_COMPLETED, [
-            'audio_url' => $audioUrl,
-        ]);
+        $extra = ['audio_url' => $audioUrl];
+        if ($srtUrl) {
+            $extra['srt_url'] = $srtUrl;
+        }
+
+        $dep->transitStatus($goods->id, GoodsEnum::STATUS_TTS, GoodsEnum::STATUS_COMPLETED, $extra);
     }
 
     // ==================== 工具方法 ====================
@@ -329,6 +351,38 @@ class GoodsProcess implements Consumer
             (new GoodsDep())->markFailed($id, "{$step}最终失败: " . $e->getMessage());
         }
         $this->log('队列消费最终失败', ['id' => $id, 'step' => $step, 'error' => $e->getMessage()]);
+    }
+
+    /**
+     * WebVTT → SRT 格式转换
+     */
+    private function vttToSrt(string $vtt): string
+    {
+        $vtt = preg_replace('/^WEBVTT\s*\n+/i', '', $vtt);
+        $blocks = preg_split('/\n{2,}/', trim($vtt));
+
+        $srt = [];
+        $index = 1;
+        foreach ($blocks as $block) {
+            $block = trim($block);
+            if (empty($block)) continue;
+
+            // 时间戳 . → ,（SRT格式要求）
+            $block = preg_replace_callback(
+                '/(\d{2}:\d{2}:\d{2})\.(\d{3})/',
+                fn($m) => $m[1] . ',' . $m[2],
+                $block
+            );
+
+            if (!preg_match('/^\d+\s*\n/', $block)) {
+                $block = $index . "\n" . $block;
+            }
+
+            $srt[] = $block;
+            $index++;
+        }
+
+        return implode("\n\n", $srt) . "\n";
     }
 
     private function log($msg, $context = [])

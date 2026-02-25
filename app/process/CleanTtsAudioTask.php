@@ -5,9 +5,9 @@ namespace app\process;
 use app\dep\Ai\GoodsDep;
 
 /**
- * 清理过期TTS音频文件
- * - 清理 public/audio/tts 下超过 7 天的 mp3 文件
- * - 清除对应商品记录的 audio_url 字段
+ * 清理过期TTS音频和字幕文件
+ * - 清理 public/audio/tts 下超过 7 天的 mp3/srt 文件
+ * - 清除对应商品记录的 audio_url 和 srt_url 字段
  */
 class CleanTtsAudioTask extends BaseCronTask
 {
@@ -44,8 +44,10 @@ class CleanTtsAudioTask extends BaseCronTask
         foreach ($files as $file) {
             try {
                 if ($file->isFile() && $now - $file->getMTime() > $expireSeconds) {
-                    // 从文件名提取商品ID（格式：{id}_{timestamp}.mp3）
-                    $basename = $file->getBasename('.mp3');
+                    // 从文件名提取商品ID（格式：{id}_{timestamp}.mp3 / .srt）
+                    $ext = $file->getExtension();
+                    if (!in_array($ext, ['mp3', 'srt'], true)) continue;
+                    $basename = $file->getBasename('.' . $ext);
                     $parts = explode('_', $basename, 2);
                     if (!empty($parts[0]) && is_numeric($parts[0])) {
                         $goodsIds[] = (int)$parts[0];
@@ -69,8 +71,8 @@ class CleanTtsAudioTask extends BaseCronTask
         }
 
         $parts = [];
-        if ($deletedCount > 0) $parts[] = "清理了 {$deletedCount} 个过期音频文件";
-        if ($dbCount > 0) $parts[] = "清除了 {$dbCount} 条音频链接";
+        if ($deletedCount > 0) $parts[] = "清理了 {$deletedCount} 个过期音频/字幕文件";
+        if ($dbCount > 0) $parts[] = "清除了 {$dbCount} 条音频/字幕链接";
 
         return !empty($parts) ? implode(', ', $parts) : null;
     }

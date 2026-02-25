@@ -71,13 +71,13 @@ class GoodsDep extends BaseDep
     }
 
     /**
-     * 批量清除音频链接（定时清理用）
+     * 批量清除音频和字幕链接（定时清理用）
      */
     public function clearAudioUrl(array $ids): int
     {
         return $this->model
             ->whereIn('id', $ids)
-            ->whereNotNull('audio_url')
-            ->update(['audio_url' => null]);
+            ->where(fn($q) => $q->whereNotNull('audio_url')->orWhereNotNull('srt_url'))
+            ->update(['audio_url' => null, 'srt_url' => null]);
     }
 }
