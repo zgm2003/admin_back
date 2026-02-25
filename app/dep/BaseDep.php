@@ -146,6 +146,27 @@ abstract class BaseDep
             ->update(['status' => $status]);
     }
 
+    /**
+     * 原子递减指定字段（最小值为 0，防止负数）
+     */
+    public function decrement(int $id, string $column, int $amount = 1): int
+    {
+        return $this->model
+            ->where('id', $id)
+            ->where($column, '>', 0)
+            ->update([$column => \support\Db::raw("{$column} - {$amount}")]);
+    }
+
+    /**
+     * 原子递增指定字段
+     */
+    public function increment(int $id, string $column, int $amount = 1): int
+    {
+        return $this->model
+            ->where('id', $id)
+            ->update([$column => \support\Db::raw("{$column} + {$amount}")]);
+    }
+
     // ==================== 游标分页（深分页优化） ====================
 
     /**

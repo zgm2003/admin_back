@@ -191,6 +191,7 @@ class ChatParticipantDep extends BaseDep
     /**
      * 批量查询私聊会话中对方用户的信息（username、avatar）
      * 返回 conversationId => ['username' => ..., 'avatar' => ...] 的映射
+     * 不限制参与者状态，确保对方退出后私聊仍能显示对方信息
      *
      * @param array $conversationIds 私聊会话 ID 列表
      * @param int $currentUserId 当前用户 ID（排除自己）
@@ -207,7 +208,6 @@ class ChatParticipantDep extends BaseDep
             ->leftJoin('user_profiles', 'user_profiles.user_id', '=', 'chat_participants.user_id')
             ->whereIn('chat_participants.conversation_id', $conversationIds)
             ->where('chat_participants.user_id', '!=', $currentUserId)
-            ->where('chat_participants.status', ChatEnum::PARTICIPANT_ACTIVE)
             ->select([
                 'chat_participants.conversation_id',
                 'users.username',

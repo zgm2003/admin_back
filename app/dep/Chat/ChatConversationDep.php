@@ -110,12 +110,12 @@ class ChatConversationDep extends BaseDep
     }
 
     /**
-     * 查找群聊会话，不存在或不是群聊则抛异常
+     * 查找群聊会话（检查 is_del），不存在/已删除/不是群聊则抛异常
      * @throws \RuntimeException
      */
     public function findGroupOrFail(int $conversationId)
     {
-        $conversation = $this->findOrFail($conversationId);
+        $conversation = $this->getOrFail($conversationId);
         
         if ($conversation->type !== ChatEnum::CONVERSATION_GROUP) {
             throw new \RuntimeException('该会话不是群聊');
