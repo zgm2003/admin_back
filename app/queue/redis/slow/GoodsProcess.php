@@ -232,8 +232,9 @@ class GoodsProcess implements Consumer
             throw new \RuntimeException('edge-tts执行失败: ' . implode("\n", $output));
         }
 
-        // 生成访问URL
-        $audioUrl = '/audio/tts/' . $dateDir . '/' . $filename;
+        // 生成完整访问URL（与导出任务一致，使用 APP_URL 拼接）
+        $appUrl   = rtrim(getenv('APP_URL') ?: '', '/');
+        $audioUrl = $appUrl . '/audio/tts/' . $dateDir . '/' . $filename;
 
         $dep->transitStatus($goods->id, GoodsEnum::STATUS_TTS, GoodsEnum::STATUS_COMPLETED, [
             'audio_url' => $audioUrl,
