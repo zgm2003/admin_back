@@ -96,6 +96,7 @@ class GoodsValidate
         return [
             'id'          => v::intVal()->positive()->setName('ID'),
             'voice'       => v::optional(v::stringType()->in(array_keys(GoodsEnum::$voiceArr)))->setName('音色'),
+            'emotion'     => v::optional(v::stringType()->in(array_keys(GoodsEnum::$emotionArr)))->setName('情绪'),
             'script_text' => v::optional(v::stringType())->setName('口播词'),
         ];
     }

@@ -200,6 +200,8 @@ class GoodsProcess implements Consumer
         }
 
         $voice = $data['voice'] ?? GoodsEnum::VOICE_XIAOXIAO;
+        $emotion = $data['emotion'] ?? GoodsEnum::EMOTION_DEFAULT;
+        $emotionParams = GoodsEnum::$emotionParamsMap[$emotion] ?? GoodsEnum::$emotionParamsMap[GoodsEnum::EMOTION_DEFAULT];
 
         // 生成文件路径：public/audio/tts/{date}/{id}_{timestamp}.mp3
         $dateDir  = date('Ymd');
@@ -214,10 +216,13 @@ class GoodsProcess implements Consumer
         $tmpFile = runtime_path() . '/tts_' . $goods->id . '.txt';
         file_put_contents($tmpFile, $scriptText);
 
-        // 调用 edge-tts
+        // 调用 edge-tts（含情绪预设的 rate/pitch/volume）
         $cmd = sprintf(
-            'edge-tts --voice %s --file %s --write-media %s 2>&1',
+            'edge-tts --voice %s --rate=%s --pitch=%s --volume=%s --file %s --write-media %s 2>&1',
             escapeshellarg($voice),
+            escapeshellarg($emotionParams['rate']),
+            escapeshellarg($emotionParams['pitch']),
+            escapeshellarg($emotionParams['volume']),
             escapeshellarg($tmpFile),
             escapeshellarg($filePath)
         );

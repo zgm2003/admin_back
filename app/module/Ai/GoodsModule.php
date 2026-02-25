@@ -39,6 +39,7 @@ class GoodsModule extends BaseModule
             ->setGoodsPlatformArr()
             ->setGoodsStatusArr()
             ->setGoodsVoiceArr()
+            ->setGoodsEmotionArr()
             ->getDict();
 
         // 商品口播专用智能体列表
@@ -293,6 +294,7 @@ class GoodsModule extends BaseModule
             'id'          => $id,
             'step'        => 'tts',
             'voice'       => $voice,
+            'emotion'     => $param['emotion'] ?? GoodsEnum::EMOTION_DEFAULT,
             'script_text' => $scriptText,
         ]);
 

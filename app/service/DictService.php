@@ -158,6 +158,12 @@ class DictService
         return $this;
     }
 
+    public function setGoodsEmotionArr(): static
+    {
+        $this->dict['goods_emotion_arr'] = self::enumToDict(GoodsEnum::$emotionArr);
+        return $this;
+    }
+
     public function setRunStatusArr(): static
     {
         $this->dict['run_status_arr'] = self::enumToDict(AiEnum::$runStatusArr);

@@ -40,6 +40,33 @@ class GoodsEnum
         self::VOICE_XIAONI   => '晓妮（女-陕西方言）',
     ];
 
+    // TTS情绪预设（通过 rate/pitch/volume 模拟）
+    const EMOTION_DEFAULT    = 'default';
+    const EMOTION_CHEERFUL   = 'cheerful';
+    const EMOTION_EXCITED    = 'excited';
+    const EMOTION_GENTLE     = 'gentle';
+    const EMOTION_SAD        = 'sad';
+    const EMOTION_SERIOUS    = 'serious';
+
+    public static $emotionArr = [
+        self::EMOTION_DEFAULT  => '默认',
+        self::EMOTION_CHEERFUL => '开心',
+        self::EMOTION_EXCITED  => '激昂',
+        self::EMOTION_GENTLE   => '温柔',
+        self::EMOTION_SAD      => '悲伤',
+        self::EMOTION_SERIOUS  => '严肃',
+    ];
+
+    /** 情绪 → edge-tts 参数映射 */
+    public static $emotionParamsMap = [
+        self::EMOTION_DEFAULT  => ['rate' => '+0%',  'pitch' => '+0Hz',  'volume' => '+0%'],
+        self::EMOTION_CHEERFUL => ['rate' => '+10%', 'pitch' => '+5Hz',  'volume' => '+5%'],
+        self::EMOTION_EXCITED  => ['rate' => '+18%', 'pitch' => '+8Hz',  'volume' => '+15%'],
+        self::EMOTION_GENTLE   => ['rate' => '-8%',  'pitch' => '-3Hz',  'volume' => '-10%'],
+        self::EMOTION_SAD      => ['rate' => '-15%', 'pitch' => '-8Hz',  'volume' => '-5%'],
+        self::EMOTION_SERIOUS  => ['rate' => '-5%',  'pitch' => '-5Hz',  'volume' => '+10%'],
+    ];
+
     // 状态（线性递进）
     const STATUS_PENDING    = 1;  // 待处理（刚入库）
     const STATUS_OCR        = 2;  // OCR识别中
