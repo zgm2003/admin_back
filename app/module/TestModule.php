@@ -2,13 +2,13 @@
 
 namespace app\module;
 
-use app\dep\System\AuthPlatformDep;
 use app\dep\System\SystemSettingDep;
 use app\service\System\AuthPlatformService;
 use app\service\System\SettingService;
 
 /**
- * 测试模块 - 用于测试 BaseModule 的异常快捷方法
+ * 测试模块
+ * 用于验证 BaseModule 异常快捷方法、事务、系统设置 CRUD、三级缓存性能
  */
 class TestModule extends BaseModule
 {
@@ -115,7 +115,7 @@ class TestModule extends BaseModule
      */
     public function testSystemSetting($request): array
     {
-        $dep = new SystemSettingDep();
+        $dep = $this->dep(SystemSettingDep::class);
         $testKey = 'test.crud.' . time();
         
         // 1. 新增（通过 SettingService 带类型转换）
@@ -200,8 +200,7 @@ class TestModule extends BaseModule
         ];
 
         // ==================== 测试3：强制走 MySQL（清 Redis + 内存缓存） ====================
-        $dep = new AuthPlatformDep();
-        $mysqlIterations = min($iterations, 100); // MySQL 测试限制 100 次，避免太慢
+        $mysqlIterations = \min($iterations, 100); // MySQL 测试限制 100 次，避免太慢
         $cacheKey = 'auth_platform_' . $platform;
 
         $start = hrtime(true);

@@ -3,59 +3,62 @@
 namespace app\module;
 
 use app\dep\System\UploadSettingDep;
-use app\lib\Crypto\KeyVault;
 use app\enum\UploadConfigEnum;
+use app\lib\Crypto\KeyVault;
 use AlibabaCloud\Client\AlibabaCloud;
-use TencentCloud\Sts\V20180813\Models\GetFederationTokenRequest;
-use TencentCloud\Sts\V20180813\StsClient;
 use TencentCloud\Common\Credential;
 use TencentCloud\Common\Profile\ClientProfile;
 use TencentCloud\Common\Profile\HttpProfile;
+use TencentCloud\Sts\V20180813\Models\GetFederationTokenRequest;
+use TencentCloud\Sts\V20180813\StsClient;
 
+/**
+ * 上传凭证模块
+ * 负责：根据当前启用的上传配置，签发 COS/OSS 临时上传凭证
+ * 凭证限定目录级权限，有效期 1800 秒
+ */
 class UploadModule extends BaseModule
 {
-    protected UploadSettingDep $uploadSettingDep;
+    /** @var int 临时凭证有效期（秒） */
+    private const TOKEN_DURATION = 1800;
 
-    public function __construct()
+    /**
+     * 获取上传临时凭证（根据驱动类型分发 COS/OSS）
+     */
+    public function getUploadToken($request): array
     {
-        $this->uploadSettingDep = $this->dep(UploadSettingDep::class);
-    }
-
-    public function getUploadToken($request)
-    {
-        $folder = trim((string)$request->input('folderName', ''));
+        $folder = \trim((string)$request->input('folderName', ''));
 
         self::throwIf(
             $folder === ''
-            || !array_key_exists($folder, UploadConfigEnum::$folderArr)
-            || str_contains($folder, '..'),
+            || !\array_key_exists($folder, UploadConfigEnum::$folderArr)
+            || \str_contains($folder, '..'),
             'folderName 非法'
         );
 
-        $setting = $this->uploadSettingDep->getActive();
-
+        $setting = $this->dep(UploadSettingDep::class)->getActive();
         self::throwUnless($setting, '未配置有效的上传设置');
 
-        $data = [];
-        if ($setting['driver'] === 'cos') {
-            $data = $this->getCosToken($setting, $folder);
-        } elseif ($setting['driver'] === 'oss') {
-            $data = $this->getOssToken($setting, $folder);
-        } else {
-            self::throw('不支持的驱动类型');
-        }
+        $data = match ($setting['driver']) {
+            'cos' => $this->getCosToken($setting, $folder),
+            'oss' => $this->getOssToken($setting, $folder),
+            default => self::throw('不支持的驱动类型'),
+        };
 
-        // Merge rule info
+        // 合并上传规则信息
         $data['rule'] = [
-            'maxSize' => (int)$setting['max_size_mb'], // MB
-            'imageExts' => json_decode($setting['image_exts'] ?? '[]'),
-            'fileExts' => json_decode($setting['file_exts'] ?? '[]'),
+            'maxSize'   => (int)$setting['max_size_mb'],
+            'imageExts' => \json_decode($setting['image_exts'] ?? '[]'),
+            'fileExts'  => \json_decode($setting['file_exts'] ?? '[]'),
         ];
 
         return self::success($data);
     }
 
-    private function getCosToken($setting, $folder)
+    /**
+     * 签发腾讯云 COS 临时凭证（STS GetFederationToken）
+     */
+    private function getCosToken(array $setting, string $folder): array
     {
         $secretId  = KeyVault::decrypt($setting['secret_id_enc'] ?? '');
         $secretKey = KeyVault::decrypt($setting['secret_key_enc'] ?? '');
@@ -63,48 +66,42 @@ class UploadModule extends BaseModule
         $region    = $setting['region'];
         $appid     = $setting['appid'];
 
-        if (!$secretId || !$secretKey || !$bucket || !$region || !$appid) {
-            throw new \Exception('COS 配置缺失');
-        }
+        self::throwIf(!$secretId || !$secretKey || !$bucket || !$region || !$appid, 'COS 配置缺失');
 
         $cred = new Credential($secretId, $secretKey);
         $httpProfile = new HttpProfile();
-        $httpProfile->setEndpoint("sts.tencentcloudapi.com");
+        $httpProfile->setEndpoint('sts.tencentcloudapi.com');
         $clientProfile = new ClientProfile();
         $clientProfile->setHttpProfile($httpProfile);
         $client = new StsClient($cred, $region, $clientProfile);
 
         $policy = [
-            'version' => '2.0',
+            'version'   => '2.0',
             'statement' => [[
-                'action' => ['cos:PutObject', 'cos:PostObject'],
-                'effect' => 'allow',
+                'action'    => ['cos:PutObject', 'cos:PostObject'],
+                'effect'    => 'allow',
                 'principal' => ['qcs' => ['*']],
-                'resource' => [
-                    "qcs::cos:{$region}:uid/{$appid}:{$bucket}/{$folder}/*"
-                ],
+                'resource'  => ["qcs::cos:{$region}:uid/{$appid}:{$bucket}/{$folder}/*"],
             ]],
         ];
 
-        $params = [
-            "DurationSeconds" => 1800,
-            "Name" => "upload-" . date('YmdHis'),
-            "Policy" => json_encode($policy, JSON_UNESCAPED_SLASHES),
-        ];
-
         $req = new GetFederationTokenRequest();
-        $req->fromJsonString(json_encode($params));
+        $req->fromJsonString(\json_encode([
+            'DurationSeconds' => self::TOKEN_DURATION,
+            'Name'            => 'upload-' . \date('YmdHis'),
+            'Policy'          => \json_encode($policy, JSON_UNESCAPED_SLASHES),
+        ]));
         $response = $client->GetFederationToken($req);
 
         return [
-            'provider' => 'cos',
-            'credentials' => [
+            'provider'      => 'cos',
+            'credentials'   => [
                 'tmpSecretId'  => $response->Credentials->TmpSecretId,
                 'tmpSecretKey' => $response->Credentials->TmpSecretKey,
                 'sessionToken' => $response->Credentials->Token,
             ],
             'expiredTime'   => (int)$response->ExpiredTime,
-            'startTime'     => time(),
+            'startTime'     => \time(),
             'bucket'        => $bucket,
             'region'        => $region,
             'uploadPath'    => "{$folder}/",
@@ -112,7 +109,10 @@ class UploadModule extends BaseModule
         ];
     }
 
-    private function getOssToken($setting, $folder)
+    /**
+     * 签发阿里云 OSS 临时凭证（STS AssumeRole）
+     */
+    private function getOssToken(array $setting, string $folder): array
     {
         $region  = $setting['region'];
         $bucket  = $setting['bucket'];
@@ -120,18 +120,14 @@ class UploadModule extends BaseModule
         $ak      = KeyVault::decrypt($setting['secret_id_enc'] ?? '');
         $sk      = KeyVault::decrypt($setting['secret_key_enc'] ?? '');
 
-        if (!$region || !$bucket || !$roleArn || !$ak || !$sk) {
-            throw new \Exception('OSS 配置缺失');
-        }
-
-        $duration = 1800;
+        self::throwIf(!$region || !$bucket || !$roleArn || !$ak || !$sk, 'OSS 配置缺失');
 
         AlibabaCloud::accessKeyClient($ak, $sk)
             ->regionId($region)
             ->asDefaultClient();
 
         $policy = [
-            'Version' => '1',
+            'Version'   => '1',
             'Statement' => [[
                 'Effect'   => 'Allow',
                 'Action'   => ['oss:PutObject', 'oss:PostObject'],
@@ -142,31 +138,33 @@ class UploadModule extends BaseModule
         $res = \AlibabaCloud\Sts\Sts::v20150401()
             ->assumeRole()
             ->withRoleArn($roleArn)
-            ->withRoleSessionName('oss-upload-' . date('YmdHis'))
-            ->withDurationSeconds($duration)
-            ->withPolicy(json_encode($policy, JSON_UNESCAPED_SLASHES))
+            ->withRoleSessionName('oss-upload-' . \date('YmdHis'))
+            ->withDurationSeconds(self::TOKEN_DURATION)
+            ->withPolicy(\json_encode($policy, JSON_UNESCAPED_SLASHES))
             ->request();
 
         $cred = $res->get('Credentials') ?: [];
 
-        $expiredTime = time() + $duration;
+        $expiredTime = \time() + self::TOKEN_DURATION;
         if (!empty($cred['Expiration'])) {
-            $ts = strtotime((string)$cred['Expiration']);
-            if ($ts !== false) $expiredTime = $ts;
+            $ts = \strtotime((string)$cred['Expiration']);
+            if ($ts !== false) {
+                $expiredTime = $ts;
+            }
         }
 
         return [
-            'provider' => 'oss',
+            'provider'    => 'oss',
             'credentials' => [
                 'tmpSecretId'  => $cred['AccessKeyId'] ?? null,
                 'tmpSecretKey' => $cred['AccessKeySecret'] ?? null,
                 'sessionToken' => $cred['SecurityToken'] ?? null,
             ],
-            'bucket'     => $bucket,
-            'region'     => $region,
-            'uploadPath' => "{$folder}/",
-            'startTime'  => time(),
-            'expiredTime'=> (int)$expiredTime,
+            'bucket'      => $bucket,
+            'region'      => $region,
+            'uploadPath'  => "{$folder}/",
+            'startTime'   => \time(),
+            'expiredTime' => (int)$expiredTime,
         ];
     }
 }
