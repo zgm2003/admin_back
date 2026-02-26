@@ -30,9 +30,9 @@ class AiConversationModule extends BaseModule
 
         $res = $this->dep(AiConversationsDep::class)->list($param);
 
-        // 批量获取关联智能体信息（避免 N+1）
+        // 批量获取关联智能体信息（避免 N+1，只取需要的字段）
         $agentIds = $res->pluck('agent_id')->unique()->toArray();
-        $agentMap = $this->dep(AiAgentsDep::class)->getMap($agentIds);
+        $agentMap = $this->dep(AiAgentsDep::class)->getMap($agentIds, ['id', 'name']);
 
         $list = $res->map(fn($item) => [
             'id'              => $item->id,

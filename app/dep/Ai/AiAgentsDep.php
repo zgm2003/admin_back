@@ -19,7 +19,13 @@ class AiAgentsDep extends BaseDep
      */
     public function list(array $param)
     {
+        $columns = [
+            'id', 'name', 'model_id', 'avatar', 'system_prompt',
+            'mode', 'scene', 'status', 'created_at', 'updated_at',
+        ];
+
         return $this->model
+            ->select($columns)
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['model_id']), fn($q) => $q->where('model_id', (int)$param['model_id']))
             ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))

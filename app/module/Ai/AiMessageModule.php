@@ -48,7 +48,7 @@ class AiMessageModule extends BaseModule
     }
 
     /**
-     * 删除消息（支持批量，逐条校验消息归属当前用户的会话）
+     * 删除消息（支持批量，批量校验消息归属当前用户的会话，软删除）
      */
     public function del($request): array
     {
@@ -58,12 +58,15 @@ class AiMessageModule extends BaseModule
         $msgDep = $this->dep(AiMessagesDep::class);
         $convDep = $this->dep(AiConversationsDep::class);
 
-        // 逐条校验消息归属当前用户
-        foreach ($ids as $id) {
-            $message = $msgDep->get((int)$id);
-            self::throwNotFound($message, '消息不存在');
-            $conversation = $convDep->getByUser($message->conversation_id, $request->userId);
-            self::throwIf(!$conversation, '无权操作');
+        // 批量查询消息，避免 N+1
+        $messages = $msgDep->getMapActive($ids, ['id', 'conversation_id']);
+        self::throwIf($messages->count() !== \count($ids), '部分消息不存在');
+
+        // 批量校验会话归属
+        $convIds = $messages->pluck('conversation_id')->unique()->toArray();
+        $conversations = $convDep->getMapActive($convIds, ['id', 'user_id']);
+        foreach ($conversations as $conv) {
+            self::throwIf($conv->user_id !== $request->userId, '无权操作');
         }
 
         $msgDep->delete($ids);

@@ -76,13 +76,15 @@ abstract class BaseDep
     /**
      * 批量查询，返回 id => model 的 Collection
      * 不检查 is_del，用于关联查询（如显示已删除的关联数据）
+     * @param array $columns 查询字段，默认 ['*']，建议指定避免拉取大字段
      */
-    public function getMap(array $ids)
+    public function getMap(array $ids, array $columns = ['*'])
     {
         if (empty($ids)) {
             return collect();
         }
         return $this->model
+            ->select($columns)
             ->whereIn('id', array_unique($ids))
             ->get()
             ->keyBy('id');
@@ -90,13 +92,15 @@ abstract class BaseDep
 
     /**
      * 批量查询（只查未删除的）
+     * @param array $columns 查询字段，默认 ['*']，建议指定避免拉取大字段
      */
-    public function getMapActive(array $ids)
+    public function getMapActive(array $ids, array $columns = ['*'])
     {
         if (empty($ids)) {
             return collect();
         }
         return $this->model
+            ->select($columns)
             ->whereIn('id', array_unique($ids))
             ->where('is_del', CommonEnum::NO)
             ->get()

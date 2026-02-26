@@ -19,7 +19,13 @@ class AiModelsDep extends BaseDep
      */
     public function list(array $param)
     {
+        $columns = [
+            'id', 'name', 'driver', 'model_code', 'endpoint',
+            'api_key_hint', 'modalities', 'status', 'created_at', 'updated_at',
+        ];
+
         return $this->model
+            ->select($columns)
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['driver']), fn($q) => $q->where('driver', $param['driver']))
             ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
@@ -34,6 +40,7 @@ class AiModelsDep extends BaseDep
     public function getAllActive()
     {
         return $this->model
+            ->select(['id', 'name', 'driver'])
             ->where('is_del', CommonEnum::NO)
             ->where('status', CommonEnum::YES)
             ->orderBy('id', 'desc')

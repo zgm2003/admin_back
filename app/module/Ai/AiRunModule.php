@@ -44,11 +44,11 @@ class AiRunModule extends BaseModule
         $param = $this->validate($request, AiRunValidate::list());
         $res = $this->dep(AiRunsDep::class)->list($param);
 
-        // 批量查询关联数据（包含已删除，用于审计）
+        // 批量查询关联数据（包含已删除，用于审计，只取需要的字段）
         $agentIds        = $res->pluck('agent_id')->unique()->filter()->toArray();
         $conversationIds = $res->pluck('conversation_id')->unique()->filter()->toArray();
-        $agentMap        = $this->dep(AiAgentsDep::class)->getMap($agentIds);
-        $conversationMap = $this->dep(AiConversationsDep::class)->getMap($conversationIds);
+        $agentMap        = $this->dep(AiAgentsDep::class)->getMap($agentIds, ['id', 'name']);
+        $conversationMap = $this->dep(AiConversationsDep::class)->getMap($conversationIds, ['id', 'title']);
 
         $list = $res->map(function ($item) use ($agentMap, $conversationMap) {
             $agent        = $agentMap->get($item->agent_id);
@@ -212,9 +212,9 @@ class AiRunModule extends BaseModule
 
         $result = $this->dep(AiRunsDep::class)->getStatsByAgent($param);
 
-        // 关联智能体名称
+        // 关联智能体名称（只取 id+name）
         $agentIds = $result['list']->pluck('agent_id')->toArray();
-        $agentMap = $this->dep(AiAgentsDep::class)->getMap($agentIds);
+        $agentMap = $this->dep(AiAgentsDep::class)->getMap($agentIds, ['id', 'name']);
 
         $list = $result['list']->map(fn($item) => [
             'agent_id'                 => $item->agent_id,
@@ -243,9 +243,9 @@ class AiRunModule extends BaseModule
 
         $result = $this->dep(AiRunsDep::class)->getStatsByUser($param);
 
-        // 关联用户名称
+        // 关联用户名称（只取 id+username）
         $userIds = $result['list']->pluck('user_id')->toArray();
-        $userMap = $this->dep(UsersDep::class)->getMap($userIds);
+        $userMap = $this->dep(UsersDep::class)->getMap($userIds, ['id', 'username']);
 
         $list = $result['list']->map(fn($item) => [
             'user_id'                  => $item->user_id,

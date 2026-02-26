@@ -19,7 +19,10 @@ class AiPromptDep extends BaseDep
      */
     public function list(array $param)
     {
+        $columns = ['id', 'user_id', 'title', 'category', 'content', 'is_favorite', 'sort', 'use_count', 'created_at', 'updated_at'];
+
         return $this->model
+            ->select($columns)
             ->where('user_id', $param['user_id'])
             ->when(!empty(trim($param['title'] ?? '')), fn($q) => $q->where('title', 'like', '%' . trim($param['title']) . '%'))
             ->when(!empty(trim($param['category'] ?? '')), fn($q) => $q->where('category', trim($param['category'])))

@@ -46,9 +46,9 @@ class AiAgentModule extends BaseModule
         $param = $this->validate($request, AiAgentValidate::list());
         $res = $this->dep(AiAgentsDep::class)->list($param);
 
-        // 批量预加载关联模型
+        // 批量预加载关联模型（只取列表需要的字段，避免拉取 api_key_enc 等大字段）
         $modelIds = $res->pluck('model_id')->unique()->toArray();
-        $modelMap = $this->dep(AiModelsDep::class)->getMap($modelIds);
+        $modelMap = $this->dep(AiModelsDep::class)->getMap($modelIds, ['id', 'name', 'driver', 'model_code', 'modalities', 'is_del']);
 
         $list = $res->map(function ($item) use ($modelMap) {
             $model = $modelMap->get($item->model_id);

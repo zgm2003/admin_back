@@ -20,6 +20,7 @@ class AiRunStepsDep extends BaseDep
     public function getByRunId(int $runId): \Illuminate\Support\Collection
     {
         return $this->model
+            ->select(['id', 'step_no', 'step_type', 'status', 'error_msg', 'latency_ms', 'payload_json', 'created_at'])
             ->where('run_id', $runId)
             ->where('is_del', CommonEnum::NO)
             ->orderBy('step_no', 'asc')
