@@ -71,8 +71,8 @@ class AiChatModule extends BaseModule
             $result = AiChatService::chat($ctx['agent'], $ctx['userContent'], $ctx['historyMessages']);
 
             $assistantMessageId = $this->saveAssistantMessage(
-                $ctx['conversationId'], $result['content'], $result['usage'],
-                $ctx['modelCode'], $requestId, $result['request_id'] ?? null
+                $ctx['conversationId'], $result['content'],
+                $requestId, $result['request_id'] ?? null
             );
 
             $latencyMs = (int)((microtime(true) - $startTime) * 1000);
@@ -172,8 +172,8 @@ class AiChatModule extends BaseModule
                 $canceledAssistantId = null;
                 if (!empty($result['content'])) {
                     $canceledAssistantId = $this->saveAssistantMessage(
-                        $ctx['conversationId'], $result['content'], $result['usage'] ?? [],
-                        $ctx['modelCode'], $requestId, $result['request_id'] ?? null
+                        $ctx['conversationId'], $result['content'],
+                        $requestId, $result['request_id'] ?? null
                     );
                 }
 
@@ -193,8 +193,8 @@ class AiChatModule extends BaseModule
             );
 
             $assistantMessageId = $this->saveAssistantMessage(
-                $ctx['conversationId'], $result['content'], $result['usage'],
-                $ctx['modelCode'], $requestId, $result['request_id'] ?? null
+                $ctx['conversationId'], $result['content'],
+                $requestId, $result['request_id'] ?? null
             );
 
             $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_FINALIZE, [
@@ -397,8 +397,6 @@ class AiChatModule extends BaseModule
     private function saveAssistantMessage(
         int     $conversationId,
         string  $content,
-        array   $usage,
-        string  $modelCode,
         ?string $runRequestId = null,
         ?string $providerRequestId = null
     ): int {

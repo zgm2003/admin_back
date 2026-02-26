@@ -17,11 +17,21 @@ class AiChatValidate
     public static function send(): array
     {
         return [
-            'content'         => v::stringType()->notEmpty()->setName('消息内容'),
+            'content'         => v::stringType()->notEmpty()->length(1, 30000)->setName('消息内容'),
             'conversation_id' => v::optional(v::intVal()->positive())->setName('会话ID'),
             'agent_id'        => v::optional(v::intVal()->positive())->setName('智能体ID'),
             'max_history'     => v::optional(v::intVal()->between(1, 100))->setName('历史条数'),
-            'attachments'     => v::optional(v::arrayType())->setName('附件列表'),
+            'attachments'     => v::optional(v::arrayType()->length(1, 5)->each(
+                v::callback(function ($item) {
+                    return is_array($item)
+                        && isset($item['type'], $item['url'], $item['name'], $item['size'])
+                        && $item['type'] === 'image'
+                        && is_string($item['url']) && strlen($item['url']) <= 2000
+                        && str_starts_with($item['url'], 'https://')
+                        && is_string($item['name']) && strlen($item['name']) <= 255
+                        && is_numeric($item['size']) && $item['size'] > 0 && $item['size'] <= 20971520;
+                })
+            ))->setName('附件列表'),
             'temperature'     => v::optional(v::floatVal()->between(0, 2))->setName('温度'),
             'max_tokens'      => v::optional(v::intVal()->between(1, 128000))->setName('最大Token数'),
         ];

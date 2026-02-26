@@ -111,7 +111,8 @@ class AiChatService
 
         foreach ($imageAttachments as $attachment) {
             $url = $attachment['url'] ?? '';
-            if (!empty($url)) {
+            // 只允许 https URL，防止 SSRF（内网地址、file:// 等）
+            if (!empty($url) && str_starts_with($url, 'https://')) {
                 $content[] = ['type' => 'image_url', 'image_url' => ['url' => $url]];
             }
         }
@@ -267,7 +268,8 @@ class AiChatService
                 $blocks[] = new TextContent($part['text'] ?? '');
             } elseif ($type === 'image_url') {
                 $url = $part['image_url']['url'] ?? '';
-                if (!empty($url)) {
+                // 只允许 https URL，防止 SSRF
+                if (!empty($url) && str_starts_with($url, 'https://')) {
                     $blocks[] = new ImageContent($url, SourceType::URL);
                 }
             }
