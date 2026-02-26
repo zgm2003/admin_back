@@ -47,7 +47,8 @@
     "webman/rate-limiter": "^1.1",
     "ext-curl": "*",
     "webman/event": "^1.0",
-    "ext-openssl": "*"
+    "ext-openssl": "*",
+    "neuron-core/neuron-ai": "^3.0"
   },
   "suggest": {
     "ext-event": "For better performance. "

@@ -61,22 +61,18 @@ class AiChatModule extends BaseModule
         $startTime = microtime(true);
         $param     = $this->validate($request, AiChatValidate::send());
 
-        $prepared = $this->prepareChat($param, $userId);
-        if ($prepared[1] !== 0) {
-            return $prepared;
-        }
-        $ctx = $prepared[0];
+        $ctx = $this->prepareChat($param, $userId);
 
         $requestId = AiChatService::generateRequestId();
         $runId     = $this->createRun($requestId, $userId, $ctx);
 
         $errorMsg = null;
         try {
-            $result = AiChatService::chat($ctx['client'], $ctx['payload'], $ctx['config']);
+            $result = AiChatService::chat($ctx['agent'], $ctx['userContent'], $ctx['historyMessages']);
 
             $assistantMessageId = $this->saveAssistantMessage(
                 $ctx['conversationId'], $result['content'], $result['usage'],
-                $ctx['modelCode'], $requestId, $result['raw']['id'] ?? null
+                $ctx['modelCode'], $requestId, $result['request_id'] ?? null
             );
 
             $latencyMs = (int)((microtime(true) - $startTime) * 1000);
@@ -130,11 +126,7 @@ class AiChatModule extends BaseModule
         $startTime = microtime(true);
         $stepNo    = 0;
 
-        $prepared = $this->prepareChat($param, $userId, $onChunk);
-        if ($prepared[1] !== 0) {
-            return $prepared;
-        }
-        $ctx = $prepared[0];
+        $ctx = $this->prepareChat($param, $userId, $onChunk);
 
         $requestId = AiChatService::generateRequestId();
         $runId     = $this->createRun($requestId, $userId, $ctx, true);
@@ -142,7 +134,7 @@ class AiChatModule extends BaseModule
         $onChunk('run', ['run_id' => $runId, 'request_id' => $requestId]);
 
         $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_PROMPT, [
-            'messages_count' => \count($ctx['payload']['messages']),
+            'messages_count' => \count($ctx['historyMessages']),
             'model'          => $ctx['modelCode'],
         ]);
 
@@ -162,7 +154,7 @@ class AiChatModule extends BaseModule
             ]);
 
             $result = AiChatService::chatStream(
-                $ctx['client'], $ctx['payload'], $ctx['config'],
+                $ctx['agent'], $ctx['userContent'], $ctx['historyMessages'],
                 fn($delta) => $onChunk('content', ['delta' => $delta]),
                 function () use ($runId) {
                     $run = $this->dep(AiRunsDep::class)->find($runId);
@@ -272,8 +264,10 @@ class AiChatModule extends BaseModule
     // ==================== 私有方法 ====================
 
     /**
-     * 准备对话上下文（校验会话/智能体/模型，创建用户消息，构建 payload）
-     * 新会话时自动创建 conversation 记录
+     * 准备对话上下文（校验会话/智能体/模型，创建用户消息，构建历史）
+     * 校验失败直接抛 BusinessException，调用方无需检查返回值
+     *
+     * @throws \app\exception\BusinessException
      */
     private function prepareChat(array $param, int $userId, ?callable $onChunk = null): array
     {
@@ -312,8 +306,14 @@ class AiChatModule extends BaseModule
         self::throwIf(!$model, '模型不存在');
         self::throwIf($model->status !== CommonEnum::YES, '模型已禁用');
 
-        [$client, $config, $error] = AiChatService::createClient($model);
-        self::throwIf($error, $error ?? '创建客户端失败');
+        // 运行时参数（用户在聊天界面调整的 temperature/max_tokens 等）
+        $runtimeParams = array_filter([
+            'temperature' => $param['temperature'] ?? null,
+            'max_tokens'  => $param['max_tokens'] ?? null,
+        ], fn($v) => $v !== null);
+
+        [$neuronAgent, $error] = AiChatService::createAgent($model, $agent, $runtimeParams ?: null);
+        self::throwIf($error, $error ?? '创建 Agent 失败');
 
         $metaJson = !empty($attachments)
             ? json_encode(['attachments' => $attachments], JSON_UNESCAPED_UNICODE)
@@ -327,21 +327,23 @@ class AiChatModule extends BaseModule
             'is_del'          => CommonEnum::NO,
         ]);
 
-        $modalities = $model->modalities ?? null;
-        $messages   = AiChatService::buildMessages($agent, $conversationId, $maxHistory, $modalities);
-        $payload    = AiChatService::buildPayload($agent, $model, $messages);
+        $modalities      = $model->modalities ?? null;
+        $historyMessages = AiChatService::buildMessages($agent, $conversationId, $maxHistory, $modalities);
 
-        return self::success([
-            'conversationId' => $conversationId,
-            'agentId'        => (int)$agentId,
-            'userMessageId'  => $userMessageId,
-            'isNew'          => $isNew,
-            'client'         => $client,
-            'payload'        => $payload,
-            'config'         => $config,
-            'modelCode'      => $model->model_code,
-            'modalities'     => $modalities,
-        ]);
+        // 当前消息也需要构建多模态内容（与历史消息一致的格式）
+        $userContent = AiChatService::buildMultimodalContent($content, $attachments, $modalities);
+
+        return [
+            'conversationId'  => $conversationId,
+            'agentId'         => (int)$agentId,
+            'userMessageId'   => $userMessageId,
+            'isNew'           => $isNew,
+            'agent'           => $neuronAgent,
+            'userContent'     => $userContent,
+            'historyMessages' => $historyMessages,
+            'modelCode'       => $model->model_code,
+            'modalities'      => $modalities,
+        ];
     }
 
     /**

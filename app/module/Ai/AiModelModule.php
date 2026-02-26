@@ -46,7 +46,6 @@ class AiModelModule extends BaseModule
             'model_code'     => $item->model_code,
             'endpoint'       => $item->endpoint,
             'api_key_hint'   => $item->api_key_hint,
-            'default_params' => $item->default_params,
             'modalities'     => $item->modalities,
             'status'         => $item->status,
             'status_name'    => CommonEnum::$statusArr[$item->status] ?? '',
@@ -80,7 +79,6 @@ class AiModelModule extends BaseModule
             'driver'         => $param['driver'],
             'model_code'     => $param['model_code'],
             'endpoint'       => $param['endpoint'] ?? null,
-            'default_params' => !empty($param['default_params']) ? \json_encode($param['default_params']) : null,
             'modalities'     => !empty($param['modalities']) ? \json_encode($param['modalities']) : null,
             'status'         => $param['status'] ?? CommonEnum::YES,
             'is_del'         => CommonEnum::NO,
@@ -119,9 +117,6 @@ class AiModelModule extends BaseModule
             'status'     => (int)$param['status'],
         ];
 
-        if (!empty($param['default_params'])) {
-            $data['default_params'] = \json_encode($param['default_params']);
-        }
         if (isset($param['modalities'])) {
             $data['modalities'] = \json_encode($param['modalities']);
         }

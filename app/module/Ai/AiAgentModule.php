@@ -70,9 +70,6 @@ class AiAgentModule extends BaseModule
                 'mode_name'     => AiEnum::$modeArr[$item->mode] ?? $item->mode,
                 'scene'         => $item->scene ?? 'chat',
                 'scene_name'    => AiEnum::$sceneArr[$item->scene ?? 'chat'] ?? $item->scene,
-                'temperature'   => $item->temperature,
-                'max_tokens'    => $item->max_tokens,
-                'extra_params'  => $item->extra_params,
                 'status'        => $item->status,
                 'status_name'   => CommonEnum::$statusArr[$item->status] ?? '',
                 'created_at'    => $item->created_at,
@@ -109,9 +106,6 @@ class AiAgentModule extends BaseModule
             'system_prompt' => $param['system_prompt'] ?? null,
             'mode'          => $param['mode'] ?? 'chat',
             'scene'         => $param['scene'] ?? 'chat',
-            'temperature'   => $param['temperature'] ?? 1.00,
-            'max_tokens'    => $param['max_tokens'] ?? null,
-            'extra_params'  => !empty($param['extra_params']) ? json_encode($param['extra_params']) : null,
             'status'        => $param['status'] ?? CommonEnum::YES,
             'is_del'        => CommonEnum::NO,
         ]);
@@ -143,14 +137,8 @@ class AiAgentModule extends BaseModule
             'system_prompt' => $param['system_prompt'] ?? null,
             'mode'          => $param['mode'],
             'scene'         => $param['scene'] ?? $row->scene ?? 'chat',
-            'temperature'   => $param['temperature'],
-            'max_tokens'    => $param['max_tokens'] ?? null,
             'status'        => (int)$param['status'],
         ];
-
-        if (!empty($param['extra_params'])) {
-            $data['extra_params'] = json_encode($param['extra_params']);
-        }
 
         $dep->update($id, $data);
 

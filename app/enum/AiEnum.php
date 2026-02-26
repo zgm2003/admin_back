@@ -4,25 +4,40 @@ namespace app\enum;
 
 class AiEnum
 {
-    // AI 驱动类型
-    const DRIVER_OPENAI = 'openai';
-    const DRIVER_CLAUDE = 'claude';
-    const DRIVER_QWEN = 'qwen';
-    const DRIVER_WENXIN = 'wenxin';
-    const DRIVER_ZHIPU = 'zhipu';
-    const DRIVER_MOONSHOT = 'moonshot';
-    const DRIVER_DEEPSEEK = 'deepseek';
-    const DRIVER_HUNYUAN = 'hunyuan';
+    // AI 驱动类型（与 Neuron AI Provider 一一对应）
+    const DRIVER_OPENAI    = 'openai';
+    const DRIVER_CLAUDE    = 'claude';
+    const DRIVER_DEEPSEEK  = 'deepseek';
+    const DRIVER_GEMINI    = 'gemini';
+    const DRIVER_MISTRAL   = 'mistral';
+    const DRIVER_COHERE    = 'cohere';
+    const DRIVER_GROK      = 'grok';
+    const DRIVER_OLLAMA    = 'ollama';
+    const DRIVER_HUGGINGFACE = 'huggingface';
+    // OpenAI 兼容接口（通义千问、Moonshot、智谱、混元、反代服务等）
+    const DRIVER_QWEN      = 'qwen';
+    const DRIVER_MOONSHOT  = 'moonshot';
+    const DRIVER_ZHIPU     = 'zhipu';
+    const DRIVER_HUNYUAN   = 'hunyuan';
+    const DRIVER_WENXIN    = 'wenxin';
 
     public static $driverArr = [
-        self::DRIVER_OPENAI => 'OpenAI',
-        self::DRIVER_CLAUDE => 'Claude',
-        self::DRIVER_QWEN => 'Qwen',
-        self::DRIVER_WENXIN => '文心一言',
-        self::DRIVER_ZHIPU => '智谱',
-        self::DRIVER_MOONSHOT => 'Moonshot',
-        self::DRIVER_DEEPSEEK => 'DeepSeek',
-        self::DRIVER_HUNYUAN => '混元',
+        // Neuron AI 原生 Provider
+        self::DRIVER_OPENAI      => 'OpenAI',
+        self::DRIVER_CLAUDE      => 'Claude',
+        self::DRIVER_DEEPSEEK    => 'DeepSeek',
+        self::DRIVER_GEMINI      => 'Gemini',
+        self::DRIVER_MISTRAL     => 'Mistral',
+        self::DRIVER_COHERE      => 'Cohere',
+        self::DRIVER_GROK        => 'Grok (xAI)',
+        self::DRIVER_OLLAMA      => 'Ollama (本地)',
+        self::DRIVER_HUGGINGFACE => 'HuggingFace',
+        // OpenAI 兼容（走 OpenAILike）
+        self::DRIVER_QWEN        => '通义千问',
+        self::DRIVER_MOONSHOT    => 'Moonshot',
+        self::DRIVER_ZHIPU       => '智谱',
+        self::DRIVER_HUNYUAN     => '混元',
+        self::DRIVER_WENXIN      => '文心一言',
     ];
 
     // 消息角色
@@ -57,10 +72,12 @@ class AiEnum
         self::SCENE_CHAT => '对话',
         self::SCENE_GOODS_SCRIPT => '商品口播生成',
     ];
-    const RUN_STATUS_RUNNING = 1;   // 运行中
-    const RUN_STATUS_SUCCESS = 2;   // 成功
-    const RUN_STATUS_FAIL = 3;      // 失败
-    const RUN_STATUS_CANCELED = 4;  // 已取消
+
+    // AI 运行状态 (ai_runs.run_status)
+    const RUN_STATUS_RUNNING = 1;
+    const RUN_STATUS_SUCCESS = 2;
+    const RUN_STATUS_FAIL = 3;
+    const RUN_STATUS_CANCELED = 4;
 
     public static $runStatusArr = [
         self::RUN_STATUS_RUNNING => '运行中',
@@ -70,12 +87,12 @@ class AiEnum
     ];
 
     // AI 运行步骤类型 (ai_run_steps.step_type)
-    const STEP_TYPE_PROMPT = 1;      // 提示词构建
-    const STEP_TYPE_RAG = 2;         // RAG 检索
-    const STEP_TYPE_LLM = 3;         // LLM 调用
-    const STEP_TYPE_TOOL_CALL = 4;   // 工具调用
-    const STEP_TYPE_TOOL_RESULT = 5; // 工具返回
-    const STEP_TYPE_FINALIZE = 6;    // 最终化
+    const STEP_TYPE_PROMPT = 1;
+    const STEP_TYPE_RAG = 2;
+    const STEP_TYPE_LLM = 3;
+    const STEP_TYPE_TOOL_CALL = 4;
+    const STEP_TYPE_TOOL_RESULT = 5;
+    const STEP_TYPE_FINALIZE = 6;
 
     public static $stepTypeArr = [
         self::STEP_TYPE_PROMPT => '提示词构建',

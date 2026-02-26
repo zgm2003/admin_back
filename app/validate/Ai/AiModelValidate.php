@@ -18,7 +18,6 @@ class AiModelValidate
             'model_code'     => v::stringType()->length(1, 80)->setName('模型标识'),
             'endpoint'       => v::optional(v::stringType()->length(0, 255))->setName('接口地址'),
             'api_key'        => v::optional(v::stringType())->setName('API Key'),
-            'default_params' => v::optional(v::arrayType())->setName('默认参数'),
             'modalities'     => v::optional(v::arrayType())->setName('多模态能力'),
             'status'         => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
         ];
@@ -36,7 +35,6 @@ class AiModelValidate
             'model_code'     => v::optional(v::stringType()->length(1, 80))->setName('模型标识'),
             'endpoint'       => v::optional(v::stringType()->length(0, 255))->setName('接口地址'),
             'api_key'        => v::optional(v::stringType())->setName('API Key'),
-            'default_params' => v::optional(v::arrayType())->setName('默认参数'),
             'modalities'     => v::optional(v::arrayType())->setName('多模态能力'),
             'status'         => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
         ];

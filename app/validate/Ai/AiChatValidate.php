@@ -22,6 +22,8 @@ class AiChatValidate
             'agent_id'        => v::optional(v::intVal()->positive())->setName('智能体ID'),
             'max_history'     => v::optional(v::intVal()->between(1, 100))->setName('历史条数'),
             'attachments'     => v::optional(v::arrayType())->setName('附件列表'),
+            'temperature'     => v::optional(v::floatVal()->between(0, 2))->setName('温度'),
+            'max_tokens'      => v::optional(v::intVal()->between(1, 128000))->setName('最大Token数'),
         ];
     }
 

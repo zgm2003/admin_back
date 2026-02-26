@@ -57,16 +57,16 @@ class GenerateConversationTitle implements Consumer
             return;
         }
 
-        // 创建客户端
-        [$client, $config, $error] = AiChatService::createClient($model);
+        // 创建 Neuron Agent
+        [$neuronAgent, $error] = AiChatService::createAgent($model, $agent);
         if ($error) {
-            $this->log('Failed to create client', ['error' => $error]);
+            $this->log('Failed to create agent', ['error' => $error]);
             return;
         }
 
         // 生成标题
         try {
-            $title = AiChatService::generateTitle($client, $config, $model->model_code, $userMessage);
+            $title = AiChatService::generateTitle($neuronAgent, $userMessage);
             if ($title) {
                 $conversationsDep->updateTitle($conversationId, $title, $userId);
                 $this->log('Title generated', [

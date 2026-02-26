@@ -90,19 +90,13 @@ class GoodsProcess implements Consumer
         $meta = $goods->meta ?? null;
         $userMessage = $this->buildPrompt($title, $ocrText, $tips, $meta);
 
-        // 通过 AiChatService 调用（静态方法）
-        [$client, $config, $error] = AiChatService::createClient($model);
+        // 通过 Neuron AI 创建 Agent
+        [$neuronAgent, $error] = AiChatService::createAgent($model, $agent);
         if ($error) {
-            throw new \RuntimeException("AI客户端创建失败: {$error}");
+            throw new \RuntimeException("AI Agent 创建失败: {$error}");
         }
 
-        $messages = [];
-        if (!empty($agent->system_prompt)) {
-            $messages[] = ['role' => 'system', 'content' => $agent->system_prompt];
-        }
-        $messages[] = ['role' => 'user', 'content' => $userMessage];
-
-        $payload = AiChatService::buildPayload($agent, $model, $messages);
+        $userMessage_forAi = $userMessage;
 
         // 创建运行记录
         $runsDep   = new AiRunsDep();
@@ -128,7 +122,7 @@ class GoodsProcess implements Consumer
             'step_no'      => ++$stepNo,
             'step_type'    => AiEnum::STEP_TYPE_PROMPT,
             'status'       => AiEnum::STEP_STATUS_SUCCESS,
-            'payload_json' => json_encode(['messages_count' => count($messages), 'model' => $model->model_code], JSON_UNESCAPED_UNICODE),
+            'payload_json' => json_encode(['messages_count' => 1, 'model' => $model->model_code], JSON_UNESCAPED_UNICODE),
             'is_del'       => CommonEnum::NO,
         ]);
 
@@ -144,7 +138,7 @@ class GoodsProcess implements Consumer
         ]);
 
         try {
-            $result  = AiChatService::chat($client, $payload, $config);
+            $result  = AiChatService::chat($neuronAgent, $userMessage_forAi);
             $content = $result['content'] ?? '';
             $llmLatency = (int)((microtime(true) - $llmStart) * 1000);
             $totalLatency = (int)((microtime(true) - $startTime) * 1000);

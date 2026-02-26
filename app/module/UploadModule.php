@@ -36,8 +36,10 @@ class UploadModule extends BaseModule
             'folderName 非法'
         );
 
-        $setting = $this->dep(UploadSettingDep::class)->getActive();
-        self::throwUnless($setting, '未配置有效的上传设置');
+        $settingModel = $this->dep(UploadSettingDep::class)->getActive();
+        self::throwUnless($settingModel, '未配置有效的上传设置');
+
+        $setting = $settingModel->toArray();
 
         $data = match ($setting['driver']) {
             'cos' => $this->getCosToken($setting, $folder),

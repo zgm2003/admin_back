@@ -4,14 +4,19 @@ namespace app\service\Ai;
 
 use app\dep\Ai\AiMessagesDep;
 use app\enum\AiEnum;
-use app\lib\Ai\AiClientFactory;
-use app\lib\Ai\AiClientInterface;
-use app\lib\Crypto\KeyVault;
-use RuntimeException;
+use app\lib\Ai\NeuronAgentFactory;
+use NeuronAI\Agent\Agent;
+use NeuronAI\Chat\Enums\SourceType;
+use NeuronAI\Chat\Messages\AssistantMessage;
+use NeuronAI\Chat\Messages\ContentBlocks\ImageContent;
+use NeuronAI\Chat\Messages\ContentBlocks\TextContent;
+use NeuronAI\Chat\Messages\UserMessage;
+use NeuronAI\Chat\Messages\Stream\Chunks\TextChunk;
+
 
 /**
  * AI 对话服务
- * 负责纯 AI 调用逻辑：创建客户端、构建消息、构建 payload、调用 API
+ * 基于 Neuron AI 框架，负责 Provider 创建、消息构建、AI 调用
  * 不涉及业务编排（会话管理、Run/Step 记录由 AiChatModule 负责）
  */
 class AiChatService
@@ -24,54 +29,28 @@ class AiChatService
     }
 
     /**
-     * 创建 AI 客户端（解密 API Key + 实例化驱动）
-     *
-     * @param object $model 模型对象
-     * @return array{0: ?AiClientInterface, 1: ?array, 2: ?string} [client, config, error]
+     * 创建 Neuron AI Provider（解密 API Key + 实例化驱动）
      */
-    public static function createClient(object $model): array
+    public static function createProvider(object $model): array
     {
-        // 解密 API Key
-        try {
-            $apiKey = KeyVault::decrypt($model->api_key_enc ?? '');
-        } catch (RuntimeException $e) {
-            return [null, null, "API Key 解密失败: {$e->getMessage()}"];
-        }
-        if (empty($apiKey)) {
-            return [null, null, '模型未配置 API Key'];
-        }
-
-        // 校验驱动支持
-        if (!AiClientFactory::isSupported($model->driver)) {
-            return [null, null, "不支持的 AI 驱动: {$model->driver}"];
-        }
-
-        $client = AiClientFactory::create($model->driver);
-
-        // 未配置 endpoint 时使用驱动默认 baseUrl
-        $endpoint = $model->endpoint ?? '';
-        if (empty($endpoint)) {
-            $endpoint = AiClientFactory::getDefaultBaseUrl($model->driver);
-        }
-
-        return [$client, ['endpoint' => $endpoint, 'apiKey' => $apiKey], null];
+        return NeuronAgentFactory::createProvider($model);
     }
 
+    /**
+     * 创建完整的 Neuron Agent（含 Provider + 系统提示词）
+     */
+    public static function createAgent(object $model, object $agent, ?array $runtimeParams = null): array
+    {
+        return NeuronAgentFactory::createAgent($model, $agent, $runtimeParams);
+    }
 
     /**
      * 组装发给 AI 的消息列表（system prompt + 历史消息）
-     *
-     * @param object     $agent          智能体对象（含 system_prompt）
-     * @param int        $conversationId 会话 ID
-     * @param int        $maxHistory     最大历史消息轮数
-     * @param array|null $modalities     模型多模态能力 {"image": true, ...}
-     * @return array messages 数组
      */
     public static function buildMessages(object $agent, int $conversationId, int $maxHistory, ?array $modalities = null): array
     {
         $messages = [];
 
-        // system prompt
         if (!empty($agent->system_prompt)) {
             $messages[] = ['role' => 'system', 'content' => $agent->system_prompt];
         }
@@ -84,7 +63,6 @@ class AiChatService
                 continue;
             }
 
-            // assistant 消息始终是纯文本
             if ($msg['role'] === AiEnum::ROLE_ASSISTANT) {
                 $messages[] = ['role' => $roleStr, 'content' => $msg['content'] ?? ''];
                 continue;
@@ -105,30 +83,7 @@ class AiChatService
     }
 
     /**
-     * 构建 AI 请求 payload（合并模型默认参数 + 智能体覆盖参数）
-     */
-    public static function buildPayload(object $agent, object $model, array $messages): array
-    {
-        $params = $model->default_params ?? [];
-
-        // 智能体参数覆盖
-        if ($agent->temperature !== null) {
-            $params['temperature'] = (float)$agent->temperature;
-        }
-        if ($agent->max_tokens !== null) {
-            $params['max_tokens'] = (int)$agent->max_tokens;
-        }
-        $params = array_merge($params, $agent->extra_params ?? []);
-
-        return array_merge($params, [
-            'model'    => $model->model_code,
-            'messages' => $messages,
-        ]);
-    }
-
-    /**
      * 构建多模态消息内容
-     * 支持图片时返回 [{type: text}, {type: image_url}] 数组，否则返回纯文本
      */
     public static function buildMultimodalContent(string $text, array $attachments, ?array $modalities): string|array
     {
@@ -138,7 +93,6 @@ class AiChatService
             return $text;
         }
 
-        // 过滤出图片附件，array_values 重置索引避免 json_encode 输出对象
         $imageAttachments = \array_values(\array_filter($attachments, fn($a) => ($a['type'] ?? '') === 'image'));
         if (empty($imageAttachments)) {
             return $text;
@@ -156,7 +110,6 @@ class AiChatService
             }
         }
 
-        // 过滤后没有有效图片，退回纯文本
         if (\count($content) <= 1 && !empty($text)) {
             return $text;
         }
@@ -165,39 +118,83 @@ class AiChatService
     }
 
     /**
-     * 调用 AI（非流式）
+     * 调用 AI（非流式）— 使用 Neuron Agent
+     *
+     * Agent::chat() 返回 AgentHandler，调用 ->getMessage() 获取最终 Message
      */
-    public static function chat(AiClientInterface $client, array $payload, array $config): array
+    public static function chat(Agent $agent, string|array $content, array $history = []): array
     {
-        return $client->chatCompletions($payload, $config);
+        // 加载历史消息到 Agent 的 ChatHistory
+        self::loadHistory($agent, $history);
+
+        $userMessage = self::createUserMessage($content);
+        $handler  = $agent->chat($userMessage);
+        $message  = $handler->getMessage();
+
+        return [
+            'content'    => $message->getContent() ?? '',
+            'usage'      => self::extractUsage($message),
+            'request_id' => null,
+        ];
     }
 
     /**
-     * 调用 AI（流式，通过 onDelta 回调逐 token 推送）
+     * 调用 AI（流式）— 使用 Neuron Agent
+     *
+     * Agent::stream() 返回 AgentHandler，调用 ->events() 获取 Generator<StreamChunk>
+     * TextChunk->content 是每个增量文本片段
      */
-    public static function chatStream(AiClientInterface $client, array $payload, array $config, callable $onDelta, ?callable $shouldStop = null): array
+    public static function chatStream(Agent $agent, string|array $content, array $history, callable $onDelta, ?callable $shouldStop = null): array
     {
-        return $client->chatCompletionsStream($payload, $config, function ($delta, $chunk) use ($onDelta) {
-            $onDelta($delta);
-        }, $shouldStop);
+        self::loadHistory($agent, $history);
+
+        $fullContent = '';
+        $canceled    = false;
+
+        $userMessage = self::createUserMessage($content);
+        $handler = $agent->stream($userMessage);
+
+        foreach ($handler->events() as $chunk) {
+            if ($shouldStop && $shouldStop()) {
+                $canceled = true;
+                break;
+            }
+
+            // 只处理文本 chunk
+            if ($chunk instanceof TextChunk) {
+                $fullContent .= $chunk->content;
+                $onDelta($chunk->content);
+            }
+        }
+
+        if ($canceled) {
+            return [
+                'content'    => $fullContent,
+                'usage'      => ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null],
+                'request_id' => null,
+                'canceled'   => true,
+            ];
+        }
+
+        return [
+            'content'    => $fullContent,
+            'usage'      => ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null],
+            'request_id' => null,
+        ];
     }
 
     /**
      * 自动生成会话标题（非流式调用，失败静默返回 null）
      */
-    public static function generateTitle(AiClientInterface $client, array $config, string $modelCode, string $userMessage): ?string
+    public static function generateTitle(Agent $agent, string $userMessage): ?string
     {
         try {
             $prompt = "请根据以下用户消息，生成一个简短的会话标题（不超过20个字），直接返回标题文本，不要任何解释：\n\n{$userMessage}";
 
-            $result = $client->chatCompletions([
-                'model'       => $modelCode,
-                'messages'    => [['role' => 'user', 'content' => $prompt]],
-                'max_tokens'  => 50,
-                'temperature' => 0.7,
-            ], $config);
+            $handler  = $agent->chat(new UserMessage($prompt));
+            $message  = $handler->getMessage();
 
-            $title = trim($result['content'] ?? '');
+            $title = trim($message->getContent() ?? '');
             $title = trim($title, "\"'「」『』");
 
             if (mb_strlen($title) > 30) {
@@ -211,10 +208,88 @@ class AiChatService
     }
 
     /**
-     * 生成唯一的 request_id（时间戳 + 随机 hex）
+     * 生成唯一的 request_id
      */
     public static function generateRequestId(): string
     {
         return date('YmdHis') . '-' . bin2hex(random_bytes(8));
+    }
+
+    // ==================== 私有方法 ====================
+
+    /**
+     * 将历史消息加载到 Neuron Agent 的 ChatHistory
+     */
+    private static function loadHistory(Agent $agent, array $messages): void
+    {
+        $chatHistory = $agent->getChatHistory();
+
+        foreach ($messages as $msg) {
+            $role = $msg['role'] ?? '';
+            if ($role === 'system') {
+                continue; // 已通过 setInstructions 设置
+            }
+
+            $content = $msg['content'] ?? '';
+
+            if ($role === 'user') {
+                $chatHistory->addMessage(self::createUserMessage($content));
+            } elseif ($role === 'assistant') {
+                $textContent = \is_array($content)
+                    ? implode("\n", \array_column(\array_filter($content, fn($p) => ($p['type'] ?? '') === 'text'), 'text'))
+                    : $content;
+                $chatHistory->addMessage(new AssistantMessage($textContent));
+            }
+        }
+    }
+
+    /**
+     * 根据内容类型创建 UserMessage（支持纯文本和多模态）
+     * $content 为 string 时创建纯文本消息，为 array 时创建多模态消息
+     */
+    private static function createUserMessage(string|array $content): UserMessage
+    {
+        if (\is_string($content)) {
+            return new UserMessage($content);
+        }
+
+        // 多模态内容：[{type: text, text: ...}, {type: image_url, image_url: {url: ...}}]
+        $blocks = [];
+        foreach ($content as $part) {
+            $type = $part['type'] ?? '';
+            if ($type === 'text') {
+                $blocks[] = new TextContent($part['text'] ?? '');
+            } elseif ($type === 'image_url') {
+                $url = $part['image_url']['url'] ?? '';
+                if (!empty($url)) {
+                    $blocks[] = new ImageContent($url, SourceType::URL);
+                }
+            }
+        }
+
+        return !empty($blocks) ? new UserMessage($blocks) : new UserMessage('');
+    }
+
+    /**
+     * 从 Message 提取 usage 信息
+     */
+    private static function extractUsage($message): array
+    {
+        // Neuron v3 Message 有 getUsage() 方法，返回 Usage 对象或 null
+        $usage = method_exists($message, 'getUsage') ? $message->getUsage() : null;
+
+        if ($usage) {
+            return [
+                'prompt_tokens'     => $usage->input_tokens ?? null,
+                'completion_tokens' => $usage->output_tokens ?? null,
+                'total_tokens'      => ($usage->input_tokens ?? 0) + ($usage->output_tokens ?? 0) ?: null,
+            ];
+        }
+
+        return [
+            'prompt_tokens'     => null,
+            'completion_tokens' => null,
+            'total_tokens'      => null,
+        ];
     }
 }

@@ -15,7 +15,6 @@ class AiModelModel extends BaseModel
      * 类型转换
      */
     protected $casts = [
-        'default_params' => 'array',
         'modalities' => 'array',
     ];
 

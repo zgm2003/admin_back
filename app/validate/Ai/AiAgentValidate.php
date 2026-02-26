@@ -17,9 +17,6 @@ class AiAgentValidate
             'system_prompt'=> v::optional(v::stringType())->setName('系统提示词'),
             'mode'         => v::optional(v::stringType()->in(array_keys(AiEnum::$modeArr)))->setName('模式'),
             'scene'        => v::optional(v::stringType()->in(array_keys(AiEnum::$sceneArr)))->setName('场景'),
-            'temperature'  => v::optional(v::floatVal()->between(0, 2))->setName('温度'),
-            'max_tokens'   => v::optional(v::intVal()->positive())->setName('最大输出长度'),
-            'extra_params' => v::optional(v::arrayType())->setName('额外参数'),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
         ];
     }
@@ -34,9 +31,6 @@ class AiAgentValidate
             'system_prompt'=> v::optional(v::stringType())->setName('系统提示词'),
             'mode'         => v::optional(v::stringType()->in(array_keys(AiEnum::$modeArr)))->setName('模式'),
             'scene'        => v::optional(v::stringType()->in(array_keys(AiEnum::$sceneArr)))->setName('场景'),
-            'temperature'  => v::optional(v::floatVal()->between(0, 2))->setName('温度'),
-            'max_tokens'   => v::optional(v::intVal()->positive())->setName('最大输出长度'),
-            'extra_params' => v::optional(v::arrayType())->setName('额外参数'),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
         ];
     }
