@@ -328,7 +328,8 @@ class AiChatModule extends BaseModule
         ]);
 
         $modalities      = $model->modalities ?? null;
-        $historyMessages = AiChatService::buildMessages($agent, $conversationId, $maxHistory, $modalities);
+        // 排除刚插入的用户消息，避免与 userContent 重复发送给 AI
+        $historyMessages = AiChatService::buildMessages($agent, $conversationId, $maxHistory, $modalities, $userMessageId);
 
         // 当前消息也需要构建多模态内容（与历史消息一致的格式）
         $userContent = AiChatService::buildMultimodalContent($content, $attachments, $modalities);

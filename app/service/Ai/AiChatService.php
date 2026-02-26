@@ -46,8 +46,9 @@ class AiChatService
 
     /**
      * 组装发给 AI 的消息列表（system prompt + 历史消息）
+     * @param int|null $excludeMessageId 排除指定消息ID（避免刚插入的用户消息被重复发送）
      */
-    public static function buildMessages(object $agent, int $conversationId, int $maxHistory, ?array $modalities = null): array
+    public static function buildMessages(object $agent, int $conversationId, int $maxHistory, ?array $modalities = null, ?int $excludeMessageId = null): array
     {
         $messages = [];
 
@@ -58,6 +59,11 @@ class AiChatService
         // 历史消息（取最近 maxHistory*2 条，倒序查询后反转为正序）
         $history = self::msgDep()->getRecentByConversationId($conversationId, $maxHistory * 2);
         foreach (\array_reverse($history->toArray()) as $msg) {
+            // 排除刚插入的用户消息，避免与 userContent 重复
+            if ($excludeMessageId && ($msg['id'] ?? 0) === $excludeMessageId) {
+                continue;
+            }
+
             $roleStr = AiEnum::$roleArr[$msg['role']] ?? null;
             if (!$roleStr) {
                 continue;

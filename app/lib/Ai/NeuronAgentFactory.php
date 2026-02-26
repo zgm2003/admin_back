@@ -42,18 +42,22 @@ class NeuronAgentFactory
      */
     public static function createProvider(object $model, ?array $runtimeParams = null): array
     {
-        try {
-            $apiKey = KeyVault::decrypt($model->api_key_enc ?? '');
-        } catch (RuntimeException $e) {
-            return [null, "API Key 解密失败: {$e->getMessage()}"];
-        }
-        if (empty($apiKey)) {
-            return [null, '模型未配置 API Key'];
-        }
-
         $driver    = $model->driver;
         $modelCode = $model->model_code;
         $endpoint  = $model->endpoint ?? '';
+
+        // Ollama 是本地 Provider，不需要 API Key
+        $apiKey = '';
+        if ($driver !== AiEnum::DRIVER_OLLAMA) {
+            try {
+                $apiKey = KeyVault::decrypt($model->api_key_enc ?? '');
+            } catch (RuntimeException $e) {
+                return [null, "API Key 解密失败: {$e->getMessage()}"];
+            }
+            if (empty($apiKey)) {
+                return [null, '模型未配置 API Key'];
+            }
+        }
 
         // 只传用户显式设置的运行时参数，其余让 Provider 官方默认值生效
         $parameters = self::mergeParameters($runtimeParams);
