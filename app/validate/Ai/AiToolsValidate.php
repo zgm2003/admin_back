@@ -72,7 +72,7 @@ class AiToolsValidate
     public static function getAgentTools(): array
     {
         return [
-            'agent_id' => v::intVal()->positive()->setName('智能体ID'),
+            'agent_id' => v::optional(v::intVal()->positive())->setName('智能体ID'),
         ];
     }
 }

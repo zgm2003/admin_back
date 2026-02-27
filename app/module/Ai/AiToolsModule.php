@@ -41,16 +41,18 @@ class AiToolsModule extends BaseModule
         $res = $this->dep(AiToolsDep::class)->list($param);
 
         $list = $res->map(fn($item) => [
-            'id'             => $item->id,
-            'name'           => $item->name,
-            'code'           => $item->code,
-            'description'    => $item->description,
-            'executor_type'  => $item->executor_type,
-            'executor_name'  => AiEnum::$executorTypeArr[$item->executor_type] ?? '',
-            'status'         => $item->status,
-            'status_name'    => CommonEnum::$statusArr[$item->status] ?? '',
-            'created_at'     => $item->created_at,
-            'updated_at'     => $item->updated_at,
+            'id'              => $item->id,
+            'name'            => $item->name,
+            'code'            => $item->code,
+            'description'     => $item->description,
+            'schema_json'     => $item->schema_json ? json_decode($item->schema_json, true) : null,
+            'executor_type'   => $item->executor_type,
+            'executor_name'   => AiEnum::$executorTypeArr[$item->executor_type] ?? '',
+            'executor_config' => $item->executor_config ? json_decode($item->executor_config, true) : null,
+            'status'          => $item->status,
+            'status_name'     => CommonEnum::$statusArr[$item->status] ?? '',
+            'created_at'      => $item->created_at,
+            'updated_at'      => $item->updated_at,
         ]);
 
         $page = [
@@ -177,13 +179,18 @@ class AiToolsModule extends BaseModule
     public function getAgentTools($request): array
     {
         $param = $this->validate($request, AiToolsValidate::getAgentTools());
-        $agentId = (int)$param['agent_id'];
+        $agentId = (int)($param['agent_id'] ?? 0);
 
-        $bindings = $this->dep(AiAssistantToolsDep::class)->getBindingsByAgentId($agentId);
+        $boundToolIds = [];
+        if ($agentId > 0) {
+            $bindings = $this->dep(AiAssistantToolsDep::class)->getBindingsByAgentId($agentId);
+            $boundToolIds = $bindings->pluck('tool_id')->toArray();
+        }
+
         $allTools = $this->dep(AiToolsDep::class)->getAllActive();
 
         return self::success([
-            'bound_tool_ids' => $bindings->pluck('tool_id')->toArray(),
+            'bound_tool_ids' => $boundToolIds,
             'all_tools'      => $allTools->map(fn($t) => [
                 'value' => $t->id,
                 'label' => $t->name,

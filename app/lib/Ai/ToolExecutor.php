@@ -16,7 +16,8 @@ class ToolExecutor
 {
     /** 内置工具注册表 */
     private static array $internalTools = [
-        'get_current_time' => [self::class, 'toolGetCurrentTime'],
+        'get_current_time'  => [self::class, 'toolGetCurrentTime'],
+        'query_user_stats'  => [self::class, 'toolQueryUserStats'],
     ];
 
     /**
@@ -25,10 +26,16 @@ class ToolExecutor
     public static function execute(object $toolRecord, array $inputs): string
     {
         try {
+            // query builder 返回 JSON 列为字符串，需解码为数组
+            $config = $toolRecord->executor_config ?? [];
+            if (\is_string($config)) {
+                $config = json_decode($config, true) ?: [];
+            }
+
             return match ((int)$toolRecord->executor_type) {
                 AiEnum::EXECUTOR_INTERNAL       => self::executeInternal($toolRecord->code, $inputs),
-                AiEnum::EXECUTOR_HTTP_WHITELIST  => self::executeHttp($toolRecord->executor_config ?? [], $inputs),
-                AiEnum::EXECUTOR_SQL_READONLY    => self::executeSql($toolRecord->executor_config ?? [], $inputs),
+                AiEnum::EXECUTOR_HTTP_WHITELIST  => self::executeHttp($config, $inputs),
+                AiEnum::EXECUTOR_SQL_READONLY    => self::executeSql($config, $inputs),
                 default => "未知的执行器类型: {$toolRecord->executor_type}",
             };
         } catch (\Throwable $e) {
@@ -52,6 +59,36 @@ class ToolExecutor
     {
         $format = $inputs['format'] ?? 'Y-m-d H:i:s';
         return date($format);
+    }
+
+    /**
+     * 查询用户统计数据
+     */
+    private static function toolQueryUserStats(array $inputs): string
+    {
+        $range = $inputs['date_range'] ?? 'today';
+
+        $total  = Db::table('users')->where('is_del', 2)->count();
+        $active = Db::table('users')->where('is_del', 2)->where('status', 1)->count();
+
+        $newCondition = match ($range) {
+            'week'  => ['>=', date('Y-m-d', strtotime('-7 days'))],
+            'month' => ['>=', date('Y-m-d', strtotime('-30 days'))],
+            default => ['>=', date('Y-m-d')], // today
+        };
+
+        $newUsers = Db::table('users')
+            ->where('is_del', 2)
+            ->where('created_at', $newCondition[0], $newCondition[1])
+            ->count();
+
+        return json_encode([
+            'total_users'  => $total,
+            'active_users' => $active,
+            'new_users'    => $newUsers,
+            'date_range'   => $range,
+            'query_time'   => date('Y-m-d H:i:s'),
+        ], JSON_UNESCAPED_UNICODE);
     }
 
     // ==================== HTTP 白名单执行器 ====================
