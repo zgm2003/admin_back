@@ -64,12 +64,10 @@ class AiEnum
         self::MODE_WORKFLOW => '工作流',
     ];
 
-    // AI 智能体场景
-    const SCENE_CHAT = 'chat';
+    // AI 智能体场景（仅特殊用途，普通对话不设场景）
     const SCENE_GOODS_SCRIPT = 'goods_script';
 
     public static $sceneArr = [
-        self::SCENE_CHAT => '对话',
         self::SCENE_GOODS_SCRIPT => '商品口播生成',
     ];
 
