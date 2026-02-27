@@ -23,7 +23,7 @@ class AiToolsDep extends BaseDep
     public function list(array $param)
     {
         return $this->model
-            ->select(['id', 'name', 'code', 'description', 'executor_type', 'status', 'created_at', 'updated_at'])
+            ->select(['id', 'name', 'code', 'description', 'schema_json', 'executor_type', 'executor_config', 'status', 'created_at', 'updated_at'])
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', $param['name'] . '%'))
             ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
