@@ -133,12 +133,12 @@ Route::group('/api/admin', function () {
     Route::post('/System/Test/del', [controller\System\TestController::class, 'del']);
 
     // AI 模型配置
-    Route::post('/AiModel/init', [controller\Ai\AiModelController::class, 'init']);
-    Route::post('/AiModel/list', [controller\Ai\AiModelController::class, 'list']);
-    Route::post('/AiModel/add', [controller\Ai\AiModelController::class, 'add']);
-    Route::post('/AiModel/edit', [controller\Ai\AiModelController::class, 'edit']);
-    Route::post('/AiModel/del', [controller\Ai\AiModelController::class, 'del']);
-    Route::post('/AiModel/status', [controller\Ai\AiModelController::class, 'status']);
+    Route::post('/AiModels/init', [controller\Ai\AiModelsController::class, 'init']);
+    Route::post('/AiModels/list', [controller\Ai\AiModelsController::class, 'list']);
+    Route::post('/AiModels/add', [controller\Ai\AiModelsController::class, 'add']);
+    Route::post('/AiModels/edit', [controller\Ai\AiModelsController::class, 'edit']);
+    Route::post('/AiModels/del', [controller\Ai\AiModelsController::class, 'del']);
+    Route::post('/AiModels/status', [controller\Ai\AiModelsController::class, 'status']);
 
     // AI 工具管理
     Route::post('/AiTools/init', [controller\Ai\AiToolsController::class, 'init']);
@@ -151,26 +151,26 @@ Route::group('/api/admin', function () {
     Route::post('/AiTools/getAgentTools', [controller\Ai\AiToolsController::class, 'getAgentTools']);
 
     // AI 智能体配置
-    Route::post('/AiAgent/init', [controller\Ai\AiAgentController::class, 'init']);
-    Route::post('/AiAgent/list', [controller\Ai\AiAgentController::class, 'list']);
-    Route::post('/AiAgent/add', [controller\Ai\AiAgentController::class, 'add']);
-    Route::post('/AiAgent/edit', [controller\Ai\AiAgentController::class, 'edit']);
-    Route::post('/AiAgent/del', [controller\Ai\AiAgentController::class, 'del']);
-    Route::post('/AiAgent/status', [controller\Ai\AiAgentController::class, 'status']);
+    Route::post('/AiAgents/init', [controller\Ai\AiAgentsController::class, 'init']);
+    Route::post('/AiAgents/list', [controller\Ai\AiAgentsController::class, 'list']);
+    Route::post('/AiAgents/add', [controller\Ai\AiAgentsController::class, 'add']);
+    Route::post('/AiAgents/edit', [controller\Ai\AiAgentsController::class, 'edit']);
+    Route::post('/AiAgents/del', [controller\Ai\AiAgentsController::class, 'del']);
+    Route::post('/AiAgents/status', [controller\Ai\AiAgentsController::class, 'status']);
 
     // AI 会话管理
-    Route::post('/AiConversation/list', [controller\Ai\AiConversationController::class, 'list']);
-    Route::post('/AiConversation/detail', [controller\Ai\AiConversationController::class, 'detail']);
-    Route::post('/AiConversation/add', [controller\Ai\AiConversationController::class, 'add']);
-    Route::post('/AiConversation/edit', [controller\Ai\AiConversationController::class, 'edit']);
-    Route::post('/AiConversation/del', [controller\Ai\AiConversationController::class, 'del']);
-    Route::post('/AiConversation/status', [controller\Ai\AiConversationController::class, 'status']);
+    Route::post('/AiConversations/list', [controller\Ai\AiConversationsController::class, 'list']);
+    Route::post('/AiConversations/detail', [controller\Ai\AiConversationsController::class, 'detail']);
+    Route::post('/AiConversations/add', [controller\Ai\AiConversationsController::class, 'add']);
+    Route::post('/AiConversations/edit', [controller\Ai\AiConversationsController::class, 'edit']);
+    Route::post('/AiConversations/del', [controller\Ai\AiConversationsController::class, 'del']);
+    Route::post('/AiConversations/status', [controller\Ai\AiConversationsController::class, 'status']);
 
     // AI 消息管理
-    Route::post('/AiMessage/list', [controller\Ai\AiMessageController::class, 'list']);
-    Route::post('/AiMessage/del', [controller\Ai\AiMessageController::class, 'del']);
-    Route::post('/AiMessage/editContent', [controller\Ai\AiMessageController::class, 'editContent']);
-    Route::post('/AiMessage/feedback', [controller\Ai\AiMessageController::class, 'feedback']);
+    Route::post('/AiMessages/list', [controller\Ai\AiMessagesController::class, 'list']);
+    Route::post('/AiMessages/del', [controller\Ai\AiMessagesController::class, 'del']);
+    Route::post('/AiMessages/editContent', [controller\Ai\AiMessagesController::class, 'editContent']);
+    Route::post('/AiMessages/feedback', [controller\Ai\AiMessagesController::class, 'feedback']);
 
     // AI 对话（发送消息并获取回复）
     Route::post('/AiChat/send', [controller\Ai\AiChatController::class, 'send']);
@@ -178,22 +178,22 @@ Route::group('/api/admin', function () {
     Route::post('/AiChat/cancel', [controller\Ai\AiChatController::class, 'cancel']);
 
     // AI 运行监控
-    Route::post('/AiRun/init', [controller\Ai\AiRunController::class, 'init']);
-    Route::post('/AiRun/list', [controller\Ai\AiRunController::class, 'list']);
-    Route::post('/AiRun/detail', [controller\Ai\AiRunController::class, 'detail']);
-    Route::post('/AiRun/stats', [controller\Ai\AiRunController::class, 'stats']);
-    Route::post('/AiRun/statsByDate', [controller\Ai\AiRunController::class, 'statsByDate']);
-    Route::post('/AiRun/statsByAgent', [controller\Ai\AiRunController::class, 'statsByAgent']);
-    Route::post('/AiRun/statsByUser', [controller\Ai\AiRunController::class, 'statsByUser']);
+    Route::post('/AiRuns/init', [controller\Ai\AiRunsController::class, 'init']);
+    Route::post('/AiRuns/list', [controller\Ai\AiRunsController::class, 'list']);
+    Route::post('/AiRuns/detail', [controller\Ai\AiRunsController::class, 'detail']);
+    Route::post('/AiRuns/stats', [controller\Ai\AiRunsController::class, 'stats']);
+    Route::post('/AiRuns/statsByDate', [controller\Ai\AiRunsController::class, 'statsByDate']);
+    Route::post('/AiRuns/statsByAgent', [controller\Ai\AiRunsController::class, 'statsByAgent']);
+    Route::post('/AiRuns/statsByUser', [controller\Ai\AiRunsController::class, 'statsByUser']);
 
     // AI 提示词管理
-    Route::post('/AiPrompt/list', [controller\Ai\AiPromptController::class, 'list']);
-    Route::post('/AiPrompt/detail', [controller\Ai\AiPromptController::class, 'detail']);
-    Route::post('/AiPrompt/add', [controller\Ai\AiPromptController::class, 'add']);
-    Route::post('/AiPrompt/edit', [controller\Ai\AiPromptController::class, 'edit']);
-    Route::post('/AiPrompt/del', [controller\Ai\AiPromptController::class, 'del']);
-    Route::post('/AiPrompt/toggleFavorite', [controller\Ai\AiPromptController::class, 'toggleFavorite']);
-    Route::post('/AiPrompt/use', [controller\Ai\AiPromptController::class, 'use']);
+    Route::post('/AiPrompts/list', [controller\Ai\AiPromptsController::class, 'list']);
+    Route::post('/AiPrompts/detail', [controller\Ai\AiPromptsController::class, 'detail']);
+    Route::post('/AiPrompts/add', [controller\Ai\AiPromptsController::class, 'add']);
+    Route::post('/AiPrompts/edit', [controller\Ai\AiPromptsController::class, 'edit']);
+    Route::post('/AiPrompts/del', [controller\Ai\AiPromptsController::class, 'del']);
+    Route::post('/AiPrompts/toggleFavorite', [controller\Ai\AiPromptsController::class, 'toggleFavorite']);
+    Route::post('/AiPrompts/use', [controller\Ai\AiPromptsController::class, 'use']);
 
     // 代码生成器
     Route::post('/DevTools/Gen/tables', [controller\DevTools\GenController::class, 'tables']);

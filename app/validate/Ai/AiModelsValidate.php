@@ -5,7 +5,7 @@ namespace app\validate\Ai;
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 
-class AiModelValidate
+class AiModelsValidate
 {
     /**
      * 创建验证规则

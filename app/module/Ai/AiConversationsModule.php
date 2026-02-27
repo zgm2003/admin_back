@@ -7,21 +7,21 @@ use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiModelsDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
-use app\validate\Ai\AiConversationValidate;
+use app\validate\Ai\AiConversationsValidate;
 
 /**
  * AI 会话管理模块
  * 负责：会话 CRUD、归档/取消归档、会话详情（含智能体+模型信息）
  * 会话归属用户，所有操作均校验 user_id 权限
  */
-class AiConversationModule extends BaseModule
+class AiConversationsModule extends BaseModule
 {
     /**
      * 会话列表（分页，默认查正常状态，可传 status=2 查归档）
      */
     public function list($request): array
     {
-        $param = $this->validate($request, AiConversationValidate::list());
+        $param = $this->validate($request, AiConversationsValidate::list());
         $param['user_id'] = $request->userId;
         // 默认查询正常状态（status=1），前端可传 status=2 查归档
         if (!isset($param['status'])) {
@@ -62,7 +62,7 @@ class AiConversationModule extends BaseModule
      */
     public function add($request): array
     {
-        $param = $this->validate($request, AiConversationValidate::add());
+        $param = $this->validate($request, AiConversationsValidate::add());
 
         // 校验智能体存在且未禁用
         $agent = $this->dep(AiAgentsDep::class)->get((int)$param['agent_id']);
@@ -85,7 +85,7 @@ class AiConversationModule extends BaseModule
      */
     public function edit($request): array
     {
-        $param = $this->validate($request, AiConversationValidate::edit());
+        $param = $this->validate($request, AiConversationsValidate::edit());
 
         if (!isset($param['title'])) {
             return self::success(['affected' => 0]);
@@ -102,7 +102,7 @@ class AiConversationModule extends BaseModule
      */
     public function del($request): array
     {
-        $param = $this->validate($request, AiConversationValidate::del());
+        $param = $this->validate($request, AiConversationsValidate::del());
 
         $ids = \is_array($param['id']) ? $param['id'] : [$param['id']];
         $this->dep(AiConversationsDep::class)->deleteByUser($ids, $request->userId);
@@ -115,7 +115,7 @@ class AiConversationModule extends BaseModule
      */
     public function status($request): array
     {
-        $param = $this->validate($request, AiConversationValidate::status());
+        $param = $this->validate($request, AiConversationsValidate::status());
         $this->dep(AiConversationsDep::class)->updateStatus($param['id'], (int)$param['status'], $request->userId);
 
         return self::success();
@@ -126,7 +126,7 @@ class AiConversationModule extends BaseModule
      */
     public function detail($request): array
     {
-        $param = $this->validate($request, AiConversationValidate::detail());
+        $param = $this->validate($request, AiConversationsValidate::detail());
 
         $item = $this->dep(AiConversationsDep::class)->getByUser((int)$param['id'], $request->userId);
         self::throwNotFound($item, '会话不存在');

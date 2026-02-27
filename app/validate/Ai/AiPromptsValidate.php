@@ -5,7 +5,7 @@ namespace app\validate\Ai;
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 
-class AiPromptValidate
+class AiPromptsValidate
 {
     public static function add(): array
     {

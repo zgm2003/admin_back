@@ -8,14 +8,14 @@ use app\enum\CommonEnum;
 use app\lib\Crypto\KeyVault;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\validate\Ai\AiModelValidate;
+use app\validate\Ai\AiModelsValidate;
 
 /**
  * AI 模型管理模块
  * 负责：模型 CRUD、状态切换、API Key 加密存储
  * 模型唯一性约束：同一驱动下不允许同名模型
  */
-class AiModelModule extends BaseModule
+class AiModelsModule extends BaseModule
 {
     /**
      * 初始化（返回驱动、状态字典）
@@ -35,7 +35,7 @@ class AiModelModule extends BaseModule
      */
     public function list($request): array
     {
-        $param = $this->validate($request, AiModelValidate::list());
+        $param = $this->validate($request, AiModelsValidate::list());
         $res = $this->dep(AiModelsDep::class)->list($param);
 
         $list = $res->map(fn($item) => [
@@ -68,7 +68,7 @@ class AiModelModule extends BaseModule
      */
     public function add($request): array
     {
-        $param = $this->validate($request, AiModelValidate::add());
+        $param = $this->validate($request, AiModelsValidate::add());
         $dep = $this->dep(AiModelsDep::class);
 
         // 同驱动下不允许同名模型
@@ -100,7 +100,7 @@ class AiModelModule extends BaseModule
      */
     public function edit($request): array
     {
-        $param = $this->validate($request, AiModelValidate::edit());
+        $param = $this->validate($request, AiModelsValidate::edit());
         $id = (int)$param['id'];
         $dep = $this->dep(AiModelsDep::class);
 
@@ -137,7 +137,7 @@ class AiModelModule extends BaseModule
      */
     public function del($request): array
     {
-        $param = $this->validate($request, AiModelValidate::del());
+        $param = $this->validate($request, AiModelsValidate::del());
         $affected = $this->dep(AiModelsDep::class)->delete($param['id']);
 
         return self::success(['affected' => $affected]);
@@ -148,7 +148,7 @@ class AiModelModule extends BaseModule
      */
     public function status($request): array
     {
-        $param = $this->validate($request, AiModelValidate::setStatus());
+        $param = $this->validate($request, AiModelsValidate::setStatus());
         $affected = $this->dep(AiModelsDep::class)->setStatus($param['id'], (int)$param['status']);
 
         return self::success(['affected' => $affected]);

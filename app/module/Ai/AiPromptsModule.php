@@ -2,27 +2,27 @@
 
 namespace app\module\Ai;
 
-use app\dep\Ai\AiPromptDep;
+use app\dep\Ai\AiPromptsDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
-use app\validate\Ai\AiPromptValidate;
+use app\validate\Ai\AiPromptsValidate;
 
 /**
  * AI 提示词管理模块
  * 负责：用户个人提示词 CRUD、收藏切换、使用计数
  * 所有操作均校验 user_id 归属权限
  */
-class AiPromptModule extends BaseModule
+class AiPromptsModule extends BaseModule
 {
     /**
      * 提示词列表（分页，仅当前用户）
      */
     public function list($request): array
     {
-        $param = $this->validate($request, AiPromptValidate::list());
+        $param = $this->validate($request, AiPromptsValidate::list());
         $param['user_id'] = $request->userId;
 
-        $res = $this->dep(AiPromptDep::class)->list($param);
+        $res = $this->dep(AiPromptsDep::class)->list($param);
 
         $list = $res->map(fn($item) => [
             'id'          => $item->id,
@@ -50,9 +50,9 @@ class AiPromptModule extends BaseModule
      */
     public function detail($request): array
     {
-        $param = $this->validate($request, AiPromptValidate::detail());
+        $param = $this->validate($request, AiPromptsValidate::detail());
 
-        $row = $this->dep(AiPromptDep::class)->get((int)$param['id']);
+        $row = $this->dep(AiPromptsDep::class)->get((int)$param['id']);
         self::throwNotFound($row);
         self::throwIf((int)$row->user_id !== $request->userId, '无权访问');
 
@@ -74,7 +74,7 @@ class AiPromptModule extends BaseModule
      */
     public function add($request): array
     {
-        $param = $this->validate($request, AiPromptValidate::add());
+        $param = $this->validate($request, AiPromptsValidate::add());
         $param['user_id']     = $request->userId;
         $param['is_favorite'] = CommonEnum::NO;
         $param['use_count']   = 0;
@@ -87,7 +87,7 @@ class AiPromptModule extends BaseModule
             $param['variables'] = \json_encode($param['variables']);
         }
 
-        $this->dep(AiPromptDep::class)->add($param);
+        $this->dep(AiPromptsDep::class)->add($param);
 
         return self::success();
     }
@@ -97,8 +97,8 @@ class AiPromptModule extends BaseModule
      */
     public function edit($request): array
     {
-        $param = $this->validate($request, AiPromptValidate::edit());
-        $dep = $this->dep(AiPromptDep::class);
+        $param = $this->validate($request, AiPromptsValidate::edit());
+        $dep = $this->dep(AiPromptsDep::class);
 
         $row = $dep->get((int)$param['id']);
         self::throwNotFound($row);
@@ -121,9 +121,9 @@ class AiPromptModule extends BaseModule
      */
     public function del($request): array
     {
-        $param = $this->validate($request, AiPromptValidate::del());
+        $param = $this->validate($request, AiPromptsValidate::del());
         $ids = \is_array($param['id']) ? $param['id'] : [$param['id']];
-        $dep = $this->dep(AiPromptDep::class);
+        $dep = $this->dep(AiPromptsDep::class);
 
         foreach ($ids as $id) {
             $row = $dep->get((int)$id);
@@ -140,8 +140,8 @@ class AiPromptModule extends BaseModule
      */
     public function toggleFavorite($request): array
     {
-        $param = $this->validate($request, AiPromptValidate::detail());
-        $dep = $this->dep(AiPromptDep::class);
+        $param = $this->validate($request, AiPromptsValidate::detail());
+        $dep = $this->dep(AiPromptsDep::class);
 
         $row = $dep->get((int)$param['id']);
         self::throwNotFound($row);
@@ -158,8 +158,8 @@ class AiPromptModule extends BaseModule
      */
     public function use($request): array
     {
-        $param = $this->validate($request, AiPromptValidate::detail());
-        $dep = $this->dep(AiPromptDep::class);
+        $param = $this->validate($request, AiPromptsValidate::detail());
+        $dep = $this->dep(AiPromptsDep::class);
 
         $row = $dep->get((int)$param['id']);
         self::throwNotFound($row);

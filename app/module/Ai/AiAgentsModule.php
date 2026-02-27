@@ -9,14 +9,14 @@ use app\enum\AiEnum;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\validate\Ai\AiAgentValidate;
+use app\validate\Ai\AiAgentsValidate;
 
 /**
  * AI 智能体管理模块
  * 负责：智能体 CRUD、状态切换
  * 智能体绑定模型，新增/编辑时校验模型存在且启用
  */
-class AiAgentModule extends BaseModule
+class AiAgentsModule extends BaseModule
 {
     /**
      * 初始化（返回模式、场景、状态字典 + 可用模型列表）
@@ -44,7 +44,7 @@ class AiAgentModule extends BaseModule
      */
     public function list($request): array
     {
-        $param = $this->validate($request, AiAgentValidate::list());
+        $param = $this->validate($request, AiAgentsValidate::list());
         $res = $this->dep(AiAgentsDep::class)->list($param);
 
         // 批量预加载关联模型（只取列表需要的字段，避免拉取 api_key_enc 等大字段）
@@ -93,7 +93,7 @@ class AiAgentModule extends BaseModule
      */
     public function add($request): array
     {
-        $param = $this->validate($request, AiAgentValidate::add());
+        $param = $this->validate($request, AiAgentsValidate::add());
 
         // 校验关联模型
         $model = $this->dep(AiModelsDep::class)->get((int)$param['model_id']);
@@ -124,7 +124,7 @@ class AiAgentModule extends BaseModule
      */
     public function edit($request): array
     {
-        $param = $this->validate($request, AiAgentValidate::edit());
+        $param = $this->validate($request, AiAgentsValidate::edit());
         $id = (int)$param['id'];
         $dep = $this->dep(AiAgentsDep::class);
 
@@ -161,7 +161,7 @@ class AiAgentModule extends BaseModule
      */
     public function del($request): array
     {
-        $param = $this->validate($request, AiAgentValidate::del());
+        $param = $this->validate($request, AiAgentsValidate::del());
         $affected = $this->dep(AiAgentsDep::class)->delete($param['id']);
 
         return self::success(['affected' => $affected]);
@@ -172,7 +172,7 @@ class AiAgentModule extends BaseModule
      */
     public function status($request): array
     {
-        $param = $this->validate($request, AiAgentValidate::status());
+        $param = $this->validate($request, AiAgentsValidate::status());
         $affected = $this->dep(AiAgentsDep::class)->setStatus($param['id'], (int)$param['status']);
 
         return self::success(['affected' => $affected]);

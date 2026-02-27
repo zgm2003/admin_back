@@ -3,7 +3,7 @@
 namespace app\dep\Ai;
 
 use app\dep\BaseDep;
-use app\model\Ai\AiRunModel;
+use app\model\Ai\AiRunsModel;
 use app\enum\CommonEnum;
 use app\enum\AiEnum;
 use support\Model;
@@ -12,7 +12,7 @@ class AiRunsDep extends BaseDep
 {
     protected function createModel(): Model
     {
-        return new AiRunModel();
+        return new AiRunsModel();
     }
 
     /**

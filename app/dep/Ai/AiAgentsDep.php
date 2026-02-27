@@ -3,7 +3,7 @@
 namespace app\dep\Ai;
 
 use app\dep\BaseDep;
-use app\model\Ai\AiAgentModel;
+use app\model\Ai\AiAgentsModel;
 use app\enum\CommonEnum;
 use support\Model;
 
@@ -11,7 +11,7 @@ class AiAgentsDep extends BaseDep
 {
     protected function createModel(): Model
     {
-        return new AiAgentModel();
+        return new AiAgentsModel();
     }
 
     /**

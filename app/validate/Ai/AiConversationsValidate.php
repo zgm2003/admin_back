@@ -5,7 +5,7 @@ namespace app\validate\Ai;
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 
-class AiConversationValidate
+class AiConversationsValidate
 {
     public static function list(): array
     {

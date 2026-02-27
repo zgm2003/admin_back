@@ -11,14 +11,14 @@ use app\dep\User\UsersDep;
 use app\enum\AiEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\validate\Ai\AiRunValidate;
+use app\validate\Ai\AiRunsValidate;
 
 /**
  * AI 运行监控模块
  * 负责：运行记录列表/详情、统计概览、按日期/智能体/用户维度统计
  * 详情包含关联的智能体、会话、用户、消息、步骤等完整审计信息
  */
-class AiRunModule extends BaseModule
+class AiRunsModule extends BaseModule
 {
     /** @var int 默认统计天数 */
     private const DEFAULT_STATS_DAYS = 29;
@@ -41,7 +41,7 @@ class AiRunModule extends BaseModule
      */
     public function list($request): array
     {
-        $param = $this->validate($request, AiRunValidate::list());
+        $param = $this->validate($request, AiRunsValidate::list());
         $res = $this->dep(AiRunsDep::class)->list($param);
 
         // 批量查询关联数据（包含已删除，用于审计，只取需要的字段）
@@ -90,7 +90,7 @@ class AiRunModule extends BaseModule
      */
     public function detail($request): array
     {
-        $param = $this->validate($request, AiRunValidate::detail());
+        $param = $this->validate($request, AiRunsValidate::detail());
 
         $run = $this->dep(AiRunsDep::class)->get((int)$param['id']);
         self::throwNotFound($run, '记录不存在');
@@ -167,7 +167,7 @@ class AiRunModule extends BaseModule
      */
     public function statsSummary($request): array
     {
-        $param = $this->validate($request, AiRunValidate::statsFilter());
+        $param = $this->validate($request, AiRunsValidate::statsFilter());
         $this->applyDefaultDateRange($param);
 
         $summary = $this->dep(AiRunsDep::class)->getStats($param);
@@ -190,7 +190,7 @@ class AiRunModule extends BaseModule
      */
     public function statsByDate($request): array
     {
-        $param = $this->validate($request, AiRunValidate::statsList());
+        $param = $this->validate($request, AiRunsValidate::statsList());
         $this->applyDefaultDateRange($param);
 
         $result = $this->dep(AiRunsDep::class)->getStatsByDate($param);
@@ -207,7 +207,7 @@ class AiRunModule extends BaseModule
      */
     public function statsByAgent($request): array
     {
-        $param = $this->validate($request, AiRunValidate::statsList());
+        $param = $this->validate($request, AiRunsValidate::statsList());
         $this->applyDefaultDateRange($param);
 
         $result = $this->dep(AiRunsDep::class)->getStatsByAgent($param);
@@ -238,7 +238,7 @@ class AiRunModule extends BaseModule
      */
     public function statsByUser($request): array
     {
-        $param = $this->validate($request, AiRunValidate::statsList());
+        $param = $this->validate($request, AiRunsValidate::statsList());
         $this->applyDefaultDateRange($param);
 
         $result = $this->dep(AiRunsDep::class)->getStatsByUser($param);

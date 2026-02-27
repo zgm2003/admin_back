@@ -4,12 +4,12 @@ namespace app\model\Ai;
 
 use app\model\BaseModel;
 
-class AiRunModel extends BaseModel
+class AiRunStepsModel extends BaseModel
 {
-    protected $table = 'ai_runs';
+    protected $table = 'ai_run_steps';
 
     protected $casts = [
-        'meta_json' => 'array',
+        'payload_json' => 'array',
     ];
 
     protected $hidden = [

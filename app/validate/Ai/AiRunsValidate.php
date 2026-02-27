@@ -6,7 +6,7 @@ use Respect\Validation\Validator as v;
 use app\enum\AiEnum;
 use app\enum\CommonEnum;
 
-class AiRunValidate
+class AiRunsValidate
 {
     /**
      * 列表验证规则

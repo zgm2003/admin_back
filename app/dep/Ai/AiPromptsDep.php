@@ -3,15 +3,15 @@
 namespace app\dep\Ai;
 
 use app\dep\BaseDep;
-use app\model\Ai\AiPromptModel;
+use app\model\Ai\AiPromptsModel;
 use app\enum\CommonEnum;
 use support\Model;
 
-class AiPromptDep extends BaseDep
+class AiPromptsDep extends BaseDep
 {
     protected function createModel(): Model
     {
-        return new AiPromptModel();
+        return new AiPromptsModel();
     }
 
     /**

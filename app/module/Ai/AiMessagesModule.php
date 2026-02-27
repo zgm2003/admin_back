@@ -6,21 +6,21 @@ use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiMessagesDep;
 use app\enum\AiEnum;
 use app\module\BaseModule;
-use app\validate\Ai\AiMessageValidate;
+use app\validate\Ai\AiMessagesValidate;
 
 /**
  * AI 消息管理模块
  * 负责：消息列表、删除、编辑内容（重新生成）、反馈（点赞/点踩）
  * 所有操作均校验消息所属会话归属当前用户
  */
-class AiMessageModule extends BaseModule
+class AiMessagesModule extends BaseModule
 {
     /**
      * 消息列表（分页，校验会话归属当前用户）
      */
     public function list($request): array
     {
-        $param = $this->validate($request, AiMessageValidate::list());
+        $param = $this->validate($request, AiMessagesValidate::list());
 
         // 校验会话存在且属于当前用户
         $conversation = $this->dep(AiConversationsDep::class)->getByUser((int)$param['conversation_id'], $request->userId);
@@ -52,7 +52,7 @@ class AiMessageModule extends BaseModule
      */
     public function del($request): array
     {
-        $param = $this->validate($request, AiMessageValidate::del());
+        $param = $this->validate($request, AiMessagesValidate::del());
         $ids = \is_array($param['id']) ? $param['id'] : [$param['id']];
 
         $msgDep = $this->dep(AiMessagesDep::class);
@@ -80,7 +80,7 @@ class AiMessageModule extends BaseModule
      */
     public function editContent($request): array
     {
-        $param = $this->validate($request, AiMessageValidate::editContent());
+        $param = $this->validate($request, AiMessagesValidate::editContent());
         $msgDep = $this->dep(AiMessagesDep::class);
 
         $message = $msgDep->get((int)$param['id']);
@@ -105,7 +105,7 @@ class AiMessageModule extends BaseModule
      */
     public function feedback($request): array
     {
-        $param = $this->validate($request, AiMessageValidate::feedback());
+        $param = $this->validate($request, AiMessagesValidate::feedback());
 
         $message = $this->dep(AiMessagesDep::class)->get((int)$param['id']);
         self::throwNotFound($message, '消息不存在');

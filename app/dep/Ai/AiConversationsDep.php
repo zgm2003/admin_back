@@ -3,7 +3,7 @@
 namespace app\dep\Ai;
 
 use app\dep\BaseDep;
-use app\model\Ai\AiConversationModel;
+use app\model\Ai\AiConversationsModel;
 use app\enum\CommonEnum;
 use support\Model;
 
@@ -11,7 +11,7 @@ class AiConversationsDep extends BaseDep
 {
     protected function createModel(): Model
     {
-        return new AiConversationModel();
+        return new AiConversationsModel();
     }
 
     /**

@@ -6,7 +6,7 @@ use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 use app\enum\AiEnum;
 
-class AiMessageValidate
+class AiMessagesValidate
 {
     public static function list(): array
     {

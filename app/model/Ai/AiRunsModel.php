@@ -4,9 +4,9 @@ namespace app\model\Ai;
 
 use app\model\BaseModel;
 
-class AiMessageModel extends BaseModel
+class AiRunsModel extends BaseModel
 {
-    protected $table = 'ai_messages';
+    protected $table = 'ai_runs';
 
     protected $casts = [
         'meta_json' => 'array',

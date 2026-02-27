@@ -4,7 +4,7 @@ namespace app\model\Ai;
 
 use app\model\BaseModel;
 
-class AiConversationModel extends BaseModel
+class AiConversationsModel extends BaseModel
 {
     protected $table = 'ai_conversations';
 

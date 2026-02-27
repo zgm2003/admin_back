@@ -6,7 +6,7 @@ use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 use app\enum\AiEnum;
 
-class AiAgentValidate
+class AiAgentsValidate
 {
     public static function add(): array
     {
