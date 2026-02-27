@@ -12,6 +12,8 @@ use NeuronAI\Chat\Messages\ContentBlocks\ImageContent;
 use NeuronAI\Chat\Messages\ContentBlocks\TextContent;
 use NeuronAI\Chat\Messages\UserMessage;
 use NeuronAI\Chat\Messages\Stream\Chunks\TextChunk;
+use NeuronAI\Chat\Messages\Stream\Chunks\ToolCallChunk;
+use NeuronAI\Chat\Messages\Stream\Chunks\ToolResultChunk;
 
 
 /**
@@ -151,7 +153,7 @@ class AiChatService
      * Agent::stream() 返回 AgentHandler，调用 ->events() 获取 Generator<StreamChunk>
      * TextChunk->content 是每个增量文本片段
      */
-    public static function chatStream(Agent $agent, string|array $content, array $history, callable $onDelta, ?callable $shouldStop = null): array
+    public static function chatStream(Agent $agent, string|array $content, array $history, callable $onDelta, ?callable $onToolCall = null, ?callable $onToolResult = null, ?callable $shouldStop = null): array
     {
         self::loadHistory($agent, $history);
 
@@ -167,10 +169,23 @@ class AiChatService
                 break;
             }
 
-            // 只处理文本 chunk
             if ($chunk instanceof TextChunk) {
                 $fullContent .= $chunk->content;
                 $onDelta($chunk->content);
+            } elseif ($chunk instanceof ToolCallChunk && $onToolCall) {
+                $tool = $chunk->tool;
+                $onToolCall(
+                    $tool->getCallId(),
+                    $tool->getName(),
+                    $tool->getInputs()
+                );
+            } elseif ($chunk instanceof ToolResultChunk && $onToolResult) {
+                $tool = $chunk->tool;
+                $onToolResult(
+                    $tool->getCallId(),
+                    $tool->getName(),
+                    $tool->getResult()
+                );
             }
         }
 

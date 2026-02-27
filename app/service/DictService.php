@@ -164,6 +164,12 @@ class DictService
         return $this;
     }
 
+    public function setAiExecutorTypeArr(): static
+    {
+        $this->dict['ai_executor_type_arr'] = self::enumToDict(AiEnum::$executorTypeArr);
+        return $this;
+    }
+
     public function setRunStatusArr(): static
     {
         $this->dict['run_status_arr'] = self::enumToDict(AiEnum::$runStatusArr);

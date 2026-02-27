@@ -8,5 +8,11 @@
         <testsuite name="Chat">
             <directory>tests/Chat</directory>
         </testsuite>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
     </testsuites>
 </phpunit>

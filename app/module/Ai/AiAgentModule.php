@@ -3,6 +3,7 @@
 namespace app\module\Ai;
 
 use app\dep\Ai\AiAgentsDep;
+use app\dep\Ai\AiAssistantToolsDep;
 use app\dep\Ai\AiModelsDep;
 use app\enum\AiEnum;
 use app\enum\CommonEnum;
@@ -99,7 +100,7 @@ class AiAgentModule extends BaseModule
         self::throwNotFound($model, '关联的模型不存在');
         self::throwIf($model->status !== CommonEnum::YES, '关联的模型已禁用');
 
-        $this->dep(AiAgentsDep::class)->add([
+        $agentId = $this->dep(AiAgentsDep::class)->add([
             'name'          => $param['name'],
             'model_id'      => (int)$param['model_id'],
             'avatar'        => $param['avatar'] ?? null,
@@ -110,7 +111,12 @@ class AiAgentModule extends BaseModule
             'is_del'        => CommonEnum::NO,
         ]);
 
-        return self::success();
+        // mode=tool 时同步绑定工具
+        if (($param['mode'] ?? '') === AiEnum::MODE_TOOL && !empty($param['tool_ids'])) {
+            $this->dep(AiAssistantToolsDep::class)->syncBindings($agentId, array_map('intval', $param['tool_ids']));
+        }
+
+        return self::success(['id' => $agentId]);
     }
 
     /**
@@ -141,6 +147,11 @@ class AiAgentModule extends BaseModule
         ];
 
         $dep->update($id, $data);
+
+        // mode=tool 时同步绑定工具（tool_ids 存在时才同步）
+        if (($param['mode'] ?? $row->mode) === AiEnum::MODE_TOOL && isset($param['tool_ids'])) {
+            $this->dep(AiAssistantToolsDep::class)->syncBindings($id, array_map('intval', $param['tool_ids'] ?? []));
+        }
 
         return self::success();
     }

@@ -16,6 +16,7 @@ use NeuronAI\Providers\OpenAI\OpenAI;
 use NeuronAI\Providers\OpenAILike;
 use NeuronAI\Providers\XAI\Grok;
 use RuntimeException;
+use support\Log;
 
 /**
  * Neuron AI Agent 工厂
@@ -139,7 +140,34 @@ class NeuronAgentFactory
             ->setAiProvider($provider)
             ->setInstructions($instructions);
 
+        // mode=tool 时注入工具
+        if (($agent->mode ?? '') === AiEnum::MODE_TOOL) {
+            $tools = self::loadAgentTools((int)$agent->id);
+            if (!empty($tools)) {
+                $neuronAgent->addTool($tools);
+            }
+        }
+
         return [$neuronAgent, null];
+    }
+
+    /**
+     * 加载智能体绑定的工具并转换为 Neuron Tool 对象
+     */
+    private static function loadAgentTools(int $agentId): array
+    {
+        $dep = new \app\dep\Ai\AiAssistantToolsDep();
+        $toolRecords = $dep->getActiveToolsByAgentId($agentId);
+
+        $tools = [];
+        foreach ($toolRecords as $record) {
+            try {
+                $tools[] = ToolSchemaConverter::toNeuronTool($record);
+            } catch (\Throwable $e) {
+                Log::warning("[NeuronAgentFactory] 工具转换失败: {$record->code}, {$e->getMessage()}");
+            }
+        }
+        return $tools;
     }
 
     /**

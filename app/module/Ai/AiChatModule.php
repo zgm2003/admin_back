@@ -153,9 +153,45 @@ class AiChatModule extends BaseModule
                 'is_del'       => CommonEnum::NO,
             ]);
 
+            $toolCallCount = 0;
+            $maxToolCalls  = 10;
+
             $result = AiChatService::chatStream(
                 $ctx['agent'], $ctx['userContent'], $ctx['historyMessages'],
                 fn($delta) => $onChunk('content', ['delta' => $delta]),
+                // onToolCall
+                function ($callId, $toolName, $toolInputs) use (&$stepNo, $runId, $onChunk, &$toolCallCount, $maxToolCalls) {
+                    $toolCallCount++;
+                    if ($toolCallCount > $maxToolCalls) {
+                        throw new \RuntimeException('工具调用次数超限');
+                    }
+                    $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_TOOL_CALL, [
+                        'call_id'     => $callId,
+                        'tool_name'   => $toolName,
+                        'tool_inputs' => $toolInputs,
+                    ]);
+                    $onChunk('tool_call', [
+                        'call_id'     => $callId,
+                        'tool_name'   => $toolName,
+                        'tool_inputs' => $toolInputs,
+                    ]);
+                },
+                // onToolResult
+                function ($callId, $toolName, $toolResult) use (&$stepNo, $runId, $onChunk) {
+                    $truncated = mb_strlen($toolResult) > 2000
+                        ? mb_substr($toolResult, 0, 2000) . '...[截断]'
+                        : $toolResult;
+                    $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_TOOL_RESULT, [
+                        'call_id'     => $callId,
+                        'tool_name'   => $toolName,
+                        'tool_result' => $truncated,
+                    ]);
+                    $onChunk('tool_result', [
+                        'call_id'     => $callId,
+                        'tool_name'   => $toolName,
+                        'tool_result' => $truncated,
+                    ]);
+                },
                 function () use ($runId) {
                     $run = $this->dep(AiRunsDep::class)->find($runId);
                     return $run && $run->run_status === AiEnum::RUN_STATUS_CANCELED;

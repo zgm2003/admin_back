@@ -140,6 +140,16 @@ Route::group('/api/admin', function () {
     Route::post('/AiModel/del', [controller\Ai\AiModelController::class, 'del']);
     Route::post('/AiModel/status', [controller\Ai\AiModelController::class, 'status']);
 
+    // AI 工具管理
+    Route::post('/AiTools/init', [controller\Ai\AiToolsController::class, 'init']);
+    Route::post('/AiTools/list', [controller\Ai\AiToolsController::class, 'list']);
+    Route::post('/AiTools/add', [controller\Ai\AiToolsController::class, 'add']);
+    Route::post('/AiTools/edit', [controller\Ai\AiToolsController::class, 'edit']);
+    Route::post('/AiTools/del', [controller\Ai\AiToolsController::class, 'del']);
+    Route::post('/AiTools/status', [controller\Ai\AiToolsController::class, 'status']);
+    Route::post('/AiTools/bindTools', [controller\Ai\AiToolsController::class, 'bindTools']);
+    Route::post('/AiTools/getAgentTools', [controller\Ai\AiToolsController::class, 'getAgentTools']);
+
     // AI 智能体配置
     Route::post('/AiAgent/init', [controller\Ai\AiAgentController::class, 'init']);
     Route::post('/AiAgent/list', [controller\Ai\AiAgentController::class, 'list']);

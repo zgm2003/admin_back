@@ -103,6 +103,17 @@ class AiEnum
         self::STEP_TYPE_FINALIZE => '最终化',
     ];
 
+    // 工具执行器类型
+    const EXECUTOR_INTERNAL       = 1;
+    const EXECUTOR_HTTP_WHITELIST = 2;
+    const EXECUTOR_SQL_READONLY   = 3;
+
+    public static $executorTypeArr = [
+        self::EXECUTOR_INTERNAL       => '内置函数',
+        self::EXECUTOR_HTTP_WHITELIST => 'HTTP白名单',
+        self::EXECUTOR_SQL_READONLY   => '只读SQL',
+    ];
+
     // 步骤状态 (ai_run_steps.status)
     const STEP_STATUS_SUCCESS = 1;
     const STEP_STATUS_FAIL = 2;
