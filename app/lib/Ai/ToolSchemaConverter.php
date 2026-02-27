@@ -28,7 +28,7 @@ class ToolSchemaConverter
             properties: $properties,
         );
 
-        $tool->setCallable(function () use ($toolRecord, $tool) {
+        $tool->setCallable(function (mixed ...$args) use ($toolRecord, $tool) {
             return ToolExecutor::execute($toolRecord, $tool->getInputs());
         });
 
