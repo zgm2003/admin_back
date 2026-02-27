@@ -198,9 +198,11 @@ class AiChatService
             ];
         }
 
+        $finalMessage = $handler->getMessage();
+
         return [
-            'content'    => $fullContent,
-            'usage'      => ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null],
+            'content'    => $fullContent !== '' ? $fullContent : ($finalMessage->getContent() ?? ''),
+            'usage'      => self::extractUsage($finalMessage),
             'request_id' => null,
         ];
     }
@@ -301,11 +303,16 @@ class AiChatService
         // Neuron v3 Message 有 getUsage() 方法，返回 Usage 对象或 null
         $usage = method_exists($message, 'getUsage') ? $message->getUsage() : null;
 
-        if ($usage) {
+        if ($usage && is_object($usage)) {
+            $promptTokens = property_exists($usage, 'inputTokens') ? (int)$usage->inputTokens : null;
+            $completionTokens = property_exists($usage, 'outputTokens') ? (int)$usage->outputTokens : null;
+
             return [
-                'prompt_tokens'     => $usage->input_tokens ?? null,
-                'completion_tokens' => $usage->output_tokens ?? null,
-                'total_tokens'      => ($usage->input_tokens ?? 0) + ($usage->output_tokens ?? 0) ?: null,
+                'prompt_tokens'     => $promptTokens,
+                'completion_tokens' => $completionTokens,
+                'total_tokens'      => (is_int($promptTokens) && is_int($completionTokens))
+                    ? $promptTokens + $completionTokens
+                    : null,
             ];
         }
 

@@ -34,7 +34,7 @@ class WebSocketModule extends BaseModule
             'data' => ['uid' => $userId, 'platform' => $platform]
         ]));
 
-        \support\Log::info("[WebSocket] 用户上线: uid={$userId}, platform={$platform}, client_id={$param['client_id']}");
+//        \support\Log::info("[WebSocket] 用户上线: uid={$userId}, platform={$platform}, client_id={$param['client_id']}");
 
         return self::success(['bound' => true, 'platform' => $platform]);
     }
