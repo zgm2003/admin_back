@@ -57,6 +57,7 @@ class AiRunsDep extends BaseDep
             ->where('conversation_id', $conversationId)
             ->where('run_status', AiEnum::RUN_STATUS_RUNNING)
             ->where('is_del', CommonEnum::NO)
+            ->orderBy('id', 'desc')
             ->first();
     }
 

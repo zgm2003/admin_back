@@ -18,7 +18,7 @@ class AiAgentsValidate
             'mode'         => v::optional(v::stringType()->in(array_keys(AiEnum::$modeArr)))->setName('模式'),
             'scene'        => v::optional(v::stringType()->in(array_keys(AiEnum::$sceneArr)))->setName('场景'),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
-            'tool_ids'     => v::optional(v::arrayType())->setName('工具ID列表'),
+            'tool_ids'     => v::optional(v::arrayType()->each(v::intVal()->positive()))->setName('工具ID列表'),
         ];
     }
 
@@ -33,7 +33,7 @@ class AiAgentsValidate
             'mode'         => v::optional(v::stringType()->in(array_keys(AiEnum::$modeArr)))->setName('模式'),
             'scene'        => v::optional(v::stringType()->in(array_keys(AiEnum::$sceneArr)))->setName('场景'),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
-            'tool_ids'     => v::optional(v::arrayType())->setName('工具ID列表'),
+            'tool_ids'     => v::optional(v::arrayType()->each(v::intVal()->positive()))->setName('工具ID列表'),
         ];
     }
 

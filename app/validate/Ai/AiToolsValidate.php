@@ -65,7 +65,7 @@ class AiToolsValidate
     {
         return [
             'agent_id' => v::intVal()->positive()->setName('智能体ID'),
-            'tool_ids' => v::arrayType()->setName('工具ID列表'),
+            'tool_ids' => v::arrayType()->each(v::intVal()->positive())->setName('工具ID列表'),
         ];
     }
 

@@ -54,6 +54,7 @@ class AiMessagesModule extends BaseModule
     {
         $param = $this->validate($request, AiMessagesValidate::del());
         $ids = \is_array($param['id']) ? $param['id'] : [$param['id']];
+        $ids = array_values(array_unique(array_map('intval', $ids)));
 
         $msgDep = $this->dep(AiMessagesDep::class);
         $convDep = $this->dep(AiConversationsDep::class);

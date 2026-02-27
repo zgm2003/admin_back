@@ -100,21 +100,24 @@ class AiAgentsModule extends BaseModule
         self::throwNotFound($model, '关联的模型不存在');
         self::throwIf($model->status !== CommonEnum::YES, '关联的模型已禁用');
 
-        $agentId = $this->dep(AiAgentsDep::class)->add([
-            'name'          => $param['name'],
-            'model_id'      => (int)$param['model_id'],
-            'avatar'        => $param['avatar'] ?? null,
-            'system_prompt' => $param['system_prompt'] ?? null,
-            'mode'          => $param['mode'] ?? 'chat',
-            'scene'         => $param['scene'] ?? 'chat',
-            'status'        => $param['status'] ?? CommonEnum::YES,
-            'is_del'        => CommonEnum::NO,
-        ]);
+        $agentId = $this->withTransaction(function () use ($param): int {
+            $agentId = $this->dep(AiAgentsDep::class)->add([
+                'name'          => $param['name'],
+                'model_id'      => (int)$param['model_id'],
+                'avatar'        => $param['avatar'] ?? null,
+                'system_prompt' => $param['system_prompt'] ?? null,
+                'mode'          => $param['mode'] ?? 'chat',
+                'scene'         => $param['scene'] ?? 'chat',
+                'status'        => $param['status'] ?? CommonEnum::YES,
+                'is_del'        => CommonEnum::NO,
+            ]);
 
-        // mode=tool 时同步绑定工具
-        if (($param['mode'] ?? '') === AiEnum::MODE_TOOL && !empty($param['tool_ids'])) {
-            $this->dep(AiAssistantToolsDep::class)->syncBindings($agentId, array_map('intval', $param['tool_ids']));
-        }
+            if (($param['mode'] ?? '') === AiEnum::MODE_TOOL && !empty($param['tool_ids'])) {
+                $this->dep(AiAssistantToolsDep::class)->syncBindings($agentId, array_map('intval', $param['tool_ids']));
+            }
+
+            return $agentId;
+        });
 
         return self::success(['id' => $agentId]);
     }
@@ -146,12 +149,13 @@ class AiAgentsModule extends BaseModule
             'status'        => (int)$param['status'],
         ];
 
-        $dep->update($id, $data);
+        $this->withTransaction(function () use ($dep, $id, $data, $param, $row): void {
+            $dep->update($id, $data);
 
-        // mode=tool 时同步绑定工具（tool_ids 存在时才同步）
-        if (($param['mode'] ?? $row->mode) === AiEnum::MODE_TOOL && isset($param['tool_ids'])) {
-            $this->dep(AiAssistantToolsDep::class)->syncBindings($id, array_map('intval', $param['tool_ids'] ?? []));
-        }
+            if (($param['mode'] ?? $row->mode) === AiEnum::MODE_TOOL && isset($param['tool_ids'])) {
+                $this->dep(AiAssistantToolsDep::class)->syncBindings($id, array_map('intval', $param['tool_ids'] ?? []));
+            }
+        });
 
         return self::success();
     }

@@ -203,11 +203,22 @@ class ToolExecutor
 
         // 参数绑定：将 :param_name 替换为 PDO 占位符
         $bindings = [];
-        $boundSql = preg_replace_callback('/:([a-zA-Z_][a-zA-Z0-9_]*)/', function ($matches) use ($inputs, &$bindings) {
+        $missingParams = [];
+        $boundSql = preg_replace_callback('/:([a-zA-Z_][a-zA-Z0-9_]*)/', function ($matches) use ($inputs, &$bindings, &$missingParams) {
             $key = $matches[1];
-            $bindings[] = $inputs[$key] ?? '';
+            if (!\array_key_exists($key, $inputs)) {
+                $missingParams[$key] = true;
+                $bindings[] = null;
+                return '?';
+            }
+
+            $bindings[] = $inputs[$key];
             return '?';
         }, $sql);
+
+        if (!empty($missingParams)) {
+            return 'SQL 参数缺失: ' . implode(', ', array_keys($missingParams));
+        }
 
         $rows = Db::select($boundSql, $bindings);
         return json_encode($rows, JSON_UNESCAPED_UNICODE);
