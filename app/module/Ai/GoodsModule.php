@@ -23,6 +23,7 @@ class GoodsModule extends BaseModule
         'item.taobao.com'          => GoodsEnum::PLATFORM_TAOBAO,
         'item.jd.com'              => GoodsEnum::PLATFORM_JD,
         'detail.tmall.com'         => GoodsEnum::PLATFORM_TMALL,
+        'detail.tmall.hk'          => GoodsEnum::PLATFORM_TMALL,
         'chaoshi.detail.tmall.com' => GoodsEnum::PLATFORM_TMALL_CHAOSHI,
         'mobile.yangkeduo.com'     => GoodsEnum::PLATFORM_PDD,
     ];
