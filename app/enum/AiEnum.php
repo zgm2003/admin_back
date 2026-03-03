@@ -66,9 +66,11 @@ class AiEnum
 
     // AI 智能体场景（仅特殊用途，普通对话不设场景）
     const SCENE_GOODS_SCRIPT = 'goods_script';
+    const SCENE_CODE_GEN     = 'code_gen';
 
     public static $sceneArr = [
         self::SCENE_GOODS_SCRIPT => '商品口播生成',
+        self::SCENE_CODE_GEN     => 'AI代码生成',
     ];
 
     // AI 运行状态 (ai_runs.run_status)

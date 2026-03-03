@@ -87,6 +87,21 @@ class AiConversationsDep extends BaseDep
     }
 
     /**
+     * 根据多个 agent_id 列表查询会话（分页）
+     */
+    public function listByAgentIds(array $agentIds, int $userId, int $pageSize, int $currentPage)
+    {
+        return $this->model
+            ->select(['id', 'title', 'last_message_at', 'created_at'])
+            ->where('is_del', CommonEnum::NO)
+            ->where('user_id', $userId)
+            ->whereIn('agent_id', $agentIds)
+            ->orderBy('last_message_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate($pageSize, ['*'], 'page', $currentPage);
+    }
+
+    /**
      * 更新会话的最后消息时间
      */
     public function updateLastMessageAt(int $id): int

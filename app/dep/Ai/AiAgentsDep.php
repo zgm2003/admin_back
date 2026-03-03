@@ -73,4 +73,18 @@ class AiAgentsDep extends BaseDep
             ->get();
     }
 
+    /**
+     * 根据场景 + 模式精确获取启用的智能体
+     */
+    public function getBySceneAndMode(string $scene, string $mode)
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->where('scene', $scene)
+            ->where('mode', $mode)
+            ->orderBy('id', 'desc')
+            ->first();
+    }
+
 }

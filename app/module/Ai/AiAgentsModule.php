@@ -107,7 +107,7 @@ class AiAgentsModule extends BaseModule
                 'avatar'        => $param['avatar'] ?? null,
                 'system_prompt' => $param['system_prompt'] ?? null,
                 'mode'          => $param['mode'] ?? 'chat',
-                'scene'         => $param['scene'] ?? 'chat',
+                'scene'         => $param['scene'] ?? null,
                 'status'        => $param['status'] ?? CommonEnum::YES,
                 'is_del'        => CommonEnum::NO,
             ]);
@@ -134,20 +134,24 @@ class AiAgentsModule extends BaseModule
         $row = $dep->get($id);
         self::throwNotFound($row, '记录不存在');
 
-        // 校验关联模型
-        $model = $this->dep(AiModelsDep::class)->get((int)$param['model_id']);
-        self::throwNotFound($model, '关联的模型不存在');
-        self::throwIf($model->status !== CommonEnum::YES, '关联的模型已禁用');
+        // 校验关联模型（仅当提供了 model_id 时校验）
+        if (!empty($param['model_id'])) {
+            $model = $this->dep(AiModelsDep::class)->get((int)$param['model_id']);
+            self::throwNotFound($model, '关联的模型不存在');
+            self::throwIf($model->status !== CommonEnum::YES, '关联的模型已禁用');
+        }
 
-        $data = [
-            'name'          => $param['name'],
-            'model_id'      => (int)$param['model_id'],
-            'avatar'        => $param['avatar'] ?? null,
-            'system_prompt' => $param['system_prompt'] ?? null,
-            'mode'          => $param['mode'],
-            'scene'         => $param['scene'] ?? $row->scene ?? 'chat',
-            'status'        => (int)$param['status'],
-        ];
+        // 仅更新提供了的字段
+        $fields = ['name', 'model_id', 'avatar', 'system_prompt', 'mode', 'scene', 'status'];
+        $data = [];
+        foreach ($fields as $field) {
+            if (array_key_exists($field, $param)) {
+                $data[$field] = match ($field) {
+                    'model_id', 'status' => (int)$param[$field],
+                    default => $param[$field],
+                };
+            }
+        }
 
         $this->withTransaction(function () use ($dep, $id, $data, $param, $row): void {
             $dep->update($id, $data);

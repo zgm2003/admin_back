@@ -201,6 +201,13 @@ Route::group('/api/admin', function () {
     Route::post('/DevTools/Gen/preview', [controller\DevTools\GenController::class, 'preview']);
     Route::post('/DevTools/Gen/generate', [controller\DevTools\GenController::class, 'generate']);
 
+    // AI 代码生成（流式）
+    Route::post('/DevTools/GenAi/init', [controller\DevTools\GenAiController::class, 'init']);
+    Route::post('/DevTools/GenAi/conversations', [controller\DevTools\GenAiController::class, 'conversations']);
+    Route::post('/DevTools/GenAi/messages', [controller\DevTools\GenAiController::class, 'messages']);
+    Route::post('/DevTools/GenAi/deleteConversation', [controller\DevTools\GenAiController::class, 'deleteConversation']);
+    Route::post('/DevTools/GenAi/stream', [controller\DevTools\GenAiController::class, 'stream']);
+
     // 队列监控
     Route::post('/DevTools/QueueMonitor/list', [controller\DevTools\QueueMonitorController::class, 'list']);
     Route::post('/DevTools/QueueMonitor/failedList', [controller\DevTools\QueueMonitorController::class, 'failedList']);
