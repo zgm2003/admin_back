@@ -40,17 +40,13 @@ class CodeGenParser
 
     /**
      * 流结束后执行所有解析到的操作
-     * DDL 失败时中断后续文件写入
+     * DDL 和文件写入独立执行，互不阻断
      */
     public function flush(): void
     {
-        $ddlSuccess = $this->parseCreateTable();
-        if ($ddlSuccess) {
-            $alterSuccess = $this->parseAlterTable();
-            if ($alterSuccess) {
-                $this->parseWriteFile();
-            }
-        }
+        $this->parseCreateTable();
+        $this->parseAlterTable();
+        $this->parseWriteFile();
     }
 
     /**
@@ -66,10 +62,11 @@ class CodeGenParser
             $ddl = trim($match[2]);
 
             try {
-                $this->executeCreateTable($markerTableName, $ddl);
+                $executed = $this->executeCreateTable($markerTableName, $ddl);
                 ($this->onChunk)('table_created', [
                     'table_name' => $markerTableName,
                     'success'    => true,
+                    'skipped'    => !$executed,
                 ]);
             } catch (\Throwable $e) {
                 ($this->onChunk)('table_created', [
@@ -78,9 +75,8 @@ class CodeGenParser
                     'error'      => $e->getMessage(),
                 ]);
                 ($this->onChunk)('error', [
-                    'msg' => "建表失败，已中断后续文件写入: {$e->getMessage()}",
+                    'msg' => "建表失败({$markerTableName}): {$e->getMessage()}",
                 ]);
-                return false;
             }
         }
         return true;
@@ -88,8 +84,9 @@ class CodeGenParser
 
     /**
      * 安全执行 CREATE TABLE
+     * @return bool true=已执行, false=表已存在跳过
      */
-    private function executeCreateTable(string $markerTableName, string $ddl): void
+    private function executeCreateTable(string $markerTableName, string $ddl): bool
     {
         if (!preg_match('/^\s*CREATE\s+TABLE/i', $ddl)) {
             throw new \RuntimeException('仅允许 CREATE TABLE 语句');
@@ -120,11 +117,13 @@ class CodeGenParser
         }
 
         if ((new GenDep())->tableExists($markerTableName)) {
-            throw new \RuntimeException("表 {$markerTableName} 已存在");
+            Log::info("[CodeGenParser] 表已存在，跳过建表: {$markerTableName}");
+            return false;
         }
 
         Db::statement($ddl);
         Log::info("[CodeGenParser] 建表成功: {$markerTableName}");
+        return true;
     }
 
     /**
@@ -152,9 +151,8 @@ class CodeGenParser
                     'error'      => $e->getMessage(),
                 ]);
                 ($this->onChunk)('error', [
-                    'msg' => "修改表失败，已中断后续文件写入: {$e->getMessage()}",
+                    'msg' => "修改表失败({$markerTableName}): {$e->getMessage()}",
                 ]);
-                return false;
             }
         }
         return true;
