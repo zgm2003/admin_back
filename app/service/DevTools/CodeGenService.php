@@ -480,7 +480,45 @@ class CodeGenService
         }
 
         $parts[] = "\n---\n\n## 用户需求\n{$userMessage}";
-        $parts[] = "\n请根据以上上下文和用户需求，设计表结构并生成代码。先展示方案，等我确认后再执行。";
+        $parts[] = <<<'INSTRUCTION'
+
+## 输出要求
+请根据以上上下文和用户需求，直接生成可执行的代码。必须使用以下标记格式，后端会自动解析并执行：
+
+### 建表（如需要）
+```sql:CREATE_TABLE:表名
+CREATE TABLE 表名 (...);
+```
+
+### 改表（如需要）
+```sql:ALTER_TABLE:表名
+ALTER TABLE 表名 ADD COLUMN ...;
+```
+
+### 写文件（后端 PHP）
+```php:WRITE_FILE:app/controller/Domain/XxxController.php
+<?php
+// 完整文件内容
+```
+
+### 写文件（前端 Vue/TS）
+```vue:WRITE_FILE:src/views/Main/domain/xxx/index.vue
+<script setup lang="ts">
+// 完整文件内容
+```
+
+```typescript:WRITE_FILE:src/api/domain/xxx.ts
+// 完整文件内容
+```
+
+重要规则：
+- 直接输出代码，不要只描述方案而不生成代码
+- 每个文件必须是完整内容，不能省略或用注释占位
+- 建表必须包含 id, created_at, updated_at, is_del 标准字段
+- 后端路径前缀: app/controller/, app/module/, app/dep/, app/model/, app/validate/, app/service/, app/enum/
+- 前端路径前缀: src/api/, src/views/, src/components/, src/hooks/
+- 可以在代码前后添加简要说明
+INSTRUCTION;
 
         return implode("\n\n", $parts);
     }
