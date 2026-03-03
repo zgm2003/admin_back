@@ -522,13 +522,26 @@ ALTER TABLE 表名 ADD COLUMN ...;
 - 可以在代码前后添加简要说明
 
 ### 架构一致性（强制）
-同一业务模块的所有层级文件必须使用**相同的 Domain 文件夹**，保持架构统一：
-- 后端：`app/{layer}/{Domain}/{Entity}{Layer}.php`
-  - 例如 Feedback 模块：`app/controller/Feedback/UserFeedbackController.php`、`app/module/Feedback/UserFeedbackModule.php`、`app/dep/Feedback/UserFeedbackDep.php`、`app/model/Feedback/UserFeedbackModel.php`、`app/validate/Feedback/UserFeedbackValidate.php`、`app/enum/Feedback/FeedbackEnum.php`
-- 前端：`src/api/{domain}/{entity}.ts`、`src/views/Main/{domain}/{entity}/index.vue`
-  - 例如：`src/api/feedback/userFeedback.ts`、`src/views/Main/feedback/userFeedback/index.vue`
+Domain 由数据库表名前缀决定，同一模块所有层级的 Domain 文件夹和 Entity 命名必须完全统一：
 
-**禁止**：同一模块下部分文件有 Domain 文件夹、部分没有（如 `app/model/UserFeedbackModel.php` 与 `app/controller/Feedback/UserFeedbackController.php` 混用）
+**规则：表名前缀 → Domain 文件夹**
+- 表名 `user_feedback` → 前缀 `user` → Domain 为 `User`
+- 表名 `order_item` → 前缀 `order` → Domain 为 `Order`
+- 表名 `cron_task` → 前缀不明确时，按业务归属确定 Domain（如 `DevTools`）
+
+**后端路径格式：`app/{layer}/{Domain}/{Entity}{Layer}.php`**
+Entity 命名可以是 `UserFeedback` 或 `Feedback`，但所有层级必须用同一个名字：
+- ✅ 正确（全部用 `Feedback`）：
+  `app/controller/User/FeedbackController.php`、`app/module/User/FeedbackModule.php`、`app/dep/User/FeedbackDep.php`、`app/model/User/FeedbackModel.php`、`app/validate/User/FeedbackValidate.php`
+- ✅ 正确（全部用 `UserFeedback`）：
+  `app/controller/User/UserFeedbackController.php`、`app/module/User/UserFeedbackModule.php`、`app/dep/User/UserFeedbackDep.php`、`app/model/User/UserFeedbackModel.php`
+- ❌ 错误（混用命名）：Controller 叫 `UserFeedbackController`，Module 叫 `FeedbackModule`
+- ❌ 错误（混用文件夹）：部分有 `User/` 文件夹，部分没有
+
+**前端路径格式：**
+- API：`src/api/{domain}/{entity}.ts`（domain 小驼峰）
+- 页面：`src/views/Main/{domain}/{entity}/index.vue`
+- 例如：`src/api/user/feedback.ts`、`src/views/Main/user/feedback/index.vue`
 
 ### 代码块语言标注（强制）
 每个代码块必须标注正确的语言：
