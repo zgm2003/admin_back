@@ -82,18 +82,22 @@ class CodeGenService
             'is_del'          => CommonEnum::NO,
         ]);
 
-        // 创建运行记录
+        // 创建运行记录（agent_id 和 model_snapshot 必须匹配）
         $requestId  = 'codegen_' . uniqid('', true);
-        $modelCode  = '';
         $coderAgent = $this->agentsDep->getBySceneAndMode(AiEnum::SCENE_CODE_GEN, AiEnum::MODE_CHAT);
-        if ($coderAgent) {
-            $coderModel = $this->modelsDep->get((int)$coderAgent->model_id);
-            $modelCode  = $coderModel->model_code ?? '';
+        
+        // 优先用研究员 Agent，否则用程序员 Agent
+        $primaryAgent = $researcherAgent ?: $coderAgent;
+        $modelCode = '';
+        if ($primaryAgent) {
+            $primaryModel = $this->modelsDep->get((int)$primaryAgent->model_id);
+            $modelCode = $primaryModel->model_code ?? '';
         }
+        
         $runId = $this->runsDep->add([
             'request_id'       => $requestId,
             'user_id'          => $userId,
-            'agent_id'         => $researcherAgent ? $researcherAgent->id : ($coderAgent ? $coderAgent->id : 0),
+            'agent_id'         => $primaryAgent ? $primaryAgent->id : 0,
             'conversation_id'  => $conversationId,
             'user_message_id'  => $userMessageId,
             'run_status'       => AiEnum::RUN_STATUS_RUNNING,
@@ -515,9 +519,24 @@ ALTER TABLE 表名 ADD COLUMN ...;
 - 直接输出代码，不要只描述方案而不生成代码
 - 每个文件必须是完整内容，不能省略或用注释占位
 - 建表必须包含 id, created_at, updated_at, is_del 标准字段
-- 后端路径前缀: app/controller/, app/module/, app/dep/, app/model/, app/validate/, app/service/, app/enum/
-- 前端路径前缀: src/api/, src/views/, src/components/, src/hooks/
 - 可以在代码前后添加简要说明
+
+### 架构一致性（强制）
+同一业务模块的所有层级文件必须使用**相同的 Domain 文件夹**，保持架构统一：
+- 后端：`app/{layer}/{Domain}/{Entity}{Layer}.php`
+  - 例如 Feedback 模块：`app/controller/Feedback/UserFeedbackController.php`、`app/module/Feedback/UserFeedbackModule.php`、`app/dep/Feedback/UserFeedbackDep.php`、`app/model/Feedback/UserFeedbackModel.php`、`app/validate/Feedback/UserFeedbackValidate.php`、`app/enum/Feedback/FeedbackEnum.php`
+- 前端：`src/api/{domain}/{entity}.ts`、`src/views/Main/{domain}/{entity}/index.vue`
+  - 例如：`src/api/feedback/userFeedback.ts`、`src/views/Main/feedback/userFeedback/index.vue`
+
+**禁止**：同一模块下部分文件有 Domain 文件夹、部分没有（如 `app/model/UserFeedbackModel.php` 与 `app/controller/Feedback/UserFeedbackController.php` 混用）
+
+### 代码块语言标注（强制）
+每个代码块必须标注正确的语言：
+- PHP 文件：\`\`\`php:WRITE_FILE:...
+- Vue 文件：\`\`\`vue:WRITE_FILE:...
+- TypeScript 文件：\`\`\`typescript:WRITE_FILE:...
+- SQL 建表：\`\`\`sql:CREATE_TABLE:...
+- SQL 改表：\`\`\`sql:ALTER_TABLE:...
 INSTRUCTION;
 
         return implode("\n\n", $parts);

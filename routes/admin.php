@@ -195,12 +195,6 @@ Route::group('/api/admin', function () {
     Route::post('/AiPrompts/toggleFavorite', [controller\Ai\AiPromptsController::class, 'toggleFavorite']);
     Route::post('/AiPrompts/use', [controller\Ai\AiPromptsController::class, 'use']);
 
-    // 代码生成器
-    Route::post('/DevTools/Gen/tables', [controller\DevTools\GenController::class, 'tables']);
-    Route::post('/DevTools/Gen/columns', [controller\DevTools\GenController::class, 'columns']);
-    Route::post('/DevTools/Gen/preview', [controller\DevTools\GenController::class, 'preview']);
-    Route::post('/DevTools/Gen/generate', [controller\DevTools\GenController::class, 'generate']);
-
     // AI 代码生成（流式）
     Route::post('/DevTools/GenAi/init', [controller\DevTools\GenAiController::class, 'init']);
     Route::post('/DevTools/GenAi/conversations', [controller\DevTools\GenAiController::class, 'conversations']);
