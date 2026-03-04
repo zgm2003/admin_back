@@ -669,6 +669,15 @@ class {Entity}Controller extends Controller
     public function del(Request $request) { return $this->run([{Entity}Module::class, 'del'], $request); }
 }
 ```
+- 路由在 `routes/admin.php` 的 `/api/admin` group 内，路径用**相对路径**（不含 `/api/admin` 前缀）：
+```
+Route::post('/{Domain}/{Entity}/init', [{Entity}Controller::class, 'init']);
+Route::post('/{Domain}/{Entity}/list', [{Entity}Controller::class, 'list']);
+Route::post('/{Domain}/{Entity}/add', [{Entity}Controller::class, 'add']);
+Route::post('/{Domain}/{Entity}/edit', [{Entity}Controller::class, 'edit']);
+Route::post('/{Domain}/{Entity}/del', [{Entity}Controller::class, 'del']);
+Route::post('/{Domain}/{Entity}/status', [{Entity}Controller::class, 'status']);
+```
 
 **Module**（必须严格遵循）：
 - 继承 `app\module\BaseModule`
@@ -693,6 +702,34 @@ public function init($request): array
     }
 ```
 - **禁止**在 init 中直接返回 Enum 数组，必须走 DictService
+- `list` 方法**必须**格式化枚举字段（添加 `_name` 后缀），并构建标准分页结构：
+```
+public function list($request): array
+{
+    $param = $this->validate($request, {Entity}Validate::list());
+    $res = $this->dep({Entity}Dep::class)->list{Entity}($param);
+
+    $list = $res->map(fn($item) => [
+        'id'             => $item['id'],
+        'xxx_type'       => $item['xxx_type'],
+        'xxx_type_name'  => {Entity}Enum::$xxxTypeArr[$item['xxx_type']] ?? '',
+        'status'         => $item['status'],
+        'status_name'    => CommonEnum::$statusArr[$item['status']] ?? '',
+        'created_at'     => $item['created_at'],
+    ]);
+
+    $page = [
+        'page_size'    => $res->perPage(),
+        'current_page' => $res->currentPage(),
+        'total_page'   => $res->lastPage(),
+        'total'        => $res->total(),
+    ];
+
+    return self::paginate($list, $page);
+}
+```
+- **禁止**直接 `return self::paginate($data)` —— `paginate()` 签名是 `paginate($list, array $page)`，必须先 map 格式化列表再构建 $page 数组
+- 状态常量：`CommonEnum::YES = 1`（启用/是/已删除）、`CommonEnum::NO = 2`（禁用/否/未删除）。**不存在** `CommonEnum::ENABLE` / `CommonEnum::DISABLE`
 
 **Dep**（必须严格遵循）：
 - 继承 `app\dep\BaseDep`
@@ -710,13 +747,14 @@ class {Entity}Dep extends BaseDep
         return new {Entity}Model();
     }
 
-    public function list{Entity}(array $where)
+    public function list{Entity}(array $param)
     {
-        return $this->model              // 注意：是属性，不是 $this->model()
+        return $this->model
             ->where('is_del', CommonEnum::NO)
-            ->when(...)
+            ->when(!empty($param['keyword']), fn($q) => $q->where('xxx', 'like', '%' . $param['keyword'] . '%'))
+            ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int)$param['status']))
             ->orderByDesc('id')
-            ->paginate(...);
+            ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
     }
 }
 ```
@@ -747,43 +785,136 @@ class {Entity}Dep extends BaseDep
 - 搜索字段使用 `SearchField` 类型，type 可选：`input`、`select-v2`、`date-range`
 - 表格列定义用 `columns` 数组，格式：`{key: 'xxx', label: t('xxx')}`
 - 操作按钮权限用 `userStore.can('permission_code')`
-- 使用 i18n 的 `t()` 函数，**禁止**硬编码中文字符串
-- 前端页面模板：
+- 页面**必须**包含完整的新增/编辑对话框（`el-dialog` + `el-form`），不能只有列表骨架
+- 枚举字段在表格中显示 `_name`（后端已格式化），在表单中用 `el-select-v2` 绑定 `dict.xxx_arr`
+- 前端完整页面模板（script + template + style）：
 ```
 <script setup lang="ts">
-import {ref, computed, onMounted} from 'vue'
+import {ref, computed, onMounted, nextTick} from 'vue'
 import {useI18n} from 'vue-i18n'
 import {useUserStore} from '@/store/user'
+import {useIsMobile} from '@/hooks/useResponsive'
 import {{Entity}Api} from '@/api/{domain}/{entity}'
 import {AppTable} from '@/components/Table'
 import {Search} from '@/components/Search'
 import type {SearchField} from '@/components/Search/types'
+import type {FormInstance} from 'element-plus'
+import {ElNotification} from 'element-plus'
 import {useTable} from '@/hooks/useTable'
 
 const {t} = useI18n()
+const isMobile = useIsMobile()
 const userStore = useUserStore()
+const dict = ref({} as any)
 
-const searchForm = ref({...})
-const {loading, data, page, onSearch, onPageChange, refresh, getList, onSelectionChange, confirmDel, batchDel} = useTable({
+const searchForm = ref({})
+const {loading: listLoading, data: listData, page, onSearch, onPageChange, refresh, getList, onSelectionChange, confirmDel, batchDel} = useTable({
   api: {Entity}Api,
   searchForm
 })
 
-const xxxArr = ref<any[]>([])
 const init = () => {
   {Entity}Api.init().then((data: any) => {
-    xxxArr.value = data.dict.xxx_arr
+    dict.value = data.dict || {}
   })
 }
 
-const columns = [...]
-const searchFields = computed<SearchField[]>(() => [...])
+const searchFields = computed<SearchField[]>(() => [
+  {key: 'keyword', type: 'input', label: '关键词'},
+  {key: 'status', type: 'select-v2', label: '状态', options: dict.value.status_arr || []},
+])
+
+const columns = computed(() => [
+  {key: 'id', label: 'ID'},
+  // ... 业务字段用 xxx_name 显示枚举文本
+  {key: 'status', label: '状态'},
+  {key: 'created_at', label: '创建时间'},
+  {key: 'actions', label: t('common.actions.action'), width: 200}
+])
+
+// ========== 新增/编辑对话框 ==========
+const dialogVisible = ref(false)
+const dialogMode = ref<'add' | 'edit'>('add')
+const formRef = ref<FormInstance | null>(null)
+const form = ref({/* 所有可编辑字段的默认值 */} as any)
+
+const add = () => {
+  dialogMode.value = 'add'
+  form.value = {/* 重置为默认值 */}
+  dialogVisible.value = true
+  nextTick(() => formRef.value?.clearValidate())
+}
+
+const edit = (row: any) => {
+  dialogMode.value = 'edit'
+  form.value = {...row}
+  dialogVisible.value = true
+  nextTick(() => formRef.value?.clearValidate())
+}
+
+const confirmSubmit = async () => {
+  try { await formRef.value?.validate() } catch { return }
+  const api = dialogMode.value === 'add' ? {Entity}Api.add : {Entity}Api.edit
+  api(form.value).then(() => {
+    ElNotification.success({message: t('common.success.operation')})
+    dialogVisible.value = false
+    getList()
+  })
+}
 
 onMounted(() => {
   init()
   getList()
 })
 </script>
+
+<template>
+  <div class="box">
+    <Search v-model="searchForm" :fields="searchFields" @query="onSearch" @reset="onSearch"/>
+    <div class="table">
+      <AppTable :columns="columns" :data="listData" :loading="listLoading" row-key="id"
+        :pagination="page" selectable @refresh="refresh" @update:pagination="onPageChange" @selection-change="onSelectionChange">
+        <template #toolbar-left>
+          <el-button type="success" @click="add" v-if="userStore.can('{domain}_{entity}_add')">{{ t('common.actions.add') }}</el-button>
+        </template>
+        <template #cell-status="{ row }">
+          <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status_name }}</el-tag>
+        </template>
+        <template #cell-actions="{ row }">
+          <el-button type="primary" text @click="edit(row)" v-if="userStore.can('{domain}_{entity}_edit')">{{ t('common.actions.edit') }}</el-button>
+          <el-button type="danger" text @click="confirmDel(row)" v-if="userStore.can('{domain}_{entity}_del')">{{ t('common.actions.del') }}</el-button>
+        </template>
+      </AppTable>
+    </div>
+  </div>
+
+  <el-dialog v-model="dialogVisible" :width="isMobile ? '94vw' : '700px'">
+    <template #header>{{ dialogMode === 'add' ? '新增' : '编辑' }}</template>
+    <el-form :model="form" ref="formRef" label-width="auto" :validate-on-rule-change="false">
+      <el-row :gutter="12">
+        <el-col :md="12" :span="24">
+          <el-form-item label="字段名" prop="xxx" required>
+            <el-input v-model="form.xxx" clearable/>
+          </el-form-item>
+        </el-col>
+        <el-col :md="12" :span="24">
+          <el-form-item label="枚举字段" prop="xxx_type">
+            <el-select-v2 v-model="form.xxx_type" :options="dict.xxx_type_arr || []" style="width:100%"/>
+          </el-form-item>
+        </el-col>
+      </el-row>
+    </el-form>
+    <template #footer>
+      <el-button @click="dialogVisible=false">{{ t('common.actions.cancel') }}</el-button>
+      <el-button type="primary" @click="confirmSubmit">{{ t('common.actions.confirm') }}</el-button>
+    </template>
+  </el-dialog>
+</template>
+
+<style scoped>
+.box { display: flex; flex-direction: column; height: 100% }
+.table { flex: 1 1 auto; min-height: 0; overflow: auto }
+</style>
 ```
 
 所有类必须包含完整的 namespace 和 use 语句，不能省略！
