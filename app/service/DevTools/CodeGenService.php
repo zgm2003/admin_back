@@ -13,7 +13,9 @@ use app\enum\CommonEnum;
 use app\lib\Ai\CodeGenParser;
 use app\lib\Ai\CodeGenTools;
 use app\lib\Ai\NeuronAgentFactory;
+use app\process\Monitor;
 use app\service\Ai\AiChatService;
+use support\Log;
 
 /**
  * AI 代码生成服务 — 多 Agent 编排
@@ -129,6 +131,9 @@ class CodeGenService
                 ], $this->elapsedMs($phaseStart), $researcherAgent ? (int)$researcherAgent->id : 0, $researcherModelCode);
             }
 
+            // 暂停文件监控，防止写入 PHP 文件后 Monitor 重启 Worker 导致 SSE 中断
+            Monitor::pause();
+
             // Phase 2: 程序员生成代码
             $phaseStart = hrtime(true);
             $onChunk('phase', ['phase' => 'generating', 'msg' => '正在生成代码...']);
@@ -223,9 +228,16 @@ class CodeGenService
         } catch (\Throwable $e) {
             // 仅在尚未标记成功时才标记失败（防止 onChunk('done') 连接异常覆盖已成功的状态）
             if ($runId && empty($runMarked)) {
-                $this->runsDep->markFailed($runId, $e->getMessage());
+                try {
+                    $this->runsDep->markFailed($runId, $e->getMessage());
+                } catch (\Throwable $markErr) {
+                    Log::error("[CodeGen] markFailed 也失败 run={$runId}: {$markErr->getMessage()}");
+                }
             }
             throw $e;
+        } finally {
+            // 恢复文件监控（无论成功或失败都必须恢复）
+            try { Monitor::resume(); } catch (\Throwable) {}
         }
     }
 
@@ -468,7 +480,7 @@ class CodeGenService
             return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
-        $prompt = <<<REVIEW
+        $prompt = <<<'REVIEW'
 请审查以下 AI 生成的代码，重点检查是否违反项目规范：
 
 ## 审查要点（必查）
@@ -682,7 +694,7 @@ public function init($request): array
     return self::success(['dict' => $dict]);
 }
 ```
-- 如果需要新的字典项，**必须**先在 `DictService` 中添加对应的 `setXxxArr()` 方法（链式返回 `static`），使用 `self::enumToDict(XxxEnum::$xxxArr)` 转换
+- 如果需要新的字典项，**必须**在已有的 `app/service/DictService.php` 中追加 `setXxxArr()` 方法（链式返回 `static`），使用 `self::enumToDict(XxxEnum::$xxxArr)` 转换。**DictService 是全局唯一的**，路径固定为 `app/service/DictService.php`，**禁止**创建新的 DictService 文件。用 `WRITE_FILE:app/service/DictService.php` 输出追加新方法后的**完整文件内容**
 - **禁止**在 init 中直接返回 Enum 数组，必须走 DictService
 
 **Dep**（必须严格遵循）：
