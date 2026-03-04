@@ -27,6 +27,11 @@ class CodeGenParser
     /** 允许的文件后缀 */
     private const ALLOWED_EXTENSIONS = ['php', 'ts', 'vue', 'js'];
 
+    /** 仅允许 PATCH_FILE 修改的文件（禁止 WRITE_FILE 覆盖） */
+    private const PATCH_ONLY_FILES = [
+        'app/service/DictService.php',
+    ];
+
     public function __construct(callable $onChunk, bool $allowOverwrite = false)
     {
         $this->onChunk = $onChunk;
@@ -286,6 +291,11 @@ class CodeGenParser
         $ext = pathinfo($relativePath, PATHINFO_EXTENSION);
         if (!in_array($ext, self::ALLOWED_EXTENSIONS)) {
             throw new \RuntimeException("不允许的文件类型: .{$ext}");
+        }
+
+        // PATCH_ONLY 文件禁止 WRITE_FILE 覆盖（必须使用 PATCH_FILE 增量修改）
+        if (in_array($relativePath, self::PATCH_ONLY_FILES, true)) {
+            throw new \RuntimeException("禁止 WRITE_FILE 覆盖 {$relativePath}，请使用 PATCH_FILE 增量修改");
         }
 
         // 判断目标项目
