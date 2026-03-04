@@ -72,6 +72,14 @@ class AiEnum
     const SCENE_CODE_GEN_REVIEW   = 'code_gen_review';    // 审查员：Code Review
     const SCENE_CODE_GEN_TEST     = 'code_gen_test';      // 测试员：生成测试
 
+    /** 代码生成全部子场景（用于聚合查询） */
+    const SCENE_CODE_GEN_ALL = [
+        self::SCENE_CODE_GEN_RESEARCH,
+        self::SCENE_CODE_GEN_CODER,
+        self::SCENE_CODE_GEN_REVIEW,
+        self::SCENE_CODE_GEN_TEST,
+    ];
+
     public static $sceneArr = [
         self::SCENE_GOODS_SCRIPT     => '商品口播生成',
         self::SCENE_CODE_GEN_RESEARCH => '代码生成-研究员',

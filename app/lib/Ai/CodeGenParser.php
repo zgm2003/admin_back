@@ -392,12 +392,21 @@ class CodeGenParser
         }
 
         $insertPos = $methodMatch[0][1];
-        $indent = $methodMatch[1][0]; // 保留原有缩进
+
+        // 如果方法前有 docblock 注释或单行注释，插入点应在注释之前
+        $before = substr($content, 0, $insertPos);
+        if (preg_match('/(\n\s*\/\*\*.*?\*\/\s*)$/s', $before, $docMatch)) {
+            // 有 docblock（/** ... */）
+            $insertPos -= strlen($docMatch[1]);
+        } elseif (preg_match('/(\n\s*\/\/[^\n]*\s*)$/', $before, $lineCommentMatch)) {
+            // 有单行注释（// ...）
+            $insertPos -= strlen($lineCommentMatch[1]);
+        }
 
         // 确保新代码末尾有换行
         $newCode = rtrim($newCode) . "\n";
 
-        // 在方法之前插入新代码
+        // 在方法（含注释）之前插入新代码
         $newContent = substr($content, 0, $insertPos) . "\n" . $newCode . substr($content, $insertPos);
 
         // 备份原文件
