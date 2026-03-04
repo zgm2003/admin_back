@@ -54,9 +54,7 @@ class CodeGenService
         $runId     = 0;
 
         // 获取研究员 agent 以便创建会话时绑定
-        $researcherAgent = $this->agentsDep->getBySceneAndMode(
-            AiEnum::SCENE_CODE_GEN, AiEnum::MODE_TOOL
-        );
+        $researcherAgent = $this->agentsDep->getByScene(AiEnum::SCENE_CODE_GEN_RESEARCH);
 
         // 创建或复用会话
         $isNewConversation = false;
@@ -86,9 +84,9 @@ class CodeGenService
 
         // 预加载所有参与的 Agent 及其模型信息（多 Agent 协同）
         $requestId  = 'codegen_' . uniqid('', true);
-        $coderAgent   = $this->agentsDep->getBySceneAndMode(AiEnum::SCENE_CODE_GEN, AiEnum::MODE_CHAT);
-        $reviewAgent  = $this->agentsDep->getBySceneAndMode(AiEnum::SCENE_CODE_GEN, AiEnum::MODE_RAG);
-        $testAgent    = $this->agentsDep->getBySceneAndMode(AiEnum::SCENE_CODE_GEN, AiEnum::MODE_WORKFLOW);
+        $coderAgent   = $this->agentsDep->getByScene(AiEnum::SCENE_CODE_GEN_CODER);
+        $reviewAgent  = $this->agentsDep->getByScene(AiEnum::SCENE_CODE_GEN_REVIEW);
+        $testAgent    = $this->agentsDep->getByScene(AiEnum::SCENE_CODE_GEN_TEST);
 
         // 获取各 Agent 的模型代码
         $getModelCode = function (?object $agent): string {
@@ -314,9 +312,7 @@ class CodeGenService
      */
     private function gatherContext(string $userMessage, callable $onChunk): array
     {
-        $researcherAgent = $this->agentsDep->getBySceneAndMode(
-            AiEnum::SCENE_CODE_GEN, AiEnum::MODE_TOOL
-        );
+        $researcherAgent = $this->agentsDep->getByScene(AiEnum::SCENE_CODE_GEN_RESEARCH);
         if (!$researcherAgent) {
             return $this->fallbackGatherContext($userMessage);
         }
@@ -410,9 +406,7 @@ class CodeGenService
      */
     private function generateCode(array $context, string $userMessage, array $history, callable $onChunk, bool $allowOverwrite): array
     {
-        $coderAgent = $this->agentsDep->getBySceneAndMode(
-            AiEnum::SCENE_CODE_GEN, AiEnum::MODE_CHAT
-        );
+        $coderAgent = $this->agentsDep->getByScene(AiEnum::SCENE_CODE_GEN_CODER);
         if (!$coderAgent) {
             $onChunk('error', ['msg' => '未配置代码生成程序员智能体']);
             return ['content' => '', 'usage' => self::emptyUsage()];
@@ -460,11 +454,9 @@ class CodeGenService
      */
     private function reviewCode(string $generatedCode, callable $onChunk): array
     {
-        $reviewerAgent = $this->agentsDep->getBySceneAndMode(
-            AiEnum::SCENE_CODE_GEN, AiEnum::MODE_RAG
-        );
+        $reviewerAgent = $this->agentsDep->getByScene(AiEnum::SCENE_CODE_GEN_REVIEW);
         if (!$reviewerAgent) {
-            $onChunk('error', ['msg' => '审查失败：未配置审查员智能体（scene=code_gen, mode=rag）']);
+            $onChunk('error', ['msg' => '审查失败：未配置审查员智能体（scene=code_gen_review）']);
             return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
@@ -519,11 +511,9 @@ REVIEW
      */
     private function generateTests(string $generatedCode, callable $onChunk): array
     {
-        $testerAgent = $this->agentsDep->getBySceneAndMode(
-            AiEnum::SCENE_CODE_GEN, AiEnum::MODE_WORKFLOW
-        );
+        $testerAgent = $this->agentsDep->getByScene(AiEnum::SCENE_CODE_GEN_TEST);
         if (!$testerAgent) {
-            $onChunk('error', ['msg' => '测试失败：未配置测试员智能体（scene=code_gen, mode=workflow）']);
+            $onChunk('error', ['msg' => '测试失败：未配置测试员智能体（scene=code_gen_test）']);
             return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
@@ -694,7 +684,14 @@ public function init($request): array
     return self::success(['dict' => $dict]);
 }
 ```
-- 如果需要新的字典项，**必须**在已有的 `app/service/DictService.php` 中追加 `setXxxArr()` 方法（链式返回 `static`），使用 `self::enumToDict(XxxEnum::$xxxArr)` 转换。**DictService 是全局唯一的**，路径固定为 `app/service/DictService.php`，**禁止**创建新的 DictService 文件。用 `WRITE_FILE:app/service/DictService.php` 输出追加新方法后的**完整文件内容**
+- 如果需要新的字典项，**必须**在已有的 `app/service/DictService.php` 中追加 `setXxxArr()` 方法（链式返回 `static`），使用 `self::enumToDict(XxxEnum::$xxxArr)` 转换。**DictService 是全局唯一的**，路径固定为 `app/service/DictService.php`，**禁止**创建新的 DictService 文件。使用 `PATCH_FILE` 增量追加方法（在 `getDict` 方法之前插入），格式：
+```php:PATCH_FILE:app/service/DictService.php:BEFORE_METHOD:getDict
+    public function setXxxArr(): static
+    {
+        $this->dict['xxx_arr'] = self::enumToDict(XxxEnum::$xxxArr);
+        return $this;
+    }
+```
 - **禁止**在 init 中直接返回 Enum 数组，必须走 DictService
 
 **Dep**（必须严格遵循）：
@@ -793,11 +790,16 @@ onMounted(() => {
 
 ### 代码块语言标注（强制）
 每个代码块必须标注正确的语言：
-- PHP 文件：\`\`\`php:WRITE_FILE:...
+- PHP 文件（新建/全量覆盖）：\`\`\`php:WRITE_FILE:...
+- PHP 文件（增量追加方法）：\`\`\`php:PATCH_FILE:路径:BEFORE_METHOD:方法名
 - Vue 文件：\`\`\`vue:WRITE_FILE:...
 - TypeScript 文件：\`\`\`typescript:WRITE_FILE:...
 - SQL 建表：\`\`\`sql:CREATE_TABLE:...
 - SQL 改表：\`\`\`sql:ALTER_TABLE:...
+
+**PATCH_FILE vs WRITE_FILE**：
+- `WRITE_FILE`：用于新建文件或需要全量覆盖的场景
+- `PATCH_FILE`：用于在已有文件中追加方法（如 DictService），只输出新增的方法代码，系统会自动插入到指定方法之前
 INSTRUCTION;
 
         return implode("\n\n", $parts);

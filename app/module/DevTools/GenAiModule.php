@@ -16,12 +16,17 @@ class GenAiModule extends BaseModule
      */
     public function init($request): array
     {
-        $agents = $this->dep(AiAgentsDep::class)->getActiveByScene(AiEnum::SCENE_CODE_GEN);
+        $agents = $this->dep(AiAgentsDep::class)->getActiveByScenes([
+            AiEnum::SCENE_CODE_GEN_RESEARCH,
+            AiEnum::SCENE_CODE_GEN_CODER,
+            AiEnum::SCENE_CODE_GEN_REVIEW,
+            AiEnum::SCENE_CODE_GEN_TEST,
+        ]);
         return self::success([
             'agents' => $agents->map(fn($a) => [
-                'id'   => $a->id,
-                'name' => $a->name,
-                'mode' => $a->mode,
+                'id'    => $a->id,
+                'name'  => $a->name,
+                'scene' => $a->scene,
             ])->toArray(),
         ]);
     }
@@ -38,9 +43,14 @@ class GenAiModule extends BaseModule
 
         $dep = $this->dep(AiConversationsDep::class);
 
-        // 只查 code_gen 场景的智能体关联的会话
+        // 查询所有代码生成场景的智能体关联的会话
         $agentsDep = $this->dep(AiAgentsDep::class);
-        $codeGenAgents = $agentsDep->getActiveByScene(AiEnum::SCENE_CODE_GEN);
+        $codeGenAgents = $agentsDep->getActiveByScenes([
+            AiEnum::SCENE_CODE_GEN_RESEARCH,
+            AiEnum::SCENE_CODE_GEN_CODER,
+            AiEnum::SCENE_CODE_GEN_REVIEW,
+            AiEnum::SCENE_CODE_GEN_TEST,
+        ]);
         $agentIds = $codeGenAgents->pluck('id')->toArray();
 
         if (empty($agentIds)) {

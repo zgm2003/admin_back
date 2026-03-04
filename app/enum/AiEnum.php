@@ -65,12 +65,19 @@ class AiEnum
     ];
 
     // AI 智能体场景（仅特殊用途，普通对话不设场景）
-    const SCENE_GOODS_SCRIPT = 'goods_script';
-    const SCENE_CODE_GEN     = 'code_gen';
+    const SCENE_GOODS_SCRIPT     = 'goods_script';
+    // 代码生成场景细分（每个角色独立场景，不再复用 mode 字段）
+    const SCENE_CODE_GEN_RESEARCH = 'code_gen_research';  // 研究员：收集上下文
+    const SCENE_CODE_GEN_CODER    = 'code_gen_coder';     // 程序员：生成代码
+    const SCENE_CODE_GEN_REVIEW   = 'code_gen_review';    // 审查员：Code Review
+    const SCENE_CODE_GEN_TEST     = 'code_gen_test';      // 测试员：生成测试
 
     public static $sceneArr = [
-        self::SCENE_GOODS_SCRIPT => '商品口播生成',
-        self::SCENE_CODE_GEN     => 'AI代码生成',
+        self::SCENE_GOODS_SCRIPT     => '商品口播生成',
+        self::SCENE_CODE_GEN_RESEARCH => '代码生成-研究员',
+        self::SCENE_CODE_GEN_CODER    => '代码生成-程序员',
+        self::SCENE_CODE_GEN_REVIEW   => '代码生成-审查员',
+        self::SCENE_CODE_GEN_TEST     => '代码生成-测试员',
     ];
 
     // AI 运行状态 (ai_runs.run_status)

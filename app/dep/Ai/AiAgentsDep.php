@@ -87,4 +87,17 @@ class AiAgentsDep extends BaseDep
             ->first();
     }
 
+    /**
+     * 根据多个场景获取所有启用的智能体
+     */
+    public function getActiveByScenes(array $scenes)
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->whereIn('scene', $scenes)
+            ->orderBy('id', 'desc')
+            ->get();
+    }
+
 }

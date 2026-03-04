@@ -47,6 +47,7 @@ class CodeGenParser
         $this->parseCreateTable();
         $this->parseAlterTable();
         $this->parseWriteFile();
+        $this->parsePatchFile();
     }
 
     /**
@@ -311,5 +312,98 @@ class CodeGenParser
 
         file_put_contents($fullPath, $content);
         Log::info("[CodeGenParser] 写入文件: {$relativePath}");
+    }
+
+    /**
+     * 解析 PATCH_FILE 标记并执行增量修改
+     * 格式：```php:PATCH_FILE:路径:BEFORE_MARKER:标记内容
+     * 在指定标记之前插入代码
+     */
+    private function parsePatchFile(): void
+    {
+        // 格式：```php:PATCH_FILE:app/service/DictService.php:BEFORE_METHOD:getDict
+        // 表示在 getDict 方法之前插入代码
+        preg_match_all('/```(?:php|typescript|vue|ts):PATCH_FILE:([\w\/\.\-]+):BEFORE_METHOD:(\w+)\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as $match) {
+            $filePath = $match[1];
+            $methodName = $match[2];
+            $newCode = $match[3];
+
+            try {
+                $this->executePatchFile($filePath, $methodName, $newCode);
+                ($this->onChunk)('file_patched', [
+                    'path'        => $filePath,
+                    'method'      => $methodName,
+                    'success'     => true,
+                    'code_length' => strlen($newCode),
+                ]);
+            } catch (\Throwable $e) {
+                ($this->onChunk)('file_patched', [
+                    'path'    => $filePath,
+                    'method'  => $methodName,
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * 执行增量修改：在指定方法之前插入代码
+     */
+    private function executePatchFile(string $relativePath, string $beforeMethod, string $newCode): void
+    {
+        // 路径穿越检测
+        if (str_contains($relativePath, '..')) {
+            throw new \RuntimeException('检测到路径穿越');
+        }
+
+        // 路径白名单校验
+        $allowed = false;
+        foreach (self::ALLOWED_PATHS as $prefix) {
+            if (str_starts_with($relativePath, $prefix)) {
+                $allowed = true;
+                break;
+            }
+        }
+        if (!$allowed) {
+            throw new \RuntimeException("路径不在白名单内: {$relativePath}");
+        }
+
+        // 判断目标项目
+        $isFrontend = str_starts_with($relativePath, 'src/');
+        $basePath = $isFrontend
+            ? dirname(base_path()) . '/admin_front_ts'
+            : base_path();
+
+        $fullPath = $basePath . '/' . $relativePath;
+
+        if (!file_exists($fullPath)) {
+            throw new \RuntimeException("文件不存在: {$relativePath}");
+        }
+
+        $content = file_get_contents($fullPath);
+
+        // 查找目标方法位置（支持 public/private/protected function 和纯 function）
+        $pattern = '/(\n\s*)((?:public|private|protected)\s+)?function\s+' . preg_quote($beforeMethod, '/') . '\s*\(/';
+        if (!preg_match($pattern, $content, $methodMatch, PREG_OFFSET_CAPTURE)) {
+            throw new \RuntimeException("未找到方法: {$beforeMethod}");
+        }
+
+        $insertPos = $methodMatch[0][1];
+        $indent = $methodMatch[1][0]; // 保留原有缩进
+
+        // 确保新代码末尾有换行
+        $newCode = rtrim($newCode) . "\n";
+
+        // 在方法之前插入新代码
+        $newContent = substr($content, 0, $insertPos) . "\n" . $newCode . substr($content, $insertPos);
+
+        // 备份原文件
+        copy($fullPath, $fullPath . '.bak.' . date('YmdHis'));
+
+        file_put_contents($fullPath, $newContent);
+        Log::info("[CodeGenParser] 增量修改文件: {$relativePath}，在 {$beforeMethod} 方法前插入代码");
     }
 }
