@@ -147,18 +147,27 @@ class AiRunsModule extends BaseModule
      */
     private function getStepsList(int $runId): array
     {
-        return $this->dep(AiRunStepsDep::class)->getByRunId($runId)->map(fn($step) => [
-            'id'           => $step->id,
-            'step_no'      => $step->step_no,
-            'step_type'    => $step->step_type,
+        $steps = $this->dep(AiRunStepsDep::class)->getByRunId($runId);
+
+        // 批量查询步骤关联的智能体名称
+        $agentIds = $steps->pluck('agent_id')->unique()->filter()->toArray();
+        $agentMap = !empty($agentIds) ? $this->dep(AiAgentsDep::class)->getMap($agentIds, ['id', 'name']) : collect();
+
+        return $steps->map(fn($step) => [
+            'id'             => $step->id,
+            'step_no'        => $step->step_no,
+            'step_type'      => $step->step_type,
             'step_type_name' => AiEnum::$stepTypeArr[$step->step_type] ?? '-',
-            'status'       => $step->status,
-            'status_name'  => AiEnum::$stepStatusArr[$step->status] ?? '-',
-            'error_msg'    => $step->error_msg,
-            'latency_ms'   => $step->latency_ms,
-            'latency_str'  => $step->latency_ms !== null ? "{$step->latency_ms}ms" : '-',
-            'payload_json' => $step->payload_json,
-            'created_at'   => $step->created_at,
+            'agent_id'       => $step->agent_id,
+            'agent_name'     => $step->agent_id ? ($agentMap->get($step->agent_id)?->name ?? '-') : null,
+            'model_snapshot' => $step->model_snapshot ?: null,
+            'status'         => $step->status,
+            'status_name'    => AiEnum::$stepStatusArr[$step->status] ?? '-',
+            'error_msg'      => $step->error_msg,
+            'latency_ms'     => $step->latency_ms,
+            'latency_str'    => $step->latency_ms !== null ? "{$step->latency_ms}ms" : '-',
+            'payload_json'   => $step->payload_json,
+            'created_at'     => $step->created_at,
         ])->toArray();
     }
 

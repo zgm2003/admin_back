@@ -112,23 +112,33 @@ class CodeGenService
         ]);
 
         try {
+            $totalUsage = ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0];
+
             // Phase 1: 研究员收集上下文（首轮对话才执行，迭代轮次复用历史上下文）
             $context = [];
             if (empty($history)) {
                 $phaseStart = hrtime(true);
                 $onChunk('phase', ['phase' => 'researching', 'msg' => '正在分析需求，收集项目信息...']);
-                $context = $this->gatherContext($userMessage, $onChunk);
+                $researchResult = $this->gatherContext($userMessage, $onChunk);
+                $context = $researchResult['context'];
+                $phaseUsage = $researchResult['usage'];
+                self::accumulateUsage($totalUsage, $phaseUsage);
                 $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_TOOL_CALL, [
                     'phase' => 'researching', 'context_keys' => array_keys($context),
+                    'prompt_tokens' => $phaseUsage['prompt_tokens'], 'completion_tokens' => $phaseUsage['completion_tokens'], 'total_tokens' => $phaseUsage['total_tokens'],
                 ], $this->elapsedMs($phaseStart), $researcherAgent ? (int)$researcherAgent->id : 0, $researcherModelCode);
             }
 
             // Phase 2: 程序员生成代码
             $phaseStart = hrtime(true);
             $onChunk('phase', ['phase' => 'generating', 'msg' => '正在生成代码...']);
-            $aiContent = $this->generateCode($context, $userMessage, $history, $onChunk, $allowOverwrite);
+            $codeResult = $this->generateCode($context, $userMessage, $history, $onChunk, $allowOverwrite);
+            $aiContent = $codeResult['content'];
+            $phaseUsage = $codeResult['usage'];
+            self::accumulateUsage($totalUsage, $phaseUsage);
             $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_LLM, [
                 'phase' => 'generating', 'content_length' => mb_strlen($aiContent),
+                'prompt_tokens' => $phaseUsage['prompt_tokens'], 'completion_tokens' => $phaseUsage['completion_tokens'], 'total_tokens' => $phaseUsage['total_tokens'],
             ], $this->elapsedMs($phaseStart), $coderAgent ? (int)$coderAgent->id : 0, $coderModelCode);
 
             // 代码生成失败时中断（agent/model 不可用等场景）
@@ -155,9 +165,13 @@ class CodeGenService
             if ($enableReview && !empty($aiContent)) {
                 $phaseStart = hrtime(true);
                 $onChunk('phase', ['phase' => 'reviewing', 'msg' => '正在审查代码质量...']);
-                $reviewContent = $this->reviewCode($aiContent, $onChunk);
+                $reviewResult = $this->reviewCode($aiContent, $onChunk);
+                $reviewContent = $reviewResult['content'];
+                $phaseUsage = $reviewResult['usage'];
+                self::accumulateUsage($totalUsage, $phaseUsage);
                 $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_LLM, [
                     'phase' => 'reviewing', 'content_length' => mb_strlen($reviewContent),
+                    'prompt_tokens' => $phaseUsage['prompt_tokens'], 'completion_tokens' => $phaseUsage['completion_tokens'], 'total_tokens' => $phaseUsage['total_tokens'],
                 ], $this->elapsedMs($phaseStart), $reviewAgent ? (int)$reviewAgent->id : 0, $reviewModelCode);
                 if (!empty($reviewContent)) {
                     $this->messagesDep->add([
@@ -174,9 +188,13 @@ class CodeGenService
             if ($enableTest && !empty($aiContent)) {
                 $phaseStart = hrtime(true);
                 $onChunk('phase', ['phase' => 'testing', 'msg' => '正在生成测试用例...']);
-                $testContent = $this->generateTests($aiContent, $onChunk);
+                $testResult = $this->generateTests($aiContent, $onChunk);
+                $testContent = $testResult['content'];
+                $phaseUsage = $testResult['usage'];
+                self::accumulateUsage($totalUsage, $phaseUsage);
                 $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_LLM, [
                     'phase' => 'testing', 'content_length' => mb_strlen($testContent),
+                    'prompt_tokens' => $phaseUsage['prompt_tokens'], 'completion_tokens' => $phaseUsage['completion_tokens'], 'total_tokens' => $phaseUsage['total_tokens'],
                 ], $this->elapsedMs($phaseStart), $testAgent ? (int)$testAgent->id : 0, $testModelCode);
                 if (!empty($testContent)) {
                     $this->messagesDep->add([
@@ -191,16 +209,20 @@ class CodeGenService
 
             $this->conversationsDep->updateLastMessageAt($conversationId);
 
-            // 标记运行成功
+            // 标记运行成功（含汇总 token 数据）
             $this->runsDep->markSuccess($runId, [
                 'assistant_message_id' => $assistantMessageId,
                 'latency_ms'           => $this->elapsedMs($startTime),
+                'prompt_tokens'        => $totalUsage['prompt_tokens'] ?: null,
+                'completion_tokens'    => $totalUsage['completion_tokens'] ?: null,
+                'total_tokens'         => $totalUsage['total_tokens'] ?: null,
             ]);
+            $runMarked = true;
 
             $onChunk('done', ['conversation_id' => $conversationId, 'msg' => '生成完成']);
         } catch (\Throwable $e) {
-            // 标记运行失败
-            if ($runId) {
+            // 仅在尚未标记成功时才标记失败（防止 onChunk('done') 连接异常覆盖已成功的状态）
+            if ($runId && empty($runMarked)) {
                 $this->runsDep->markFailed($runId, $e->getMessage());
             }
             throw $e;
@@ -231,6 +253,26 @@ class CodeGenService
     private function elapsedMs(int $startNs): int
     {
         return (int)((hrtime(true) - $startNs) / 1_000_000);
+    }
+
+    /**
+     * 空 token 用量（默认值）
+     */
+    private static function emptyUsage(): array
+    {
+        return ['prompt_tokens' => null, 'completion_tokens' => null, 'total_tokens' => null];
+    }
+
+    /**
+     * 累加 token 用量
+     */
+    private static function accumulateUsage(array &$total, array $usage): void
+    {
+        foreach (['prompt_tokens', 'completion_tokens', 'total_tokens'] as $key) {
+            if (isset($usage[$key]) && is_numeric($usage[$key])) {
+                $total[$key] = ($total[$key] ?? 0) + (int)$usage[$key];
+            }
+        }
     }
 
     /**
@@ -294,7 +336,10 @@ class CodeGenService
             ]),
         );
 
-        return self::extractJson($result['content'] ?? '');
+        return [
+            'context' => self::extractJson($result['content'] ?? ''),
+            'usage'   => $result['usage'] ?? self::emptyUsage(),
+        ];
     }
 
     /**
@@ -335,39 +380,42 @@ class CodeGenService
     private function fallbackGatherContext(string $userMessage): array
     {
         return [
-            'existing_tables' => CodeGenTools::listTables([]),
-            'conventions'     => [
-                'php'       => CodeGenTools::readConvention(['type' => 'php']),
-                'db'        => CodeGenTools::readConvention(['type' => 'db']),
-                'vue'       => CodeGenTools::readConvention(['type' => 'vue']),
-                'structure' => CodeGenTools::readConvention(['type' => 'structure']),
+            'context' => [
+                'existing_tables' => CodeGenTools::listTables([]),
+                'conventions'     => [
+                    'php'       => CodeGenTools::readConvention(['type' => 'php']),
+                    'db'        => CodeGenTools::readConvention(['type' => 'db']),
+                    'vue'       => CodeGenTools::readConvention(['type' => 'vue']),
+                    'structure' => CodeGenTools::readConvention(['type' => 'structure']),
+                ],
             ],
+            'usage' => self::emptyUsage(),
         ];
     }
 
     /**
      * Phase 2: 程序员 Agent 生成代码（流式）
      */
-    private function generateCode(array $context, string $userMessage, array $history, callable $onChunk, bool $allowOverwrite): string
+    private function generateCode(array $context, string $userMessage, array $history, callable $onChunk, bool $allowOverwrite): array
     {
         $coderAgent = $this->agentsDep->getBySceneAndMode(
             AiEnum::SCENE_CODE_GEN, AiEnum::MODE_CHAT
         );
         if (!$coderAgent) {
             $onChunk('error', ['msg' => '未配置代码生成程序员智能体']);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
         $model = $this->modelsDep->get((int)$coderAgent->model_id);
         if (!$model || $model->status !== CommonEnum::YES) {
             $onChunk('error', ['msg' => '程序员智能体关联的模型不可用']);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
         [$neuronAgent, $error] = NeuronAgentFactory::createAgent($model, $coderAgent);
         if ($error) {
             $onChunk('error', ['msg' => "创建程序员 Agent 失败: {$error}"]);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
         // 构建包含上下文的完整提示
@@ -377,7 +425,7 @@ class CodeGenService
         $parser = new CodeGenParser($onChunk, $allowOverwrite);
         $fullContent = '';
 
-        AiChatService::chatStream(
+        $result = AiChatService::chatStream(
             $neuronAgent, $fullPrompt, $history,
             function ($delta) use ($parser, $onChunk, &$fullContent) {
                 $fullContent .= $delta;
@@ -389,93 +437,114 @@ class CodeGenService
         // 流结束后，解析缓存的操作
         $parser->flush();
 
-        return $fullContent;
+        return [
+            'content' => $fullContent,
+            'usage'   => $result['usage'] ?? self::emptyUsage(),
+        ];
     }
 
     /**
      * Phase 4: 审查员 Agent 自动 Code Review（流式）
      */
-    private function reviewCode(string $generatedCode, callable $onChunk): string
+    private function reviewCode(string $generatedCode, callable $onChunk): array
     {
         $reviewerAgent = $this->agentsDep->getBySceneAndMode(
             AiEnum::SCENE_CODE_GEN, AiEnum::MODE_RAG
         );
         if (!$reviewerAgent) {
             $onChunk('error', ['msg' => '审查失败：未配置审查员智能体（scene=code_gen, mode=rag）']);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
         $model = $this->modelsDep->get((int)$reviewerAgent->model_id);
         if (!$model || $model->status !== CommonEnum::YES) {
             $onChunk('error', ['msg' => '审查失败：审查员关联的模型不可用']);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
         [$neuronAgent, $error] = NeuronAgentFactory::createAgent($model, $reviewerAgent);
         if ($error) {
             $onChunk('error', ['msg' => "审查失败：{$error}"]);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
-        $prompt = "请审查以下 AI 生成的代码：\n\n" . $generatedCode;
+        $prompt = <<<REVIEW
+请审查以下 AI 生成的代码，重点检查是否违反项目规范：
+
+## 审查要点（必查）
+1. **Dep 层**：是否用 `$this->model`（属性）而非 `$this->model()`（方法）？`createModel()` 返回类型是否为 `\support\Model`？是否重复定义了 BaseDep 已有的 `get/find/exists/add/update/delete` 方法？
+2. **Enum**：是否每个业务域只有一个 Enum 文件？是否有语法错误（如空常量名 `const = 3`）？
+3. **Module init**：是否使用 `DictService` 链式调用？是否直接返回了 Enum 数组（应该走 DictService）？
+4. **Controller**：是否继承 `Controller`？写操作是否有 `@OperationLog` 和 `@Permission` 注解？
+5. **前端 useTable**：是否用 `useTable({ api: XxxApi, searchForm })` 模式？是否使用 `AppTable` + `Search` 组件？是否用了 i18n `t()` 而非硬编码中文？
+6. **命名一致性**：同一模块所有层级 Domain 文件夹和 Entity 命名是否统一？
+
+## 待审查代码
+
+REVIEW
+        . $generatedCode;
         $fullContent = '';
+        $usage = self::emptyUsage();
 
         try {
-            AiChatService::chatStream(
+            $result = AiChatService::chatStream(
                 $neuronAgent, $prompt, [],
                 function ($delta) use ($onChunk, &$fullContent) {
                     $fullContent .= $delta;
                     $onChunk('review', ['delta' => $delta]);
                 }
             );
+            $usage = $result['usage'] ?? self::emptyUsage();
         } catch (\Throwable $e) {
-            $onChunk('error', ['msg' => "审查异常：{$e->getMessage()}"]);
+            try { $onChunk('error', ['msg' => "审查异常：{$e->getMessage()}"]); } catch (\Throwable) {}
         }
 
-        return $fullContent;
+        return ['content' => $fullContent, 'usage' => $usage];
     }
 
     /**
      * Phase 5: 测试员 Agent 自动生成测试用例（流式）
      */
-    private function generateTests(string $generatedCode, callable $onChunk): string
+    private function generateTests(string $generatedCode, callable $onChunk): array
     {
         $testerAgent = $this->agentsDep->getBySceneAndMode(
             AiEnum::SCENE_CODE_GEN, AiEnum::MODE_WORKFLOW
         );
         if (!$testerAgent) {
             $onChunk('error', ['msg' => '测试失败：未配置测试员智能体（scene=code_gen, mode=workflow）']);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
         $model = $this->modelsDep->get((int)$testerAgent->model_id);
         if (!$model || $model->status !== CommonEnum::YES) {
             $onChunk('error', ['msg' => '测试失败：测试员关联的模型不可用']);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
         [$neuronAgent, $error] = NeuronAgentFactory::createAgent($model, $testerAgent);
         if ($error) {
             $onChunk('error', ['msg' => "测试失败：{$error}"]);
-            return '';
+            return ['content' => '', 'usage' => self::emptyUsage()];
         }
 
         $prompt = "请为以下 AI 生成的代码编写测试用例：\n\n" . $generatedCode;
         $fullContent = '';
+        $usage = self::emptyUsage();
 
         try {
-            AiChatService::chatStream(
+            $result = AiChatService::chatStream(
                 $neuronAgent, $prompt, [],
                 function ($delta) use ($onChunk, &$fullContent) {
                     $fullContent .= $delta;
                     $onChunk('test', ['delta' => $delta]);
                 }
             );
+            $usage = $result['usage'] ?? self::emptyUsage();
         } catch (\Throwable $e) {
-            $onChunk('error', ['msg' => "测试异常：{$e->getMessage()}"]);
+            try { $onChunk('error', ['msg' => "测试异常：{$e->getMessage()}"]); } catch (\Throwable) {}
         }
 
-        return $fullContent;
+        return ['content' => $fullContent, 'usage' => $usage];
     }
 
     private function buildCoderPrompt(array $context, string $userMessage): string
@@ -599,11 +668,114 @@ class {Entity}Controller extends Controller
 }
 ```
 
-**Module**：继承 `app\module\BaseModule`，依赖用 `$this->dep()` / `$this->svc()` 懒加载
-**Dep**：继承 `app\dep\BaseDep`，方法命名 `get*`（过滤is_del）/ `find*`（不过滤）/ `list*`（分页）/ `exists*`（bool）
+**Module**（必须严格遵循）：
+- 继承 `app\module\BaseModule`
+- 依赖用 `$this->dep(XxxDep::class)` / `$this->svc(XxxService::class)` 懒加载，**不要** new
+- `init` 方法**必须**使用 DictService 链式调用返回字典数据，格式：
+```
+public function init($request): array
+{
+    $dict = $this->svc(DictService::class)
+        ->setCommonStatusArr()
+        ->setXxxTypeArr()     // 按需链式调用
+        ->getDict();
+    return self::success(['dict' => $dict]);
+}
+```
+- 如果需要新的字典项，**必须**先在 `DictService` 中添加对应的 `setXxxArr()` 方法（链式返回 `static`），使用 `self::enumToDict(XxxEnum::$xxxArr)` 转换
+- **禁止**在 init 中直接返回 Enum 数组，必须走 DictService
+
+**Dep**（必须严格遵循）：
+- 继承 `app\dep\BaseDep`
+- `createModel()` 返回类型必须是 `\support\Model`（不是具体 Model 类）
+- 查询使用 `$this->model`（**属性**，不是方法调用 `$this->model()`）
+- BaseDep 已提供 `get($id)`、`find($id)`、`exists($id)`、`add()`、`update()`、`delete()`、`setStatus()` 等通用方法，**禁止**在子类中重复定义这些方法
+- 子类只写 BaseDep 没有的业务查询方法（如 `listXxx` 分页、`getByXxx` 条件查询等）
+- 方法命名：`get*`（过滤 is_del）/ `find*`（不过滤）/ `list*`（分页）/ `exists*`（bool）
+- Dep 模板：
+```
+class {Entity}Dep extends BaseDep
+{
+    protected function createModel(): Model  // 返回 \support\Model
+    {
+        return new {Entity}Model();
+    }
+
+    public function list{Entity}(array $where)
+    {
+        return $this->model              // 注意：是属性，不是 $this->model()
+            ->where('is_del', CommonEnum::NO)
+            ->when(...)
+            ->orderByDesc('id')
+            ->paginate(...);
+    }
+}
+```
+
 **Model**：继承 `app\model\BaseModel`，只定义 `$table`、`$casts`，不写查询逻辑
-**Validate**：静态方法返回验证规则数组
-**Enum**：常量 + `$xxxArr` 映射数组
+**Validate**：静态方法返回验证规则数组，使用 `Respect\Validation\Validator as v`
+**Service**：业务逻辑层，无状态，如无复杂逻辑可留空
+
+**Enum**（必须严格遵循）：
+- 每个业务域**只生成一个** Enum 文件，命名为 `{Entity}Enum.php`
+- 所有相关常量（类型、状态等）合并在同一个 Enum 类中
+- 格式：`const TYPE_XXX = 1;` + `public static array $typeArr = [self::TYPE_XXX => '名称'];`
+- **禁止**拆分成多个 Enum 文件（如 XxxTypeEnum + XxxStatusEnum），全部合并为一个 `{Entity}Enum`
+
+### 前端代码规范（强制）
+
+**API 文件**（`src/api/{domain}/{entity}.ts`）：
+- 导出名用 PascalCase：`export const {Entity}Api = { ... }`
+- 所有接口用 POST，路径 `/api/admin/{Domain}/{Entity}/{action}`
+- 必须包含 `init`、`list`、`del` 等标准方法
+
+**页面文件**（`src/views/Main/{domain}/{entity}/index.vue`）：
+- `<script setup lang="ts">` 在 `<template>` 之前
+- 必须使用 `useTable` hook：`useTable({ api: {Entity}Api, searchForm, initPage: { page_size: 20 } })`
+- 必须使用 `AppTable` 组件和 `Search` 组件（从 `@/components/Table` 和 `@/components/Search` 导入）
+- init 方法命名为 `init`（不是 `loadInit`），在 `onMounted` 中调用
+- 字典数据从 init 接口获取，格式为 `data.dict.xxx_arr`，类型是 `[{label, value}]` 数组，**直接**作为 Search 组件的 options
+- 搜索字段使用 `SearchField` 类型，type 可选：`input`、`select-v2`、`date-range`
+- 表格列定义用 `columns` 数组，格式：`{key: 'xxx', label: t('xxx')}`
+- 操作按钮权限用 `userStore.can('permission_code')`
+- 使用 i18n 的 `t()` 函数，**禁止**硬编码中文字符串
+- 前端页面模板：
+```
+<script setup lang="ts">
+import {ref, computed, onMounted} from 'vue'
+import {useI18n} from 'vue-i18n'
+import {useUserStore} from '@/store/user'
+import {{Entity}Api} from '@/api/{domain}/{entity}'
+import {AppTable} from '@/components/Table'
+import {Search} from '@/components/Search'
+import type {SearchField} from '@/components/Search/types'
+import {useTable} from '@/hooks/useTable'
+
+const {t} = useI18n()
+const userStore = useUserStore()
+
+const searchForm = ref({...})
+const {loading, data, page, onSearch, onPageChange, refresh, getList, onSelectionChange, confirmDel, batchDel} = useTable({
+  api: {Entity}Api,
+  searchForm
+})
+
+const xxxArr = ref<any[]>([])
+const init = () => {
+  {Entity}Api.init().then((data: any) => {
+    xxxArr.value = data.dict.xxx_arr
+  })
+}
+
+const columns = [...]
+const searchFields = computed<SearchField[]>(() => [...])
+
+onMounted(() => {
+  init()
+  getList()
+})
+</script>
+```
 
 所有类必须包含完整的 namespace 和 use 语句，不能省略！
 
