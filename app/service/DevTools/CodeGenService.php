@@ -138,6 +138,13 @@ class CodeGenService
             $codeResult = $this->generateCode($context, $userMessage, $history, $onChunk, $allowOverwrite);
             $aiContent = $codeResult['content'];
             $phaseUsage = $codeResult['usage'];
+            $parseStats = $codeResult['parse_stats'] ?? [
+                'routes_patch_added' => 0,
+                'routes_patch_skipped' => 0,
+                'routes_patch_failed' => 0,
+            ];
+            $qualityGatePassed = (bool)($codeResult['quality_gate_passed'] ?? true);
+            $qualityIssues = $codeResult['quality_issues'] ?? [];
             self::accumulateUsage($totalUsage, $phaseUsage);
             $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_LLM, [
                 'phase' => 'generating', 'content_length' => mb_strlen($aiContent),
@@ -161,8 +168,20 @@ class CodeGenService
 
             // Phase 3: 解析并执行（建表/写文件）— 已在 generateCode 内的 parser 中完成
             $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_FINALIZE, [
-                'phase' => 'parsing', 'allow_overwrite' => $allowOverwrite,
+                'phase' => 'parsing',
+                'allow_overwrite' => $allowOverwrite,
+                'routes_patch_added' => (int)($parseStats['routes_patch_added'] ?? 0),
+                'routes_patch_skipped' => (int)($parseStats['routes_patch_skipped'] ?? 0),
+                'routes_patch_failed' => (int)($parseStats['routes_patch_failed'] ?? 0),
+                'quality_gate_passed' => $qualityGatePassed,
+                'quality_issues' => $qualityIssues,
             ], 0, 0, '');
+
+            if (!$qualityGatePassed) {
+                $issueMsg = implode('；', $qualityIssues);
+                $onChunk('error', ['msg' => "代码生成质量门禁未通过：{$issueMsg}"]);
+                throw new \RuntimeException("代码生成质量门禁未通过：{$issueMsg}");
+            }
 
             // Phase 4: 审查员自动 Code Review（可选）
             if ($enableReview && !empty($aiContent)) {
@@ -442,10 +461,47 @@ class CodeGenService
 
         // 流结束后，解析缓存的操作
         $parser->flush();
+        $parseStats = $parser->getStats();
+        $quality = $this->evaluateGenerationQuality($fullContent, $parseStats);
 
         return [
             'content' => $fullContent,
             'usage'   => $result['usage'] ?? self::emptyUsage(),
+            'parse_stats' => $parseStats,
+            'quality_gate_passed' => $quality['quality_gate_passed'],
+            'quality_issues' => $quality['quality_issues'],
+        ];
+    }
+
+    private function evaluateGenerationQuality(string $content, array $parseStats): array
+    {
+        $issues = [];
+        $hasExecutionMarkers = (bool)preg_match(
+            '/```(?:sql:(?:CREATE_TABLE|ALTER_TABLE)|(?:php|vue|typescript|ts):(?:WRITE_FILE|PATCH_FILE|PATCH_ROUTES):)/',
+            $content
+        );
+
+        if ($hasExecutionMarkers) {
+            $hasPatchRoutes = (bool)preg_match('/```php:PATCH_ROUTES:routes\/admin\.php\s*\n[\s\S]*?```/i', $content);
+            if (!$hasPatchRoutes) {
+                $issues[] = '缺少 `php:PATCH_ROUTES:routes/admin.php` 路由补丁块';
+            }
+
+            $hasPermissionChecklist = str_contains($content, 'perm_all_permissions')
+                && str_contains($content, 'dict_permission_tree')
+                && str_contains($content, 'auth_perm_uid_');
+            if (!$hasPermissionChecklist) {
+                $issues[] = '缺少权限手工执行清单（含 Redis 缓存刷新键）';
+            }
+        }
+
+        if ((int)($parseStats['routes_patch_failed'] ?? 0) > 0) {
+            $issues[] = 'routes/admin.php 路由补丁执行失败';
+        }
+
+        return [
+            'quality_gate_passed' => empty($issues),
+            'quality_issues' => $issues,
         ];
     }
 
@@ -611,7 +667,7 @@ ALTER TABLE 表名 ADD COLUMN ...;
 ```
 
 重要规则：
-- **首轮对话**：先用普通 Markdown 展示方案（表结构设计、文件清单、路由配置），不要输出 CREATE_TABLE / ALTER_TABLE / WRITE_FILE 标记
+- **首轮对话**：先用普通 Markdown 展示方案（表结构设计、文件清单、路由配置），不要输出 CREATE_TABLE / ALTER_TABLE / WRITE_FILE / PATCH_FILE / PATCH_ROUTES 标记
 - **用户确认后**：输出完整的操作标记，每个文件必须是完整内容，不能省略或用注释占位
 - 建表必须包含 id, created_at, updated_at, is_del 标准字段
 - 可以在代码前后添加简要说明
@@ -674,10 +730,9 @@ class {Entity}Controller extends Controller
 ```
 
 **路由注册（重要）**：
-路由文件 `routes/admin.php` 无法自动修改。生成代码后，**必须**在回复末尾用独立段落列出完整路由配置，格式如下：
+`routes/admin.php` 由系统自动补丁，必须输出 `PATCH_ROUTES` 标记块，格式如下：
 
-**📋 需要手动添加到 routes/admin.php 的路由：**
-```php
+```php:PATCH_ROUTES:routes/admin.php
 // 中文业务名管理
 Route::post('/{Entity}/init', [controller\{Domain}\{Entity}Controller::class, 'init']);
 Route::post('/{Entity}/list', [controller\{Domain}\{Entity}Controller::class, 'list']);
@@ -687,6 +742,16 @@ Route::post('/{Entity}/edit', [controller\{Domain}\{Entity}Controller::class, 'e
 Route::post('/{Entity}/del', [controller\{Domain}\{Entity}Controller::class, 'del']);
 Route::post('/{Entity}/status', [controller\{Domain}\{Entity}Controller::class, 'status']);
 ```
+- `PATCH_ROUTES` 中只允许注释行和 `Route::post(...)` 行
+- 目标文件固定为 `routes/admin.php`，禁止输出其他路由文件
+
+**权限（手工执行，禁止自动写库）**：
+- 必须输出权限 SQL 建议（菜单/按钮/角色授权按项目规范）
+- 必须输出 Redis 缓存刷新说明，至少包含：
+  - `perm_all_permissions`
+  - `dict_permission_tree`
+  - `auth_perm_uid_*`
+- 必须提示执行后需重新登录或刷新权限缓存
 
 **Module**（必须严格遵循）：
 - 继承 `app\module\BaseModule`
@@ -951,15 +1016,17 @@ onMounted(() => {
 每个代码块必须标注正确的语言：
 - PHP 文件（新建/全量覆盖）：\`\`\`php:WRITE_FILE:...
 - PHP 文件（增量追加方法）：\`\`\`php:PATCH_FILE:路径:BEFORE_METHOD:方法名
+- 路由补丁（仅 routes/admin.php）：\`\`\`php:PATCH_ROUTES:routes/admin.php
 - Vue 文件：\`\`\`vue:WRITE_FILE:...
 - TypeScript 文件：\`\`\`typescript:WRITE_FILE:...
 - SQL 建表：\`\`\`sql:CREATE_TABLE:...
 - SQL 改表：\`\`\`sql:ALTER_TABLE:...
 
-**PATCH_FILE vs WRITE_FILE**：
+**PATCH_FILE / PATCH_ROUTES vs WRITE_FILE**：
 - `WRITE_FILE`：用于新建文件或需要全量覆盖的场景
 - `PATCH_FILE`：用于在已有文件中追加方法（如 DictService），只输出新增的方法代码，系统会自动插入到指定方法之前
-- ⚠️ `app/service/DictService.php` 和 `routes/admin.php` 等共享文件**只能用 PATCH_FILE**，使用 WRITE_FILE 会被系统拒绝
+- `PATCH_ROUTES`：仅用于 `routes/admin.php` 的路由行增量补丁
+- ⚠️ `app/service/DictService.php` 只能用 `PATCH_FILE`；`routes/admin.php` 只能用 `PATCH_ROUTES`；使用 `WRITE_FILE` 会被系统拒绝
 INSTRUCTION;
 
         return implode("\n\n", $parts);

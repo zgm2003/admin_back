@@ -16,6 +16,13 @@ class CodeGenParser
     private $onChunk;
     private string $buffer = '';
     private bool $allowOverwrite;
+    private string $backendBasePath;
+    private string $frontendBasePath;
+    private array $stats = [
+        'routes_patch_added' => 0,
+        'routes_patch_skipped' => 0,
+        'routes_patch_failed' => 0,
+    ];
 
     /** 允许写入的路径前缀（白名单） */
     private const ALLOWED_PATHS = [
@@ -30,12 +37,15 @@ class CodeGenParser
     /** 仅允许 PATCH_FILE 修改的文件（禁止 WRITE_FILE 覆盖） */
     private const PATCH_ONLY_FILES = [
         'app/service/DictService.php',
+        'routes/admin.php',
     ];
 
-    public function __construct(callable $onChunk, bool $allowOverwrite = false)
+    public function __construct(callable $onChunk, bool $allowOverwrite = false, ?string $backendBasePath = null, ?string $frontendBasePath = null)
     {
         $this->onChunk = $onChunk;
         $this->allowOverwrite = $allowOverwrite;
+        $this->backendBasePath = rtrim($backendBasePath ?: base_path(), '/\\');
+        $this->frontendBasePath = rtrim($frontendBasePath ?: (dirname($this->backendBasePath) . '/admin_front_ts'), '/\\');
     }
 
     public function feed(string $delta): void
@@ -52,7 +62,13 @@ class CodeGenParser
         $this->parseCreateTable();
         $this->parseAlterTable();
         $this->parseWriteFile();
+        $this->parsePatchRoutes();
         $this->parsePatchFile();
+    }
+
+    public function getStats(): array
+    {
+        return $this->stats;
     }
 
     /**
@@ -245,12 +261,7 @@ class CodeGenParser
      */
     private function readOriginalFile(string $relativePath): ?string
     {
-        $isFrontend = str_starts_with($relativePath, 'src/');
-        $basePath = $isFrontend
-            ? dirname(base_path()) . '/admin_front_ts'
-            : base_path();
-
-        $fullPath = $basePath . '/' . $relativePath;
+        $fullPath = $this->getFullPath($relativePath);
 
         if (!file_exists($fullPath)) {
             return null;
@@ -298,13 +309,9 @@ class CodeGenParser
             throw new \RuntimeException("禁止 WRITE_FILE 覆盖 {$relativePath}，请使用 PATCH_FILE 增量修改");
         }
 
-        // 判断目标项目
-        $isFrontend = str_starts_with($relativePath, 'src/');
-        $basePath = $isFrontend
-            ? dirname(base_path()) . '/admin_front_ts'
-            : base_path();
-
-        $fullPath = $basePath . '/' . $relativePath;
+        $fullPath = $this->getFullPath($relativePath);
+        $isPhpFile = strtolower((string)pathinfo($relativePath, PATHINFO_EXTENSION)) === 'php';
+        $backupPath = null;
 
         // 覆盖策略：默认不覆盖，迭代场景需 allowOverwrite
         if (file_exists($fullPath)) {
@@ -312,7 +319,8 @@ class CodeGenParser
                 throw new \RuntimeException("文件已存在: {$relativePath}（迭代修改需传入 allow_overwrite=true）");
             }
             // 覆盖前先备份
-            copy($fullPath, $fullPath . '.bak.' . date('YmdHis'));
+            $backupPath = $fullPath . '.bak.' . date('YmdHis');
+            copy($fullPath, $backupPath);
         }
 
         $dir = dirname($fullPath);
@@ -321,7 +329,177 @@ class CodeGenParser
         }
 
         file_put_contents($fullPath, $content);
+        try {
+            if ($isPhpFile) {
+                $this->assertPhpSyntax($fullPath);
+            }
+        } catch (\Throwable $e) {
+            if ($backupPath && file_exists($backupPath)) {
+                copy($backupPath, $fullPath);
+            } elseif (file_exists($fullPath)) {
+                @unlink($fullPath);
+            }
+            throw $e;
+        }
         Log::info("[CodeGenParser] 写入文件: {$relativePath}");
+    }
+
+    /**
+     * 解析 PATCH_ROUTES 标记并执行路由增量补丁
+     * 格式：
+     * ```php:PATCH_ROUTES:routes/admin.php
+     * Route::post(...);
+     * ```
+     */
+    private function parsePatchRoutes(): void
+    {
+        preg_match_all('/```php:PATCH_ROUTES:([^\n]+)\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as $match) {
+            $filePath = trim($match[1]);
+            $routesBlock = $match[2];
+
+            try {
+                $result = $this->executePatchRoutes($filePath, $routesBlock);
+                $this->stats['routes_patch_added'] += $result['added'];
+                $this->stats['routes_patch_skipped'] += $result['skipped'];
+
+                ($this->onChunk)('routes_patched', [
+                    'path'    => $filePath,
+                    'success' => true,
+                    'added'   => $result['added'],
+                    'skipped' => $result['skipped'],
+                ]);
+            } catch (\Throwable $e) {
+                $this->stats['routes_patch_failed']++;
+                ($this->onChunk)('routes_patched', [
+                    'path'    => $filePath,
+                    'success' => false,
+                    'error'   => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * 执行 routes/admin.php 路由增量补丁
+     * 仅允许注释行和 Route::post(...) 语句，插入到 })->middleware([ 之前
+     * @return array{added:int,skipped:int}
+     */
+    private function executePatchRoutes(string $relativePath, string $routesBlock): array
+    {
+        $relativePath = str_replace('\\', '/', trim($relativePath));
+        if ($relativePath !== 'routes/admin.php') {
+            throw new \RuntimeException('PATCH_ROUTES 仅允许目标文件 routes/admin.php');
+        }
+        if (str_contains($relativePath, '..')) {
+            throw new \RuntimeException('检测到路径穿越');
+        }
+
+        $fullPath = $this->getFullPath($relativePath);
+        if (!file_exists($fullPath)) {
+            throw new \RuntimeException("文件不存在: {$relativePath}");
+        }
+
+        $rawLines = preg_split('/\R/', trim($routesBlock)) ?: [];
+        $entries = [];
+        $candidateRouteCount = 0;
+
+        foreach ($rawLines as $rawLine) {
+            $line = trim($rawLine);
+            if ($line === '') {
+                continue;
+            }
+            if ($this->isAllowedRouteCommentLine($line)) {
+                $entries[] = ['type' => 'comment', 'line' => $line];
+                continue;
+            }
+            if ($this->isAllowedRouteStatement($line)) {
+                $entries[] = ['type' => 'route', 'line' => $line];
+                $candidateRouteCount++;
+                continue;
+            }
+            throw new \RuntimeException('PATCH_ROUTES 仅允许注释行和 Route::post(...) 语句');
+        }
+
+        if ($candidateRouteCount === 0) {
+            throw new \RuntimeException('PATCH_ROUTES 至少需要包含一条 Route::post(...)');
+        }
+
+        $content = file_get_contents($fullPath);
+        $anchor = '})->middleware([';
+        $anchorPos = strpos($content, $anchor);
+        if ($anchorPos === false) {
+            throw new \RuntimeException("未找到插入锚点: {$anchor}");
+        }
+
+        $existingLines = preg_split('/\R/', $content) ?: [];
+        $existingTrimmed = [];
+        $existingRoutes = [];
+        foreach ($existingLines as $existingLine) {
+            $trimmed = trim($existingLine);
+            if ($trimmed === '') {
+                continue;
+            }
+            $existingTrimmed[$trimmed] = true;
+            if ($this->isAllowedRouteStatement($trimmed)) {
+                $existingRoutes[$this->normalizeRouteLine($trimmed)] = true;
+            }
+        }
+
+        $skipped = 0;
+        $added = 0;
+        $newRouteSet = [];
+        $insertLines = [];
+
+        foreach ($entries as $entry) {
+            $line = $entry['line'];
+            if ($entry['type'] === 'comment') {
+                if (!isset($existingTrimmed[$line])) {
+                    $insertLines[] = $line;
+                }
+                continue;
+            }
+
+            $normalized = $this->normalizeRouteLine($line);
+            if (isset($existingRoutes[$normalized]) || isset($newRouteSet[$normalized])) {
+                $skipped++;
+                continue;
+            }
+
+            $newRouteSet[$normalized] = true;
+            $insertLines[] = $line;
+            $added++;
+        }
+
+        if ($added === 0) {
+            return ['added' => 0, 'skipped' => $skipped];
+        }
+
+        $formattedLines = array_map(static fn(string $line) => '    ' . ltrim($line), $insertLines);
+        $insertBlock = implode("\n", $formattedLines) . "\n";
+
+        $prefix = substr($content, 0, $anchorPos);
+        $suffix = substr($content, $anchorPos);
+        if ($prefix !== '' && !str_ends_with($prefix, "\n")) {
+            $prefix .= "\n";
+        }
+        $newContent = $prefix . $insertBlock . $suffix;
+
+        $backupPath = $fullPath . '.bak.' . date('YmdHis');
+        if (!copy($fullPath, $backupPath)) {
+            throw new \RuntimeException("备份路由文件失败: {$relativePath}");
+        }
+
+        file_put_contents($fullPath, $newContent);
+        try {
+            $this->assertPhpSyntax($fullPath);
+        } catch (\Throwable $e) {
+            copy($backupPath, $fullPath);
+            throw $e;
+        }
+
+        return ['added' => $added, 'skipped' => $skipped];
     }
 
     /**
@@ -381,13 +559,7 @@ class CodeGenParser
             throw new \RuntimeException("路径不在白名单内: {$relativePath}");
         }
 
-        // 判断目标项目
-        $isFrontend = str_starts_with($relativePath, 'src/');
-        $basePath = $isFrontend
-            ? dirname(base_path()) . '/admin_front_ts'
-            : base_path();
-
-        $fullPath = $basePath . '/' . $relativePath;
+        $fullPath = $this->getFullPath($relativePath);
 
         if (!file_exists($fullPath)) {
             throw new \RuntimeException("文件不存在: {$relativePath}");
@@ -395,23 +567,14 @@ class CodeGenParser
 
         $content = file_get_contents($fullPath);
 
-        // 查找目标方法位置（支持 public/private/protected function 和纯 function）
-        $pattern = '/(\n\s*)((?:public|private|protected)\s+)?function\s+' . preg_quote($beforeMethod, '/') . '\s*\(/';
+        // 查找目标方法位置（可包含紧邻的 docblock）
+        $pattern = '/^[ \t]*(?:\/\*\*[\s\S]*?\*\/\s*\R)?[ \t]*(?:public|private|protected)\s+(?:static\s+)?function\s+'
+            . preg_quote($beforeMethod, '/') . '\s*\(/m';
         if (!preg_match($pattern, $content, $methodMatch, PREG_OFFSET_CAPTURE)) {
             throw new \RuntimeException("未找到方法: {$beforeMethod}");
         }
 
         $insertPos = $methodMatch[0][1];
-
-        // 如果方法前有 docblock 注释或单行注释，插入点应在注释之前
-        $before = substr($content, 0, $insertPos);
-        if (preg_match('/(\n\s*\/\*\*.*?\*\/\s*)$/s', $before, $docMatch)) {
-            // 有 docblock（/** ... */）
-            $insertPos -= strlen($docMatch[1]);
-        } elseif (preg_match('/(\n\s*\/\/[^\n]*\s*)$/', $before, $lineCommentMatch)) {
-            // 有单行注释（// ...）
-            $insertPos -= strlen($lineCommentMatch[1]);
-        }
 
         // 确保新代码末尾有换行
         $newCode = rtrim($newCode) . "\n";
@@ -420,9 +583,60 @@ class CodeGenParser
         $newContent = substr($content, 0, $insertPos) . "\n" . $newCode . substr($content, $insertPos);
 
         // 备份原文件
-        copy($fullPath, $fullPath . '.bak.' . date('YmdHis'));
+        $backupPath = $fullPath . '.bak.' . date('YmdHis');
+        copy($fullPath, $backupPath);
 
         file_put_contents($fullPath, $newContent);
+        try {
+            if (strtolower((string)pathinfo($fullPath, PATHINFO_EXTENSION)) === 'php') {
+                $this->assertPhpSyntax($fullPath);
+            }
+        } catch (\Throwable $e) {
+            copy($backupPath, $fullPath);
+            throw $e;
+        }
         Log::info("[CodeGenParser] 增量修改文件: {$relativePath}，在 {$beforeMethod} 方法前插入代码");
+    }
+
+    private function getFullPath(string $relativePath): string
+    {
+        $normalized = ltrim(str_replace('\\', '/', $relativePath), '/');
+        $basePath = str_starts_with($normalized, 'src/')
+            ? $this->frontendBasePath
+            : $this->backendBasePath;
+
+        return rtrim($basePath, '/\\') . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $normalized);
+    }
+
+    private function assertPhpSyntax(string $filePath): void
+    {
+        $phpBinary = \defined('PHP_BINARY') && PHP_BINARY ? PHP_BINARY : 'php';
+        $cmd = escapeshellarg($phpBinary) . ' -l ' . escapeshellarg($filePath) . ' 2>&1';
+        $output = [];
+        $exitCode = 0;
+        exec($cmd, $output, $exitCode);
+
+        if ($exitCode !== 0) {
+            $error = trim(implode("\n", $output));
+            throw new \RuntimeException("PHP 语法检查失败: {$error}");
+        }
+    }
+
+    private function isAllowedRouteCommentLine(string $line): bool
+    {
+        return str_starts_with($line, '//')
+            || str_starts_with($line, '/*')
+            || str_starts_with($line, '*')
+            || str_starts_with($line, '*/');
+    }
+
+    private function isAllowedRouteStatement(string $line): bool
+    {
+        return (bool)preg_match('/^Route::post\s*\(.+\);\s*$/', $line);
+    }
+
+    private function normalizeRouteLine(string $line): string
+    {
+        return (string)preg_replace('/\s+/', '', $line);
     }
 }
