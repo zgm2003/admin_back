@@ -22,6 +22,9 @@ class CodeGenParser
         'routes_patch_added' => 0,
         'routes_patch_skipped' => 0,
         'routes_patch_failed' => 0,
+        'dict_patch_added' => 0,
+        'dict_patch_skipped' => 0,
+        'dict_patch_failed' => 0,
     ];
 
     /** 允许写入的路径前缀（白名单） */
@@ -226,7 +229,7 @@ class CodeGenParser
      */
     private function parseWriteFile(): void
     {
-        preg_match_all('/```(?:php|typescript|vue|ts):WRITE_FILE:([\w\/\.\-]+)\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
+        preg_match_all('/```(?:php|typescript|vue|ts):WRITE_FILE:([\w\/\.\-]+)\r?\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             $filePath = $match[1];
@@ -353,7 +356,7 @@ class CodeGenParser
      */
     private function parsePatchRoutes(): void
     {
-        preg_match_all('/```php:PATCH_ROUTES:([^\n]+)\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
+        preg_match_all('/```php:PATCH_ROUTES:([^\r\n]+)\r?\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             $filePath = trim($match[1]);
@@ -511,7 +514,7 @@ class CodeGenParser
     {
         // 格式：```php:PATCH_FILE:app/service/DictService.php:BEFORE_METHOD:getDict
         // 表示在 getDict 方法之前插入代码
-        preg_match_all('/```(?:php|typescript|vue|ts):PATCH_FILE:([\w\/\.\-]+):BEFORE_METHOD:(\w+)\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
+        preg_match_all('/```(?:php|typescript|vue|ts):PATCH_FILE:([\w\/\.\-]+):BEFORE_METHOD:(\w+)\s*\r?\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             $filePath = $match[1];
@@ -519,14 +522,23 @@ class CodeGenParser
             $newCode = $match[3];
 
             try {
-                $this->executePatchFile($filePath, $methodName, $newCode);
+                $result = $this->executePatchFile($filePath, $methodName, $newCode);
+                if ($filePath === 'app/service/DictService.php') {
+                    $this->stats['dict_patch_added'] += (int)($result['added'] ?? 0);
+                    $this->stats['dict_patch_skipped'] += (int)($result['skipped'] ?? 0);
+                }
                 ($this->onChunk)('file_patched', [
                     'path'        => $filePath,
                     'method'      => $methodName,
                     'success'     => true,
+                    'skipped'     => (bool)($result['skipped'] ?? false),
                     'code_length' => strlen($newCode),
                 ]);
             } catch (\Throwable $e) {
+                if ($filePath === 'app/service/DictService.php') {
+                    $this->stats['dict_patch_failed']++;
+                }
+                Log::warning("[CodeGenParser] PATCH_FILE 执行失败: {$filePath} @ {$methodName}, err={$e->getMessage()}");
                 ($this->onChunk)('file_patched', [
                     'path'    => $filePath,
                     'method'  => $methodName,
@@ -540,7 +552,7 @@ class CodeGenParser
     /**
      * 执行增量修改：在指定方法之前插入代码
      */
-    private function executePatchFile(string $relativePath, string $beforeMethod, string $newCode): void
+    private function executePatchFile(string $relativePath, string $beforeMethod, string $newCode): array
     {
         // 路径穿越检测
         if (str_contains($relativePath, '..')) {
@@ -566,6 +578,22 @@ class CodeGenParser
         }
 
         $content = file_get_contents($fullPath);
+
+        // 若补丁中的方法已全部存在，直接跳过，避免重复插入导致语法冲突
+        $newMethodNames = $this->extractMethodNames($newCode);
+        if (!empty($newMethodNames)) {
+            $allExists = true;
+            foreach ($newMethodNames as $methodName) {
+                $existsPattern = '/(?:public|private|protected)\s+(?:static\s+)?function\s+' . preg_quote($methodName, '/') . '\s*\(/m';
+                if (!preg_match($existsPattern, $content)) {
+                    $allExists = false;
+                    break;
+                }
+            }
+            if ($allExists) {
+                return ['added' => 0, 'skipped' => 1];
+            }
+        }
 
         // 查找目标方法位置（可包含紧邻的 docblock）
         $pattern = '/^[ \t]*(?:\/\*\*[\s\S]*?\*\/\s*\R)?[ \t]*(?:public|private|protected)\s+(?:static\s+)?function\s+'
@@ -596,6 +624,7 @@ class CodeGenParser
             throw $e;
         }
         Log::info("[CodeGenParser] 增量修改文件: {$relativePath}，在 {$beforeMethod} 方法前插入代码");
+        return ['added' => 1, 'skipped' => 0];
     }
 
     private function getFullPath(string $relativePath): string
@@ -638,5 +667,18 @@ class CodeGenParser
     private function normalizeRouteLine(string $line): string
     {
         return (string)preg_replace('/\s+/', '', $line);
+    }
+
+    /**
+     * 提取代码片段内声明的方法名（用于补丁去重）
+     * @return string[]
+     */
+    private function extractMethodNames(string $code): array
+    {
+        preg_match_all('/(?:public|private|protected)\s+(?:static\s+)?function\s+(\w+)\s*\(/', $code, $matches);
+        if (empty($matches[1])) {
+            return [];
+        }
+        return array_values(array_unique($matches[1]));
     }
 }

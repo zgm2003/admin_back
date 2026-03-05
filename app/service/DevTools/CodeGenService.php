@@ -142,6 +142,9 @@ class CodeGenService
                 'routes_patch_added' => 0,
                 'routes_patch_skipped' => 0,
                 'routes_patch_failed' => 0,
+                'dict_patch_added' => 0,
+                'dict_patch_skipped' => 0,
+                'dict_patch_failed' => 0,
             ];
             $qualityGatePassed = (bool)($codeResult['quality_gate_passed'] ?? true);
             $qualityIssues = $codeResult['quality_issues'] ?? [];
@@ -173,6 +176,9 @@ class CodeGenService
                 'routes_patch_added' => (int)($parseStats['routes_patch_added'] ?? 0),
                 'routes_patch_skipped' => (int)($parseStats['routes_patch_skipped'] ?? 0),
                 'routes_patch_failed' => (int)($parseStats['routes_patch_failed'] ?? 0),
+                'dict_patch_added' => (int)($parseStats['dict_patch_added'] ?? 0),
+                'dict_patch_skipped' => (int)($parseStats['dict_patch_skipped'] ?? 0),
+                'dict_patch_failed' => (int)($parseStats['dict_patch_failed'] ?? 0),
                 'quality_gate_passed' => $qualityGatePassed,
                 'quality_issues' => $qualityIssues,
             ], 0, 0, '');
@@ -497,6 +503,19 @@ class CodeGenService
 
         if ((int)($parseStats['routes_patch_failed'] ?? 0) > 0) {
             $issues[] = 'routes/admin.php 路由补丁执行失败';
+        }
+
+        $hasDictPatchBlock = (bool)preg_match('/```php:PATCH_FILE:app\/service\/DictService\.php:BEFORE_METHOD:\w+\s*\r?\n[\s\S]*?```/i', $content);
+        if ($hasDictPatchBlock) {
+            $dictAdded = (int)($parseStats['dict_patch_added'] ?? 0);
+            $dictSkipped = (int)($parseStats['dict_patch_skipped'] ?? 0);
+            $dictFailed = (int)($parseStats['dict_patch_failed'] ?? 0);
+
+            if ($dictFailed > 0) {
+                $issues[] = 'DictService 补丁执行失败';
+            } elseif (($dictAdded + $dictSkipped) <= 0) {
+                $issues[] = 'DictService 补丁未生效';
+            }
         }
 
         return [
