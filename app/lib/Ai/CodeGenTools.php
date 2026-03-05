@@ -5,18 +5,17 @@ namespace app\lib\Ai;
 use app\dep\DevTools\GenDep;
 
 /**
- * 代码生成专用工具集
- * 注册在 ToolExecutor::$internalTools 中，供研究员 Agent 调用
+ * 浠ｇ爜鐢熸垚涓撶敤宸ュ叿闆? * 娉ㄥ唽鍦?ToolExecutor::$internalTools 涓紝渚涚爺绌跺憳 Agent 璋冪敤
  */
 class CodeGenTools
 {
-    /** 忽略的系统表 */
+    /** 蹇界暐鐨勭郴缁熻〃 */
     private const IGNORE_TABLES = [
         'migrations', 'failed_jobs', 'password_resets', 'personal_access_tokens',
     ];
 
     /**
-     * 列出数据库所有表
+     * 鍒楀嚭鏁版嵁搴撴墍鏈夎〃
      */
     public static function listTables(array $inputs): string
     {
@@ -24,8 +23,8 @@ class CodeGenTools
         $tables = (new GenDep())->getTables();
 
         // 过滤系统表
-        $tables = array_filter($tables, fn($t) => !in_array($t['table_name'], self::IGNORE_TABLES));
 
+        $tables = array_filter($tables, fn($t) => !in_array($t['table_name'], self::IGNORE_TABLES));
         // 关键词过滤
         if (!empty($keyword)) {
             $tables = array_filter($tables, fn($t) => str_contains($t['table_name'], $keyword));
@@ -35,18 +34,18 @@ class CodeGenTools
     }
 
     /**
-     * 获取指定表的字段结构
+     * 鑾峰彇鎸囧畾琛ㄧ殑瀛楁缁撴瀯
      */
     public static function getColumns(array $inputs): string
     {
         $tableName = $inputs['table_name'] ?? '';
         if (empty($tableName)) {
-            return '参数缺失: table_name';
+            return '鍙傛暟缂哄け: table_name';
         }
 
         $dep = new GenDep();
         if (!$dep->tableExists($tableName)) {
-            return "表不存在: {$tableName}";
+            return "琛ㄤ笉瀛樺湪: {$tableName}";
         }
 
         $columns = $dep->getColumns($tableName);
@@ -54,7 +53,7 @@ class CodeGenTools
     }
 
     /**
-     * 读取项目编码规范
+     * 璇诲彇椤圭洰缂栫爜瑙勮寖
      */
     public static function readConvention(array $inputs): string
     {
@@ -82,25 +81,25 @@ class CodeGenTools
 
         $file = $fileMap[$type] ?? null;
         if (!$file) {
-            return "未知的规范类型: {$type}，可选: php / vue / db / structure / all";
+            return "鏈煡鐨勮鑼冪被鍨? {$type}锛屽彲閫? php / vue / db / structure / all";
         }
 
         $path = $steeringDir . '/' . $file;
         if (!file_exists($path)) {
-            return "规范文件不存在: {$file}";
+            return "瑙勮寖鏂囦欢涓嶅瓨鍦? {$file}";
         }
 
         $content = file_get_contents($path);
-        // 截断至 8000 字符以控制 Token
+        // 鎴柇鑷?8000 瀛楃浠ユ帶鍒?Token
         if (mb_strlen($content) > 8000) {
-            $content = mb_substr($content, 0, 8000) . "\n\n...[截断，完整内容请参考项目文件]";
+            $content = mb_substr($content, 0, 8000) . "\n\n...[鎴柇锛屽畬鏁村唴瀹硅鍙傝€冮」鐩枃浠禲";
         }
 
         return $content;
     }
 
     /**
-     * 读取示例代码
+     * 璇诲彇绀轰緥浠ｇ爜
      */
     public static function readExample(array $inputs): string
     {
@@ -108,18 +107,20 @@ class CodeGenTools
         $domain = $inputs['domain'] ?? '';
         $name   = $inputs['name'] ?? '';
 
-        // 安全校验：domain 和 name 必须是大驼峰格式，防止路径穿越
+        // 安全校验：domain/name 必须是大驼峰，防止路径穿越
+
         if (!empty($domain) && !preg_match('/^[A-Z][a-zA-Z0-9]*$/', $domain)) {
-            return "domain 格式非法（必须大驼峰）: {$domain}";
+            return "domain 鏍煎紡闈炴硶锛堝繀椤诲ぇ椹煎嘲锛? {$domain}";
         }
         if (!empty($name) && !preg_match('/^[A-Z][a-zA-Z0-9]*$/', $name)) {
-            return "name 格式非法（必须大驼峰）: {$name}";
+            return "name 鏍煎紡闈炴硶锛堝繀椤诲ぇ椹煎嘲锛? {$name}";
         }
 
         $backendBase  = base_path();
         $frontendBase = dirname($backendBase) . '/admin_front_ts';
 
         // 默认示例映射（含前端）
+
         $defaultExamples = [
             'controller' => [$backendBase, 'app/controller/Ai/AiAgentsController.php'],
             'module'     => [$backendBase, 'app/module/Ai/AiAgentsModule.php'],
@@ -131,10 +132,11 @@ class CodeGenTools
         ];
 
         if (!isset($defaultExamples[$layer])) {
-            return "未知的层级: {$layer}，可选: controller / module / dep / model / validate / vue / api";
+            return "鏈煡鐨勫眰绾? {$layer}锛屽彲閫? controller / module / dep / model / validate / vue / api";
         }
 
-        // 如果指定了 domain + name，尝试定位具体文件
+        // 如果指定了 domain+name，尝试定位具体文件
+
         if (!empty($domain) && !empty($name)) {
             $pathMap = [
                 'controller' => [$backendBase, "app/controller/{$domain}/{$name}Controller.php"],
@@ -159,57 +161,59 @@ class CodeGenTools
         }
 
         if (!file_exists($path)) {
-            return "示例文件不存在: {$relativePath}";
+            return "绀轰緥鏂囦欢涓嶅瓨鍦? {$relativePath}";
         }
 
         $content = file_get_contents($path);
         if (mb_strlen($content) > 5000) {
-            $content = mb_substr($content, 0, 5000) . "\n\n...[截断]";
+            $content = mb_substr($content, 0, 5000) . "\n\n...[鎴柇]";
         }
 
         return $content;
     }
 
     /**
-     * 获取表的完整 CREATE TABLE DDL（含索引、约束等）
-     * 用于修改已有表时了解完整结构
+     * 鑾峰彇琛ㄧ殑瀹屾暣 CREATE TABLE DDL锛堝惈绱㈠紩銆佺害鏉熺瓑锛?     * 鐢ㄤ簬淇敼宸叉湁琛ㄦ椂浜嗚В瀹屾暣缁撴瀯
      */
     public static function showCreateTable(array $inputs): string
     {
         $tableName = $inputs['table_name'] ?? '';
         if (empty($tableName)) {
-            return '参数缺失: table_name';
+            return '鍙傛暟缂哄け: table_name';
         }
 
-        // 安全校验：表名只允许 snake_case
+        // 瀹夊叏鏍￠獙锛氳〃鍚嶅彧鍏佽 snake_case
         if (!preg_match('/^[a-z][a-z0-9_]*$/', $tableName)) {
-            return "表名格式非法: {$tableName}";
+            return "琛ㄥ悕鏍煎紡闈炴硶: {$tableName}";
         }
 
         $dep = new GenDep();
         if (!$dep->tableExists($tableName)) {
-            return "表不存在: {$tableName}";
+            return "琛ㄤ笉瀛樺湪: {$tableName}";
         }
 
         try {
             $result = \support\Db::select("SHOW CREATE TABLE `{$tableName}`");
             if (!empty($result)) {
                 $row = (array)$result[0];
-                return $row['Create Table'] ?? '无法获取建表语句';
+                return $row['Create Table'] ?? '鏃犳硶鑾峰彇寤鸿〃璇彞';
             }
-            return '无法获取建表语句';
+            return '鏃犳硶鑾峰彇寤鸿〃璇彞';
         } catch (\Throwable $e) {
-            return "查询失败: {$e->getMessage()}";
+            return "鏌ヨ澶辫触: {$e->getMessage()}";
         }
     }
 
     /**
-     * 列出目录下的文件
+     * 鍒楀嚭鐩綍涓嬬殑鏂囦欢
      */
     public static function listFiles(array $inputs): string
     {
         $directory = $inputs['directory'] ?? '';
         $project   = $inputs['project'] ?? 'backend';
+
+        $directory = str_replace('\\', '/', trim((string)$directory));
+        $directory = trim($directory, '/');
 
         if (empty($directory)) {
             return '参数缺失: directory';
@@ -242,13 +246,47 @@ class CodeGenTools
 
         $fullPath = $basePath . '/' . $directory;
         if (!is_dir($fullPath)) {
-            return "目录不存在: {$directory}";
+            // 目标目录尚未创建时，返回父目录内容，便于 AI 继续规划新模块
+            $parentDir = str_replace('\\', '/', dirname($directory));
+            $parentDir = $parentDir === '.' ? '' : trim($parentDir, '/');
+            $parentFullPath = $parentDir === '' ? $basePath : ($basePath . '/' . $parentDir);
+
+            if (is_dir($parentFullPath)) {
+                $parentItems = scandir($parentFullPath);
+                $parentList = [];
+                foreach ($parentItems as $item) {
+                    if ($item === '.' || $item === '..') {
+                        continue;
+                    }
+                    $itemPath = $parentFullPath . '/' . $item;
+                    $parentList[] = [
+                        'name' => $item,
+                        'type' => is_dir($itemPath) ? 'directory' : 'file',
+                    ];
+                }
+
+                return json_encode([
+                    'exists'       => false,
+                    'directory'    => $directory,
+                    'message'      => "目录不存在。可在父目录下创建 {$directory}",
+                    'parent'       => $parentDir === '' ? '/' : $parentDir,
+                    'parent_items' => $parentList,
+                ], JSON_UNESCAPED_UNICODE);
+            }
+
+            return json_encode([
+                'exists'    => false,
+                'directory' => $directory,
+                'message'   => "目录不存在: {$directory}",
+            ], JSON_UNESCAPED_UNICODE);
         }
 
         $items = scandir($fullPath);
         $result = [];
         foreach ($items as $item) {
-            if ($item === '.' || $item === '..') continue;
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
             $itemPath = $fullPath . '/' . $item;
             $result[] = [
                 'name' => $item,
@@ -259,3 +297,6 @@ class CodeGenTools
         return json_encode($result, JSON_UNESCAPED_UNICODE);
     }
 }
+
+
+

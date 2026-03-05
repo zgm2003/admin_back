@@ -12,8 +12,8 @@ use NeuronAI\Providers\Deepseek\Deepseek;
 use NeuronAI\Providers\Gemini\Gemini;
 use NeuronAI\Providers\Mistral\Mistral;
 use NeuronAI\Providers\Ollama\Ollama;
-use NeuronAI\Providers\OpenAI\OpenAI;
 use NeuronAI\Providers\OpenAILike;
+use NeuronAI\Providers\OpenAILikeResponses;
 use NeuronAI\Providers\XAI\Grok;
 use RuntimeException;
 use support\Log;
@@ -66,7 +66,12 @@ class NeuronAgentFactory
         try {
             $provider = match ($driver) {
                 // ---- Neuron AI 原生 Provider ----
-                AiEnum::DRIVER_OPENAI   => new OpenAI(key: $apiKey, model: $modelCode, parameters: $parameters),
+                AiEnum::DRIVER_OPENAI   => new OpenAILikeResponses(
+                    baseUri: !empty($endpoint) ? rtrim($endpoint, '/') : 'https://api.openai.com/v1',
+                    key: $apiKey,
+                    model: $modelCode,
+                    parameters: $parameters,
+                ),
                 AiEnum::DRIVER_DEEPSEEK => new Deepseek(key: $apiKey, model: $modelCode, parameters: $parameters),
                 AiEnum::DRIVER_CLAUDE   => new Anthropic(key: $apiKey, model: $modelCode, parameters: $parameters),
                 AiEnum::DRIVER_GEMINI   => new Gemini(key: $apiKey, model: $modelCode, parameters: $parameters),
@@ -87,7 +92,7 @@ class NeuronAgentFactory
 
         // 如果原生 Provider 配置了自定义 endpoint，用 OpenAILike 替代
         $nativeWithEndpoint = [
-            AiEnum::DRIVER_OPENAI, AiEnum::DRIVER_DEEPSEEK,
+            AiEnum::DRIVER_DEEPSEEK,
             AiEnum::DRIVER_GROK, AiEnum::DRIVER_MISTRAL,
         ];
         if (!empty($endpoint) && \in_array($driver, $nativeWithEndpoint, true)) {

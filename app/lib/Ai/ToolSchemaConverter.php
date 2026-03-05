@@ -28,8 +28,24 @@ class ToolSchemaConverter
             properties: $properties,
         );
 
-        $tool->setCallable(function (mixed ...$args) use ($toolRecord, $tool) {
-            return ToolExecutor::execute($toolRecord, $tool->getInputs());
+        // Neuron 在执行工具时会 clone Tool，再把输入参数写到 clone 上。
+        // 这里不能再读取外层 $tool->getInputs()，否则会拿到空参数。
+        $propertyNames = array_map(fn(ToolProperty $p) => $p->getName(), $properties);
+        $tool->setCallable(function (mixed ...$args) use ($toolRecord, $propertyNames) {
+            $inputs = [];
+            foreach ($args as $key => $value) {
+                if (is_string($key)) {
+                    // PHP 8 下，展开字符串键数组会作为命名参数传入
+                    $inputs[$key] = $value;
+                    continue;
+                }
+
+                if (isset($propertyNames[$key])) {
+                    $inputs[$propertyNames[$key]] = $value;
+                }
+            }
+
+            return ToolExecutor::execute($toolRecord, $inputs);
         });
 
         return $tool;
