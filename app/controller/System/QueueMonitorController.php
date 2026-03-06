@@ -1,14 +1,11 @@
 <?php
 
-namespace app\controller\DevTools;
+namespace app\controller\System;
 
 use app\controller\Controller;
-use app\module\DevTools\QueueMonitorModule;
+use app\module\System\QueueMonitorModule;
 use support\Request;
 
-/**
- * 队列监控控制器
- */
 class QueueMonitorController extends Controller
 {
     public function list(Request $request) { return $this->run([QueueMonitorModule::class, 'list'], $request); }

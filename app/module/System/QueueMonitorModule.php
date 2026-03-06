@@ -1,10 +1,10 @@
 <?php
 
-namespace app\module\DevTools;
+namespace app\module\System;
 
 use app\module\BaseModule;
 use app\service\System\SettingService;
-use app\validate\DevTools\QueueMonitorValidate;
+use app\validate\System\QueueMonitorValidate;
 use support\Redis;
 
 /**
@@ -21,7 +21,8 @@ class QueueMonitorModule extends BaseModule
     private const WAITING_PREFIX = '{redis-queue}-waiting';
     private const DELAYED_KEY    = '{redis-queue}-delayed';
     private const FAILED_KEY     = '{redis-queue}-failed';
-    private const SETTING_KEY_QUEUES = 'devtools_queue_monitor_queues';
+    private const SETTING_KEY_QUEUES = 'system_queue_monitor_queues';
+    private const LEGACY_SETTING_KEY_QUEUES = 'devtools_queue_monitor_queues';
 
     /**
      * 队列配置默认值（仅作兜底，优先读系统设置 JSON：devtools_queue_monitor_queues）
@@ -209,7 +210,10 @@ class QueueMonitorModule extends BaseModule
             return $this->queues;
         }
 
-        $cfg = SettingService::get(self::SETTING_KEY_QUEUES, null);
+        $cfg = SettingService::get(
+            self::SETTING_KEY_QUEUES,
+            SettingService::get(self::LEGACY_SETTING_KEY_QUEUES, null)
+        );
         $queues = \is_array($cfg) ? $this->normalizeQueues($cfg) : [];
 
         $this->queues = $queues ?: self::DEFAULT_QUEUES;

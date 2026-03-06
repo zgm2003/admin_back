@@ -203,11 +203,11 @@ Route::group('/api/admin', function () {
     Route::post('/Ai/GenAi/stream', [controller\Ai\GenAiController::class, 'stream']);
 
     // 队列监控
-    Route::post('/DevTools/QueueMonitor/list', [controller\DevTools\QueueMonitorController::class, 'list']);
-    Route::post('/DevTools/QueueMonitor/failedList', [controller\DevTools\QueueMonitorController::class, 'failedList']);
-    Route::post('/DevTools/QueueMonitor/retry', [controller\DevTools\QueueMonitorController::class, 'retry']);
-    Route::post('/DevTools/QueueMonitor/clear', [controller\DevTools\QueueMonitorController::class, 'clear']);
-    Route::post('/DevTools/QueueMonitor/clearFailed', [controller\DevTools\QueueMonitorController::class, 'clearFailed']);
+    Route::post('/QueueMonitor/list', [controller\System\QueueMonitorController::class, 'list']);
+    Route::post('/QueueMonitor/failedList', [controller\System\QueueMonitorController::class, 'failedList']);
+    Route::post('/QueueMonitor/retry', [controller\System\QueueMonitorController::class, 'retry']);
+    Route::post('/QueueMonitor/clear', [controller\System\QueueMonitorController::class, 'clear']);
+    Route::post('/QueueMonitor/clearFailed', [controller\System\QueueMonitorController::class, 'clearFailed']);
 
     // 导出任务管理
     Route::post('/DevTools/ExportTask/statusCount', [controller\DevTools\ExportTaskController::class, 'statusCount']);
