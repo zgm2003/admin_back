@@ -125,13 +125,6 @@ Route::group('/api/admin', function () {
     Route::post('/SystemSetting/list', [controller\System\SystemSettingController::class, 'list']);
     Route::post('/SystemSetting/status', [controller\System\SystemSettingController::class, 'status']);
 
-    // Test - 测试
-    Route::post('/System/Test/init', [controller\System\TestController::class, 'init']);
-    Route::post('/System/Test/list', [controller\System\TestController::class, 'list']);
-    Route::post('/System/Test/add', [controller\System\TestController::class, 'add']);
-    Route::post('/System/Test/edit', [controller\System\TestController::class, 'edit']);
-    Route::post('/System/Test/del', [controller\System\TestController::class, 'del']);
-
     // AI 模型配置
     Route::post('/AiModels/init', [controller\Ai\AiModelsController::class, 'init']);
     Route::post('/AiModels/list', [controller\Ai\AiModelsController::class, 'list']);
