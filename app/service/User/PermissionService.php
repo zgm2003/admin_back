@@ -6,7 +6,7 @@ use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 
 /**
  * 权限计算服务

@@ -4,7 +4,7 @@ namespace app\module\User;
 
 use app\dep\User\UserSessionsDep;
 use app\module\BaseModule;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use app\service\User\SessionService;
 use app\validate\User\UserSessionValidate;
 

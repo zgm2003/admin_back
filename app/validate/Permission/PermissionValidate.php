@@ -5,7 +5,7 @@ namespace app\validate\Permission;
 use Respect\Validation\Validator as v;
 use app\enum\PermissionEnum;
 use app\enum\CommonEnum;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 
 class PermissionValidate
 {

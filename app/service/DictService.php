@@ -16,7 +16,7 @@ use app\enum\NotificationEnum;
 use app\enum\PermissionEnum;
 use app\enum\SystemEnum;
 use app\enum\UploadConfigEnum;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use support\Cache;
 
 /**

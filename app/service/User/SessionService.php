@@ -6,7 +6,7 @@ use app\dep\User\UserSessionsDep;
 use app\enum\CacheTTLEnum;
 use app\enum\CommonEnum;
 use app\exception\BusinessException;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use Carbon\Carbon;
 use support\Redis;
 

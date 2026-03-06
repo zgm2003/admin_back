@@ -1,8 +1,8 @@
 <?php
 
-namespace app\service\System;
+namespace app\service\Permission;
 
-use app\dep\System\AuthPlatformDep;
+use app\dep\Permission\AuthPlatformDep;
 use app\enum\CommonEnum;
 use app\exception\BusinessException;
 

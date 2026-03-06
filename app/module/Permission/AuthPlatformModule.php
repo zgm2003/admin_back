@@ -1,12 +1,12 @@
 <?php
 
-namespace app\module\System;
+namespace app\module\Permission;
 
-use app\dep\System\AuthPlatformDep;
+use app\dep\Permission\AuthPlatformDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\validate\System\AuthPlatformValidate;
+use app\validate\Permission\AuthPlatformValidate;
 
 /**
  * 认证平台模块

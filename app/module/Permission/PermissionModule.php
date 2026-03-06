@@ -6,7 +6,7 @@ use app\dep\Permission\PermissionDep;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use app\validate\Permission\PermissionValidate;
 use support\Redis;
 

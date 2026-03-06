@@ -2,7 +2,7 @@
 
 namespace app\service\User;
 
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use Carbon\Carbon;
 
 class TokenService

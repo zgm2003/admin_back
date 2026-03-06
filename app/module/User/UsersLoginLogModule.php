@@ -7,7 +7,7 @@ use app\dep\User\UsersDep;
 use app\module\BaseModule;
 use app\service\DictService;
 use app\enum\SystemEnum;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use app\validate\User\UsersLoginLogValidate;
 
 /**

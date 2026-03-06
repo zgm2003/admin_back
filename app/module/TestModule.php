@@ -3,7 +3,7 @@
 namespace app\module;
 
 use app\dep\System\SystemSettingDep;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use app\service\System\SettingService;
 
 /**

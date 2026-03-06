@@ -7,7 +7,7 @@ use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use app\validate\Permission\RoleValidate;
 use support\Cache;
 

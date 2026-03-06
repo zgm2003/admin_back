@@ -5,7 +5,7 @@ namespace app\middleware;
 use app\dep\User\UserSessionsDep;
 use app\enum\ErrorCodeEnum;
 use app\enum\CacheTTLEnum;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use app\service\User\TokenService;
 use Carbon\Carbon;
 use support\Redis;

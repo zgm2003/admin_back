@@ -110,12 +110,12 @@ Route::group('/api/admin', function () {
     Route::post('/UploadSetting/status', [controller\System\UploadSettingController::class, 'status']);
 
     //认证平台管理
-    Route::post('/AuthPlatform/init', [controller\System\AuthPlatformController::class, 'init']);
-    Route::post('/AuthPlatform/list', [controller\System\AuthPlatformController::class, 'list']);
-    Route::post('/AuthPlatform/add', [controller\System\AuthPlatformController::class, 'add']);
-    Route::post('/AuthPlatform/edit', [controller\System\AuthPlatformController::class, 'edit']);
-    Route::post('/AuthPlatform/del', [controller\System\AuthPlatformController::class, 'del']);
-    Route::post('/AuthPlatform/status', [controller\System\AuthPlatformController::class, 'status']);
+    Route::post('/AuthPlatform/init', [controller\Permission\AuthPlatformController::class, 'init']);
+    Route::post('/AuthPlatform/list', [controller\Permission\AuthPlatformController::class, 'list']);
+    Route::post('/AuthPlatform/add', [controller\Permission\AuthPlatformController::class, 'add']);
+    Route::post('/AuthPlatform/edit', [controller\Permission\AuthPlatformController::class, 'edit']);
+    Route::post('/AuthPlatform/del', [controller\Permission\AuthPlatformController::class, 'del']);
+    Route::post('/AuthPlatform/status', [controller\Permission\AuthPlatformController::class, 'status']);
 
     //系统设置（统一接口命名）
     Route::post('/SystemSetting/init', [controller\System\SystemSettingController::class, 'init']);

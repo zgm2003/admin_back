@@ -1,11 +1,11 @@
 <?php
 
-namespace app\dep\System;
+namespace app\dep\Permission;
 
 use app\dep\BaseDep;
 use app\enum\CommonEnum;
-use app\model\System\AuthPlatformModel;
-use app\service\System\AuthPlatformService;
+use app\model\Permission\AuthPlatformModel;
+use app\service\Permission\AuthPlatformService;
 use support\Cache;
 use support\Model;
 
@@ -130,16 +130,18 @@ class AuthPlatformDep extends BaseDep
 
     public function updateById(int $id, array $data, ?string $oldCode = null): bool
     {
-        $count = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->update($data);
-        if ($count > 0) {
-            if ($oldCode) {
-                $this->clearCache($oldCode);
-            }
-            if (!empty($data['code'])) {
-                $this->clearCache($data['code']);
-            }
+        $exists = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->exists();
+        if (!$exists) {
+            return false;
         }
-        return $count > 0;
+        $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->update($data);
+        if ($oldCode) {
+            $this->clearCache($oldCode);
+        }
+        if (!empty($data['code'])) {
+            $this->clearCache($data['code']);
+        }
+        return true;
     }
 
     public function deleteByIds($ids): bool

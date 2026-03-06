@@ -8,7 +8,7 @@ use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
-use app\service\System\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use app\service\System\SettingService;
 use app\service\User\SessionService;
 use app\service\User\VerifyCodeService;

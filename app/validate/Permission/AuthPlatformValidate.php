@@ -1,6 +1,6 @@
 <?php
 
-namespace app\validate\System;
+namespace app\validate\Permission;
 
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
