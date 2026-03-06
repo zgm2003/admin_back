@@ -72,10 +72,10 @@ Route::group('/api/admin', function () {
     Route::post('/UserSession/batchKick', [controller\User\UserSessionController::class, 'batchKick']);
 
     //操作日志管理
-    Route::post('/DevTools/OperationLog/init', [controller\DevTools\OperationLogController::class, 'init']);
-    Route::post('/DevTools/OperationLog/list', [controller\DevTools\OperationLogController::class, 'list']);
-    Route::post('/DevTools/OperationLog/listCursor', [controller\DevTools\OperationLogController::class, 'listCursor']);
-    Route::post('/DevTools/OperationLog/del', [controller\DevTools\OperationLogController::class, 'del']);
+    Route::post('/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
+    Route::post('/OperationLog/list', [controller\System\OperationLogController::class, 'list']);
+    Route::post('/OperationLog/listCursor', [controller\System\OperationLogController::class, 'listCursor']);
+    Route::post('/OperationLog/del', [controller\System\OperationLogController::class, 'del']);
 
     //用户登录日志管理
     Route::post('/UsersLoginLog/init', [controller\User\UsersLoginLogController::class, 'init']);

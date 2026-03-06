@@ -1,11 +1,11 @@
 <?php
 
-namespace app\module\DevTools;
+namespace app\module\System;
 
-use app\dep\DevTools\OperationLogDep;
+use app\dep\System\OperationLogDep;
 use app\dep\User\UsersDep;
 use app\module\BaseModule;
-use app\validate\DevTools\OperationLogValidate;
+use app\validate\System\OperationLogValidate;
 
 /**
  * 操作日志模块

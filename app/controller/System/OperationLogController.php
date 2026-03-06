@@ -1,9 +1,9 @@
 <?php
 
-namespace app\controller\DevTools;
+namespace app\controller\System;
 
 use app\controller\Controller;
-use app\module\DevTools\OperationLogModule;
+use app\module\System\OperationLogModule;
 use support\Request;
 
 class OperationLogController extends Controller
