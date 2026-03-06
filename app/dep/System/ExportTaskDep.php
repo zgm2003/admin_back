@@ -1,11 +1,11 @@
 <?php
 
-namespace app\dep\DevTools;
+namespace app\dep\System;
 
 use app\dep\BaseDep;
 use app\enum\CommonEnum;
 use app\enum\ExportTaskEnum;
-use app\model\DevTools\ExportTaskModel;
+use app\model\System\ExportTaskModel;
 use support\Model;
 
 class ExportTaskDep extends BaseDep

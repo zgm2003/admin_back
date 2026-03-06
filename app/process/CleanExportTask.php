@@ -2,7 +2,7 @@
 
 namespace app\process;
 
-use app\dep\DevTools\ExportTaskDep;
+use app\dep\System\ExportTaskDep;
 
 /**
  * 清理过期导出任务

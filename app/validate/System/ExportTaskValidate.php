@@ -1,6 +1,6 @@
 <?php
 
-namespace app\validate\DevTools;
+namespace app\validate\System;
 
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;

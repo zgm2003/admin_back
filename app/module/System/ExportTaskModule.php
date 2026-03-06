@@ -1,11 +1,11 @@
 <?php
 
-namespace app\module\DevTools;
+namespace app\module\System;
 
-use app\dep\DevTools\ExportTaskDep;
+use app\dep\System\ExportTaskDep;
 use app\enum\ExportTaskEnum;
 use app\module\BaseModule;
-use app\validate\DevTools\ExportTaskValidate;
+use app\validate\System\ExportTaskValidate;
 
 /**
  * 导出任务管理模块

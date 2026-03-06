@@ -2,7 +2,7 @@
 
 namespace app\queue\redis\slow;
 
-use app\dep\DevTools\ExportTaskDep;
+use app\dep\System\ExportTaskDep;
 use app\service\ExportService;
 use app\enum\NotificationEnum;
 use app\service\System\NotificationService;
@@ -30,7 +30,7 @@ class ExportTask implements Consumer
         
         NotificationService::sendUrgent($userId, $title . ' - 导出完成', '点击查看导出文件', [
             'type' => NotificationEnum::TYPE_SUCCESS,
-            'link' => '/devTools/exportTask?status=2',
+            'link' => '/system/exportTask?status=2',
             'platform' => $platform, // 只推送到发起导出的平台
         ]);
         $this->log('导出成功', ['task_id' => $taskId, 'url' => $result['url']]);
@@ -54,7 +54,7 @@ class ExportTask implements Consumer
                 '导出任务失败，请重试',
                 [
                     'type' => NotificationEnum::TYPE_ERROR,
-                    'link' => '/devTools/exportTask?status=3',
+                    'link' => '/system/exportTask?status=3',
                     'platform' => $platform,
                 ]
             );

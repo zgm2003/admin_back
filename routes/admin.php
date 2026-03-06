@@ -203,10 +203,10 @@ Route::group('/api/admin', function () {
     Route::post('/QueueMonitor/clearFailed', [controller\System\QueueMonitorController::class, 'clearFailed']);
 
     // 导出任务管理
-    Route::post('/DevTools/ExportTask/statusCount', [controller\DevTools\ExportTaskController::class, 'statusCount']);
-    Route::post('/DevTools/ExportTask/list', [controller\DevTools\ExportTaskController::class, 'list']);
-    Route::post('/DevTools/ExportTask/del', [controller\DevTools\ExportTaskController::class, 'del']);
-    Route::post('/DevTools/ExportTask/batchDel', [controller\DevTools\ExportTaskController::class, 'batchDel']);
+    Route::post('/ExportTask/statusCount', [controller\System\ExportTaskController::class, 'statusCount']);
+    Route::post('/ExportTask/list', [controller\System\ExportTaskController::class, 'list']);
+    Route::post('/ExportTask/del', [controller\System\ExportTaskController::class, 'del']);
+    Route::post('/ExportTask/batchDel', [controller\System\ExportTaskController::class, 'batchDel']);
 
     // 定时任务管理
     Route::post('/DevTools/CronTask/init', [controller\DevTools\CronTaskController::class, 'init']);

@@ -2,7 +2,7 @@
 
 namespace app\module\User;
 
-use app\dep\DevTools\ExportTaskDep;
+use app\dep\System\ExportTaskDep;
 use app\dep\Permission\RoleDep;
 use app\dep\User\UsersDep;
 use app\dep\User\UserProfileDep;
