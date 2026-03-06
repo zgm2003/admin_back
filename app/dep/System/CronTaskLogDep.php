@@ -1,9 +1,9 @@
 <?php
 
-namespace app\dep\DevTools;
+namespace app\dep\System;
 
 use app\dep\BaseDep;
-use app\model\DevTools\CronTaskLogModel;
+use app\model\System\CronTaskLogModel;
 use Carbon\Carbon;
 use support\Model;
 

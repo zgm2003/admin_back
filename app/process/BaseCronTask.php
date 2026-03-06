@@ -2,8 +2,8 @@
 
 namespace app\process;
 
-use app\dep\DevTools\CronTaskDep;
-use app\dep\DevTools\CronTaskLogDep;
+use app\dep\System\CronTaskDep;
+use app\dep\System\CronTaskLogDep;
 use Workerman\Crontab\Crontab;
 
 /**

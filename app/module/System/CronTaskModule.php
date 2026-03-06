@@ -1,13 +1,13 @@
 <?php
 
-namespace app\module\DevTools;
+namespace app\module\System;
 
-use app\dep\DevTools\CronTaskDep;
-use app\dep\DevTools\CronTaskLogDep;
+use app\dep\System\CronTaskDep;
+use app\dep\System\CronTaskLogDep;
 use app\module\BaseModule;
 use app\enum\CommonEnum;
 use app\service\DictService;
-use app\validate\DevTools\CronTaskValidate;
+use app\validate\System\CronTaskValidate;
 
 /**
  * 定时任务管理模块

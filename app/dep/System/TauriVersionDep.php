@@ -1,9 +1,9 @@
 <?php
 
-namespace app\dep\DevTools;
+namespace app\dep\System;
 
 use app\dep\BaseDep;
-use app\model\DevTools\TauriVersionModel;
+use app\model\System\TauriVersionModel;
 use app\enum\CommonEnum;
 use support\Model;
 

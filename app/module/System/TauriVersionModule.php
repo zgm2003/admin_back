@@ -1,12 +1,12 @@
 <?php
 
-namespace app\module\DevTools;
+namespace app\module\System;
 
-use app\dep\DevTools\TauriVersionDep;
+use app\dep\System\TauriVersionDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\DictService;
-use app\validate\DevTools\TauriVersionValidate;
+use app\validate\System\TauriVersionValidate;
 
 /**
  * Tauri 桌面客户端版本管理模块

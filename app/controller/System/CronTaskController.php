@@ -1,9 +1,9 @@
 <?php
 
-namespace app\controller\DevTools;
+namespace app\controller\System;
 
 use app\controller\Controller;
-use app\module\DevTools\CronTaskModule;
+use app\module\System\CronTaskModule;
 use support\Request;
 
 /**

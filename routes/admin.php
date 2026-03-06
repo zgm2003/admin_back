@@ -209,23 +209,23 @@ Route::group('/api/admin', function () {
     Route::post('/ExportTask/batchDel', [controller\System\ExportTaskController::class, 'batchDel']);
 
     // 定时任务管理
-    Route::post('/DevTools/CronTask/init', [controller\DevTools\CronTaskController::class, 'init']);
-    Route::post('/DevTools/CronTask/list', [controller\DevTools\CronTaskController::class, 'list']);
-    Route::post('/DevTools/CronTask/add', [controller\DevTools\CronTaskController::class, 'add']);
-    Route::post('/DevTools/CronTask/edit', [controller\DevTools\CronTaskController::class, 'edit']);
-    Route::post('/DevTools/CronTask/del', [controller\DevTools\CronTaskController::class, 'del']);
-    Route::post('/DevTools/CronTask/status', [controller\DevTools\CronTaskController::class, 'status']);
-    Route::post('/DevTools/CronTask/logs', [controller\DevTools\CronTaskController::class, 'logs']);
+    Route::post('/CronTask/init', [controller\System\CronTaskController::class, 'init']);
+    Route::post('/CronTask/list', [controller\System\CronTaskController::class, 'list']);
+    Route::post('/CronTask/add', [controller\System\CronTaskController::class, 'add']);
+    Route::post('/CronTask/edit', [controller\System\CronTaskController::class, 'edit']);
+    Route::post('/CronTask/del', [controller\System\CronTaskController::class, 'del']);
+    Route::post('/CronTask/status', [controller\System\CronTaskController::class, 'status']);
+    Route::post('/CronTask/logs', [controller\System\CronTaskController::class, 'logs']);
 
     // Tauri 版本管理
-    Route::post('/DevTools/TauriVersion/init', [controller\DevTools\TauriVersionController::class, 'init']);
-    Route::post('/DevTools/TauriVersion/list', [controller\DevTools\TauriVersionController::class, 'list']);
-    Route::post('/DevTools/TauriVersion/add', [controller\DevTools\TauriVersionController::class, 'add']);
-    Route::post('/DevTools/TauriVersion/edit', [controller\DevTools\TauriVersionController::class, 'edit']);
-    Route::post('/DevTools/TauriVersion/setLatest', [controller\DevTools\TauriVersionController::class, 'setLatest']);
-    Route::post('/DevTools/TauriVersion/del', [controller\DevTools\TauriVersionController::class, 'del']);
-    Route::post('/DevTools/TauriVersion/forceUpdate', [controller\DevTools\TauriVersionController::class, 'forceUpdate']);
-    Route::post('/DevTools/TauriVersion/updateJson', [controller\DevTools\TauriVersionController::class, 'updateJson']);
+    Route::post('/TauriVersion/init', [controller\System\TauriVersionController::class, 'init']);
+    Route::post('/TauriVersion/list', [controller\System\TauriVersionController::class, 'list']);
+    Route::post('/TauriVersion/add', [controller\System\TauriVersionController::class, 'add']);
+    Route::post('/TauriVersion/edit', [controller\System\TauriVersionController::class, 'edit']);
+    Route::post('/TauriVersion/setLatest', [controller\System\TauriVersionController::class, 'setLatest']);
+    Route::post('/TauriVersion/del', [controller\System\TauriVersionController::class, 'del']);
+    Route::post('/TauriVersion/forceUpdate', [controller\System\TauriVersionController::class, 'forceUpdate']);
+    Route::post('/TauriVersion/updateJson', [controller\System\TauriVersionController::class, 'updateJson']);
 
     // 系统日志
     Route::post('/SystemLog/init', [controller\System\SystemLogController::class, 'init']);

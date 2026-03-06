@@ -1,9 +1,9 @@
 <?php
 
-namespace app\dep\DevTools;
+namespace app\dep\System;
 
 use app\dep\BaseDep;
-use app\model\DevTools\CronTaskModel;
+use app\model\System\CronTaskModel;
 use app\enum\CommonEnum;
 use support\Model;
 
