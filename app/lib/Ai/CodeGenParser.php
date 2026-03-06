@@ -2,7 +2,7 @@
 
 namespace app\lib\Ai;
 
-use app\dep\DevTools\GenDep;
+use app\dep\Ai\GenDep;
 use support\Db;
 use support\Log;
 

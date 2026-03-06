@@ -1,13 +1,13 @@
 <?php
 
-namespace app\module\DevTools;
+namespace app\module\Ai;
 
 use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiMessagesDep;
 use app\enum\AiEnum;
 use app\module\BaseModule;
-use app\service\DevTools\CodeGenService;
+use app\service\Ai\CodeGenService;
 
 class GenAiModule extends BaseModule
 {

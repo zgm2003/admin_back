@@ -1,9 +1,9 @@
 <?php
 
-namespace app\controller\DevTools;
+namespace app\controller\Ai;
 
 use app\controller\Controller;
-use app\module\DevTools\GenAiModule;
+use app\module\Ai\GenAiModule;
 use support\Request;
 use Workerman\Protocols\Http\Response as WorkermanResponse;
 use Workerman\Protocols\Http\ServerSentEvents;

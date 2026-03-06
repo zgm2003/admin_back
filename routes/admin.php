@@ -196,11 +196,11 @@ Route::group('/api/admin', function () {
     Route::post('/AiPrompts/use', [controller\Ai\AiPromptsController::class, 'use']);
 
     // AI 代码生成（流式）
-    Route::post('/DevTools/GenAi/init', [controller\DevTools\GenAiController::class, 'init']);
-    Route::post('/DevTools/GenAi/conversations', [controller\DevTools\GenAiController::class, 'conversations']);
-    Route::post('/DevTools/GenAi/messages', [controller\DevTools\GenAiController::class, 'messages']);
-    Route::post('/DevTools/GenAi/deleteConversation', [controller\DevTools\GenAiController::class, 'deleteConversation']);
-    Route::post('/DevTools/GenAi/stream', [controller\DevTools\GenAiController::class, 'stream']);
+    Route::post('/Ai/GenAi/init', [controller\Ai\GenAiController::class, 'init']);
+    Route::post('/Ai/GenAi/conversations', [controller\Ai\GenAiController::class, 'conversations']);
+    Route::post('/Ai/GenAi/messages', [controller\Ai\GenAiController::class, 'messages']);
+    Route::post('/Ai/GenAi/deleteConversation', [controller\Ai\GenAiController::class, 'deleteConversation']);
+    Route::post('/Ai/GenAi/stream', [controller\Ai\GenAiController::class, 'stream']);
 
     // 队列监控
     Route::post('/DevTools/QueueMonitor/list', [controller\DevTools\QueueMonitorController::class, 'list']);

@@ -1,6 +1,6 @@
 <?php
 
-namespace app\service\DevTools;
+namespace app\service\Ai;
 
 use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\AiConversationsDep;

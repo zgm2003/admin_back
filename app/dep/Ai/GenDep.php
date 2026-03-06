@@ -1,6 +1,6 @@
 <?php
 
-namespace app\dep\DevTools;
+namespace app\dep\Ai;
 
 use support\Db;
 

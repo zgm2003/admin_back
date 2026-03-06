@@ -2,7 +2,7 @@
 
 namespace app\lib\Ai;
 
-use app\dep\DevTools\GenDep;
+use app\dep\Ai\GenDep;
 
 /**
  * 浠ｇ爜鐢熸垚涓撶敤宸ュ叿闆? * 娉ㄥ唽鍦?ToolExecutor::$internalTools 涓紝渚涚爺绌跺憳 Agent 璋冪敤
