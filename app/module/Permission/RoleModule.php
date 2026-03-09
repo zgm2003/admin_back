@@ -36,6 +36,7 @@ class RoleModule extends BaseModule
     {
         $param = $this->validate($request, RoleValidate::add());
         self::throwIf($this->dep(RoleDep::class)->existsByName($param['name']), '角色名已存在');
+        $this->assertPermissionPayloadFits($param['permission_id']);
 
         $this->dep(RoleDep::class)->add([
             'name'          => $param['name'],
@@ -61,6 +62,7 @@ class RoleModule extends BaseModule
         self::throwIf($roles->isEmpty(), '角色不存在');
         self::throwIf($roles->count() !== count($ids), '包含不存在的角色');
         self::throwIf($dep->hasDefaultIn($ids), '默认角色不能删除');
+        self::throwIf($this->dep(UsersDep::class)->getIdsByRoleIds($ids)->count() > 0, '角色已绑定用户，不能删除');
 
         $dep->delete($ids);
 
@@ -79,6 +81,7 @@ class RoleModule extends BaseModule
 
         $dep = $this->dep(RoleDep::class);
         self::throwIf($dep->existsByName($param['name'], $param['id']), '角色名已存在');
+        $this->assertPermissionPayloadFits($param['permission_id']);
 
         $dep->update($param['id'], [
             'name'          => $param['name'],
@@ -141,9 +144,20 @@ class RoleModule extends BaseModule
     // ==================== 私有方法 ====================
 
     /**
+     * 校验 permission_id JSON 长度是否可落库
+     */
+    private function assertPermissionPayloadFits(array $permissionIds): void
+    {
+        $payload = json_encode(array_values($permissionIds));
+        self::throwIf($payload === false, 'permission_id 编码失败');
+        self::throwIf(strlen($payload) > 255, 'permission_id 长度超过 255，请减少权限节点数量');
+    }
+
+    /**
      * 清理指定角色关联的所有用户权限缓存
      * 遍历角色下所有用户 × 所有平台，逐一删除缓存 key
      */
+
     private function clearPermissionCacheByRoleIds(array $roleIds): void
     {
         $userIds = $this->dep(UsersDep::class)->getIdsByRoleIds($roleIds);

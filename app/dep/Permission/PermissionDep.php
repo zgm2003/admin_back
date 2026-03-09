@@ -188,6 +188,25 @@ class PermissionDep extends BaseDep
             ->get();
     }
 
+
+    /**
+     * 检查是否存在未包含在当前删除集合中的子节点
+     */
+    public function hasChildrenOutsideIds(array $ids): bool
+    {
+        if (empty($ids)) {
+            return false;
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
+        return $this->model
+            ->whereIn('parent_id', $ids)
+            ->whereNotIn('id', $ids)
+            ->where('is_del', CommonEnum::NO)
+            ->exists();
+    }
+
     /**
      * 获取所有权限（带缓存）
      */

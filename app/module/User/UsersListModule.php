@@ -121,7 +121,7 @@ class UsersListModule extends BaseModule
         $valueMap = ['sex' => '性别', 'address' => '地址', 'detail_address' => '详细地址'];
         self::throwIf(empty($param[$field]), ($valueMap[$field] ?? $field) . '不能为空');
 
-        $this->dep(UserProfileDep::class)->updateByUserId($ids, $updateData);
+        $this->dep(UserProfileDep::class)->updateByUserIds($ids, $updateData);
 
         return self::success();
     }

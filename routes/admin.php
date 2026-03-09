@@ -206,7 +206,6 @@ Route::group('/api/admin', function () {
     Route::post('/ExportTask/statusCount', [controller\System\ExportTaskController::class, 'statusCount']);
     Route::post('/ExportTask/list', [controller\System\ExportTaskController::class, 'list']);
     Route::post('/ExportTask/del', [controller\System\ExportTaskController::class, 'del']);
-    Route::post('/ExportTask/batchDel', [controller\System\ExportTaskController::class, 'batchDel']);
 
     // 定时任务管理
     Route::post('/CronTask/init', [controller\System\CronTaskController::class, 'init']);

@@ -38,12 +38,20 @@ class PermissionService
      */
     public static function buildPermissionContextByUser($user, string $platform): array
     {
-        // 平台必须是合法值
+        $roleId = (int)($user->role_id ?? 0);
+        if ($roleId <= 0) {
+            return ['permissions' => [], 'router' => [], 'buttonCodes' => []];
+        }
+
+        $role = self::roleDep()->find($roleId);
+        if (!$role) {
+            return ['permissions' => [], 'router' => [], 'buttonCodes' => []];
+        }
+
         if (!\in_array($platform, AuthPlatformService::getAllowedPlatforms(), true)) {
             throw new \InvalidArgumentException("无效的平台标识: {$platform}");
         }
 
-        $role = self::roleDep()->find($user->role_id);
         $leafIds = json_decode($role->permission_id ?? '', true);
 
         if (empty($leafIds) || !\is_array($leafIds)) {

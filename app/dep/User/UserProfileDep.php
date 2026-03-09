@@ -53,6 +53,18 @@ class UserProfileDep extends BaseDep
     }
 
     /**
+     * 批量根据用户ID更新
+     */
+    public function updateByUserIds(array $userIds, array $data): int
+    {
+        if (empty($userIds)) {
+            return 0;
+        }
+
+        return $this->model->whereIn('user_id', array_values(array_unique($userIds)))->update($data);
+    }
+
+    /**
      * 覆盖父类方法：此表不支持软删除
      */
     public function get(int $id)

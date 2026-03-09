@@ -69,30 +69,16 @@ class ExportTaskModule extends BaseModule
 
 
     /**
-     * 删除导出任务（仅允许删除自己的任务）
+     * 删除导出任务（支持单删/批删，仅允许删除自己的任务）
      */
     public function del($request): array
     {
         $param = $this->validate($request, ExportTaskValidate::del());
-        $dep = $this->dep(ExportTaskDep::class);
+        $ids = \is_array($param['id']) ? array_map('intval', $param['id']) : [(int)$param['id']];
 
-        $task = $dep->get($param['id']);
-        self::throwIf(!$task || $task->user_id !== $request->userId, '任务不存在');
-
-        $dep->delete($param['id']);
+        $this->dep(ExportTaskDep::class)->batchDeleteByUser($ids, $request->userId);
 
         return self::success();
-    }
-
-    /**
-     * 批量删除导出任务（仅删除属于当前用户的记录，返回实际删除数量）
-     */
-    public function batchDel($request): array
-    {
-        $param = $this->validate($request, ExportTaskValidate::batchDel());
-        $count = $this->dep(ExportTaskDep::class)->batchDeleteByUser($param['ids'], $request->userId);
-
-        return self::success(['deleted' => $count]);
     }
 
     // ==================== 私有方法 ====================

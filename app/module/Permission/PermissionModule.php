@@ -215,13 +215,27 @@ class PermissionModule extends BaseModule
     public function del($request)
     {
         $param = $this->validate($request, PermissionValidate::del());
-        $ids = \is_array($param['id']) ? $param['id'] : [$param['id']];
-        $this->dep(PermissionDep::class)->delete($ids);
+        $ids = \is_array($param['id']) ? array_map('intval', $param['id']) : [(int)$param['id']];
 
-        PermissionDep::clearCache();
-        DictService::clearPermissionCache();
+        $dep = $this->permissionDep();
+        self::throwIf($dep->hasChildrenOutsideIds($ids), '存在子节点未被勾选，不能删除');
+
+        $dep->delete($ids);
+
+        $this->clearPermissionCache();
 
         return self::success();
+    }
+
+    protected function clearPermissionCache(): void
+    {
+        PermissionDep::clearCache();
+        DictService::clearPermissionCache();
+    }
+
+    protected function permissionDep()
+    {
+        return $this->dep(PermissionDep::class);
     }
 
     /**
@@ -233,10 +247,10 @@ class PermissionModule extends BaseModule
         $ids = \is_array($param['ids']) ? $param['ids'] : [$param['ids']];
 
         if ($param['field'] == 'description') {
-            $this->dep(PermissionDep::class)->update($ids, ['description' => $param['description']]);
+            self::throw('当前批量编辑不支持 description 字段');
         }
 
-        return self::success();
+        self::throw('不支持的批量编辑字段');
     }
 
     /**
