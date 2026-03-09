@@ -3,6 +3,7 @@
 namespace tests\Unit;
 
 use app\dep\BaseDep;
+use app\dep\Permission\RoleDep;
 use app\dep\User\UserProfileDep;
 use PHPUnit\Framework\TestCase;
 use support\Model;
@@ -92,6 +93,63 @@ class SchemaRefactorGuardsTest extends TestCase
             ['column' => 'is_del', 'operator' => '=', 'value' => 2],
         ], $model->whereCalls);
         $this->assertSame(['is_del' => 1], $model->updatePayload);
+    }
+
+
+    public function testRoleDepAddNormalizesPermissionIdsToJsonString(): void
+    {
+        $model = new FakeSchemaGuardModel('id');
+
+        $dep = new class($model) extends RoleDep {
+            public function __construct(private readonly FakeSchemaGuardModel $mockModel)
+            {
+                $this->model = $mockModel;
+            }
+
+            protected function createModel(): Model
+            {
+                return $this->mockModel;
+            }
+        };
+
+        $result = $dep->add([
+            'name' => 'role-A',
+            'permission_id' => [3, '2', 0, -1, 3],
+        ]);
+
+        $this->assertSame(456, $result);
+        $this->assertSame([
+            'name' => 'role-A',
+            'permission_id' => '[3,2]',
+        ], $model->insertGetIdPayload);
+    }
+
+    public function testRoleDepUpdateNormalizesPermissionIdsToJsonString(): void
+    {
+        $model = new FakeSchemaGuardModel('id');
+        $model->updateResult = 1;
+
+        $dep = new class($model) extends RoleDep {
+            public function __construct(private readonly FakeSchemaGuardModel $mockModel)
+            {
+                $this->model = $mockModel;
+            }
+
+            protected function createModel(): Model
+            {
+                return $this->mockModel;
+            }
+        };
+
+        $result = $dep->update(8, [
+            'permission_id' => [5, '4', 0, 5],
+        ]);
+
+        $this->assertSame(1, $result);
+        $this->assertSame(['column' => 'id', 'values' => [8]], $model->whereInCall);
+        $this->assertSame([
+            'permission_id' => '[5,4]',
+        ], $model->updatePayload);
     }
 }
 

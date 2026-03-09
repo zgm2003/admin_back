@@ -152,6 +152,127 @@ class RefactorSafetyGuardsTest extends TestCase
         ], $result);
     }
 
+
+    public function testPermissionContextTreatsZeroAsRootParentId(): void
+    {
+        $roleDep = $this->getMockBuilder(RoleDep::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['find'])
+            ->getMock();
+        $roleDep->method('find')->willReturn((object) ['permission_id' => [2]]);
+
+        $permissionDep = $this->getMockBuilder(PermissionDep::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getAllPermissions'])
+            ->getMock();
+        $permissionDep->method('getAllPermissions')->willReturn([
+            [
+                'id' => 1,
+                'name' => 'Root',
+                'path' => '',
+                'icon' => '',
+                'component' => '',
+                'platform' => 'admin',
+                'type' => PermissionEnum::TYPE_DIR,
+                'sort' => 1,
+                'code' => '',
+                'i18n_key' => 'root',
+                'show_menu' => CommonEnum::YES,
+                'parent_id' => 0,
+            ],
+            [
+                'id' => 2,
+                'name' => 'Child',
+                'path' => '/child',
+                'icon' => '',
+                'component' => 'Main/child/index',
+                'platform' => 'admin',
+                'type' => PermissionEnum::TYPE_PAGE,
+                'sort' => 1,
+                'code' => '',
+                'i18n_key' => 'child',
+                'show_menu' => CommonEnum::YES,
+                'parent_id' => 1,
+            ],
+        ]);
+
+        $serviceRef = new ReflectionClass(PermissionService::class);
+        $roleDepProp = $serviceRef->getProperty('roleDep');
+        $roleDepProp->setAccessible(true);
+        $roleDepProp->setValue(null, $roleDep);
+        $permissionDepProp = $serviceRef->getProperty('permissionDep');
+        $permissionDepProp->setAccessible(true);
+        $permissionDepProp->setValue(null, $permissionDep);
+
+        $this->stubAllowedPlatforms(['admin']);
+
+        $result = PermissionService::buildPermissionContextByUser((object)['role_id' => 9], 'admin');
+
+        $this->assertCount(1, $result['permissions']);
+        $this->assertSame('1', $result['permissions'][0]['index']);
+        $this->assertCount(1, $result['permissions'][0]['children']);
+        $this->assertSame('2', $result['permissions'][0]['children'][0]['index']);
+        $this->assertSame(['/child'], array_column($result['router'], 'path'));
+    }
+
+    public function testAppButtonAddStoresZeroAsRootParentId(): void
+    {
+        $this->stubAllowedPlatforms();
+
+        $permissionDep = new class {
+            public array $added = [];
+
+            public function existsByPlatformCode(string $platform, string $code, ?int $excludeId = null): bool
+            {
+                return false;
+            }
+
+            public function add(array $data): int
+            {
+                $this->added[] = $data;
+                return 1;
+            }
+        };
+
+        $module = new class([
+            'platform' => 'app',
+            'type' => PermissionEnum::TYPE_BUTTON,
+            'name' => 'App Button',
+            'code' => 'app:test',
+            'sort' => 5,
+        ], [PermissionDep::class => $permissionDep]) extends PermissionModule {
+            public function __construct(private array $validated, private array $deps)
+            {
+            }
+
+            protected function validate($request, array $rules, ?array $input = null): array
+            {
+                return $this->validated;
+            }
+
+            protected function dep(string $class)
+            {
+                return $this->deps[$class];
+            }
+
+            protected function clearPermissionCache(): void
+            {
+            }
+        };
+
+        $result = $module->appButtonAdd(new \stdClass());
+
+        $this->assertSame([[], 0, 'success'], $result);
+        $this->assertSame([[
+            'name' => 'App Button',
+            'parent_id' => 0,
+            'code' => 'app:test',
+            'type' => PermissionEnum::TYPE_BUTTON,
+            'platform' => 'app',
+            'sort' => 5,
+        ]], $permissionDep->added);
+    }
+
     public function testUsersBatchEditUsesBatchProfileUpdate(): void
     {
         $profileDep = new class {
@@ -337,10 +458,14 @@ class RefactorSafetyGuardsTest extends TestCase
         $this->stubAllowedPlatforms();
         $adminRules = PermissionValidate::add(PermissionEnum::TYPE_BUTTON, true);
         $appRules = PermissionValidate::appButtonAdd();
+        $baseRules = PermissionValidate::addBase();
 
         $this->assertFalse($adminRules['parent_id']->validate(null));
+        $this->assertFalse($adminRules['parent_id']->validate(0));
         $this->assertTrue($adminRules['parent_id']->validate(8));
         $this->assertTrue($appRules['parent_id']->validate(null));
+        $this->assertTrue($baseRules['parent_id']->validate(0));
+        $this->assertFalse($baseRules['parent_id']->validate(-1));
         $this->assertTrue($appRules['code']->validate('user:create'));
         $this->assertFalse($appRules['code']->validate(''));
     }
@@ -387,10 +512,11 @@ class RefactorSafetyGuardsTest extends TestCase
         $this->assertFalse($permissionDep->updateCalled);
     }
 
-    public function testRoleAddRejectsOversizedPermissionPayload(): void
+    public function testRoleAddAcceptsExpandedPermissionPayloadWhenStorageIsJson(): void
     {
         $roleDep = new class {
             public bool $addCalled = false;
+            public array $received = [];
 
             public function existsByName(string $name, ?int $excludeId = null): bool
             {
@@ -400,6 +526,7 @@ class RefactorSafetyGuardsTest extends TestCase
             public function add(array $data): int
             {
                 $this->addCalled = true;
+                $this->received = $data;
                 return 1;
             }
         };
@@ -423,20 +550,22 @@ class RefactorSafetyGuardsTest extends TestCase
             }
         };
 
-        try {
-            $module->add(new \stdClass());
-            $this->fail('Expected BusinessException was not thrown.');
-        } catch (BusinessException $e) {
-            $this->assertStringContainsString('permission_id', $e->getMessage());
-        }
+        $result = $module->add(new \stdClass());
 
-        $this->assertFalse($roleDep->addCalled);
+        $this->assertSame([[], 0, 'success'], $result);
+        $this->assertTrue($roleDep->addCalled);
+        $this->assertSame([
+            'name' => 'oversized-role',
+            'permission_id' => range(1, 88),
+        ], $roleDep->received);
     }
 
-    public function testRoleEditRejectsOversizedPermissionPayload(): void
+    public function testRoleEditAcceptsExpandedPermissionPayloadWhenStorageIsJson(): void
     {
         $roleDep = new class {
             public bool $updateCalled = false;
+            public mixed $receivedId = null;
+            public array $received = [];
 
             public function existsByName(string $name, ?int $excludeId = null): bool
             {
@@ -446,7 +575,16 @@ class RefactorSafetyGuardsTest extends TestCase
             public function update($id, array $data): int
             {
                 $this->updateCalled = true;
+                $this->receivedId = $id;
+                $this->received = $data;
                 return 1;
+            }
+        };
+
+        $usersDep = new class {
+            public function getIdsByRoleIds(array $roleIds)
+            {
+                return collect([]);
             }
         };
 
@@ -454,7 +592,7 @@ class RefactorSafetyGuardsTest extends TestCase
             'id' => 9,
             'name' => 'oversized-role',
             'permission_id' => range(1, 88),
-        ], [RoleDepClass::class => $roleDep]) extends RoleModule {
+        ], [RoleDepClass::class => $roleDep, UsersDep::class => $usersDep]) extends RoleModule {
             public function __construct(private array $validated, private array $deps)
             {
             }
@@ -466,18 +604,20 @@ class RefactorSafetyGuardsTest extends TestCase
 
             protected function dep(string $class)
             {
-                return $this->deps[$class];
+                return $this->deps[$class] ?? array_values($this->deps)[0] ?? null;
             }
         };
 
-        try {
-            $module->edit(new \stdClass());
-            $this->fail('Expected BusinessException was not thrown.');
-        } catch (BusinessException $e) {
-            $this->assertStringContainsString('permission_id', $e->getMessage());
-        }
+        $this->stubAllowedPlatforms();
+        $result = $module->edit(new \stdClass());
 
-        $this->assertFalse($roleDep->updateCalled);
+        $this->assertSame([[], 0, 'success'], $result);
+        $this->assertTrue($roleDep->updateCalled);
+        $this->assertSame(9, $roleDep->receivedId);
+        $this->assertSame([
+            'name' => 'oversized-role',
+            'permission_id' => range(1, 88),
+        ], $roleDep->received);
     }
 
     public function testExportTaskDeleteUsesBatchDeleteForSingleId(): void
@@ -581,7 +721,7 @@ class RefactorSafetyGuardsTest extends TestCase
 
 
 
-    public function testAddressServiceBuildPathUsesNegativeOneRootSentinel(): void
+    public function testAddressServiceBuildPathUsesZeroRootSentinel(): void
     {
         $dep = new class extends AddressDep {
             public function __construct()
@@ -591,7 +731,7 @@ class RefactorSafetyGuardsTest extends TestCase
             public function getAllMap(): array
             {
                 return [
-                    1 => ['id' => 1, 'name' => '???', 'parent_id' => -1],
+                    1 => ['id' => 1, 'name' => '???', 'parent_id' => 0],
                     2 => ['id' => 2, 'name' => '???', 'parent_id' => 1],
                     3 => ['id' => 3, 'name' => '???', 'parent_id' => 2],
                 ];

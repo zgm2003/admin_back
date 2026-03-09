@@ -19,7 +19,7 @@ class AddressService
 
     /**
      * 根据 district_id 构建完整地址路径（省-市-区）
-     * 从叶子节点向上回溯至根节点（parent_id = -1），带环检测
+     * 从叶子节点向上回溯至根节点（parent_id = 0），带环检测
      */
     public static function buildAddressPath(int $districtId): string
     {
@@ -38,11 +38,11 @@ class AddressService
 
             // Redis 反序列化后是数组，ORM 查询是对象
             $name     = \is_array($node) ? $node['name'] : $node->name;
-            $parentId = \is_array($node) ? $node['parent_id'] : $node->parent_id;
+            $parentId = (int)(\is_array($node) ? $node['parent_id'] : $node->parent_id);
 
             array_unshift($parts, $name);
 
-            if ($parentId === -1) {
+            if ($parentId <= 0) {
                 break;
             }
             $currentId = $parentId;

@@ -158,7 +158,7 @@ class PermissionDep extends BaseDep
     public function allParent()
     {
         return $this->model
-            ->where('parent_id', PermissionEnum::ParentCategory)
+            ->whereIn('parent_id', PermissionEnum::rootParentIds())
             ->where('is_del', CommonEnum::NO)
             ->get();
     }

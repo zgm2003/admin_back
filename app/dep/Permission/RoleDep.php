@@ -6,12 +6,24 @@ use app\dep\BaseDep;
 use app\enum\CommonEnum;
 use app\model\Permission\RoleModel;
 use support\Model;
+use RuntimeException;
 
 class RoleDep extends BaseDep
 {
     protected function createModel(): Model
     {
         return new RoleModel();
+    }
+
+
+    public function add(array $data): int
+    {
+        return parent::add($this->normalizePermissionPayload($data));
+    }
+
+    public function update($ids, array $data): int
+    {
+        return parent::update($ids, $this->normalizePermissionPayload($data));
     }
 
     // ==================== 查询方法 ====================
@@ -113,5 +125,31 @@ class RoleDep extends BaseDep
             ->when(!empty($param['name']), fn($q) => $q->where('name', 'like', "%{$param['name']}%"))
             ->orderBy('id', 'asc')
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
+    }
+
+    private function normalizePermissionPayload(array $data): array
+    {
+        if (!array_key_exists('permission_id', $data) || !is_array($data['permission_id'])) {
+            return $data;
+        }
+
+        $data['permission_id'] = $this->encodePermissionIds($data['permission_id']);
+
+        return $data;
+    }
+
+    private function encodePermissionIds(array $permissionIds): string
+    {
+        $normalized = array_values(array_unique(array_filter(
+            array_map('intval', $permissionIds),
+            static fn(int $id) => $id > 0
+        )));
+
+        $payload = json_encode($normalized, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($payload === false) {
+            throw new RuntimeException('permission_id \u7f16\u7801\u5931\u8d25');
+        }
+
+        return $payload;
     }
 }

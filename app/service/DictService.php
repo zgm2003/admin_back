@@ -252,11 +252,11 @@ class DictService
             'id'        => $item['id'],
             'label'     => ($item['platform'] ? '[' . ($platformMap[$item['platform']] ?? $item['platform']) . '] ' : '') . $item['name'],
             'value'     => $item['id'],
-            'parent_id' => $item['parent_id'],
+            'parent_id' => PermissionEnum::normalizeParentId((int)$item['parent_id']),
             'platform'  => $item['platform'] ?? '',
         ], $allPermissions);
 
-        $tree = listToTree($resCategory, -1);
+        $tree = listToTree($resCategory, PermissionEnum::ROOT_PARENT_ID);
         Cache::set(self::CACHE_KEY_PERMISSION_TREE, $tree);
         $this->dict['permission_tree'] = $tree;
 
@@ -280,10 +280,10 @@ class DictService
             'id'        => $item['id'],
             'label'     => $item['name'],
             'value'     => $item['id'],
-            'parent_id' => $item['parent_id'],
+            'parent_id' => (int)$item['parent_id'] > 0 ? (int)$item['parent_id'] : 0,
         ], $allAddressMap);
 
-        $tree = listToTree($resCategory, -1);
+        $tree = listToTree($resCategory, 0);
         Cache::set(self::CACHE_KEY_ADDRESS_TREE, $tree);
         $this->dict['auth_address_tree'] = $tree;
 

@@ -12,13 +12,13 @@ use app\validate\Permission\RoleValidate;
 use support\Cache;
 
 /**
- * 角色管理模块
- * 负责：角色 CRUD、设置默认角色、权限分配（修改角色后自动清理关联用户的权限缓存）
+ * Role management module.
+ * Responsible for role CRUD, default-role switching, and permission assignment cache invalidation.
  */
 class RoleModule extends BaseModule
 {
     /**
-     * 初始化（返回权限树字典，供角色分配权限时使用）
+     * Initialize dictionaries for role permission assignment.
      */
     public function init($request)
     {
@@ -30,26 +30,24 @@ class RoleModule extends BaseModule
     }
 
     /**
-     * 新增角色（角色名不可重复）
+     * Add role.
      */
     public function add($request)
     {
         $param = $this->validate($request, RoleValidate::add());
-        self::throwIf($this->dep(RoleDep::class)->existsByName($param['name']), '角色名已存在');
-        $this->assertPermissionPayloadFits($param['permission_id']);
+        $dep = $this->dep(RoleDep::class);
+        self::throwIf($dep->existsByName($param['name']), '角色名已存在');
 
-        $this->dep(RoleDep::class)->add([
+        $dep->add([
             'name'          => $param['name'],
-            'permission_id' => json_encode($param['permission_id']),
+            'permission_id' => $param['permission_id'],
         ]);
 
         return self::success();
     }
 
     /**
-     * 删除角色（支持批量）
-     * 校验：角色必须存在、不能删除默认角色
-     * 删除后清理关联用户的权限缓存
+     * Delete role(s).
      */
     public function del($request)
     {
@@ -72,8 +70,7 @@ class RoleModule extends BaseModule
     }
 
     /**
-     * 编辑角色（角色名排除自身的唯一校验）
-     * 编辑后清理关联用户的权限缓存
+     * Edit role.
      */
     public function edit($request)
     {
@@ -81,11 +78,10 @@ class RoleModule extends BaseModule
 
         $dep = $this->dep(RoleDep::class);
         self::throwIf($dep->existsByName($param['name'], $param['id']), '角色名已存在');
-        $this->assertPermissionPayloadFits($param['permission_id']);
 
         $dep->update($param['id'], [
             'name'          => $param['name'],
-            'permission_id' => json_encode($param['permission_id']),
+            'permission_id' => $param['permission_id'],
         ]);
 
         $this->clearPermissionCacheByRoleIds([(int)$param['id']]);
@@ -94,7 +90,7 @@ class RoleModule extends BaseModule
     }
 
     /**
-     * 角色列表（分页，permission_id JSON 解码后返回数组）
+     * Role list, with permission_id always exposed as array.
      */
     public function list($request)
     {
@@ -104,7 +100,7 @@ class RoleModule extends BaseModule
         $data['list'] = $resList->map(fn($item) => [
             'id'            => $item['id'],
             'name'          => $item['name'],
-            'permission_id' => json_decode($item['permission_id']),
+            'permission_id' => is_array($item['permission_id']) ? $item['permission_id'] : [],
             'is_default'    => $item['is_default'] ?? CommonEnum::NO,
             'created_at'    => $item['created_at'],
             'updated_at'    => $item['updated_at'],
@@ -120,7 +116,7 @@ class RoleModule extends BaseModule
     }
 
     /**
-     * 设置默认角色（唯一，事务内先清除再设置）
+     * Set default role.
      */
     public function setDefault($request)
     {
@@ -141,23 +137,9 @@ class RoleModule extends BaseModule
         return self::success();
     }
 
-    // ==================== 私有方法 ====================
-
     /**
-     * 校验 permission_id JSON 长度是否可落库
+     * Clear permission cache for all users bound to the given roles.
      */
-    private function assertPermissionPayloadFits(array $permissionIds): void
-    {
-        $payload = json_encode(array_values($permissionIds));
-        self::throwIf($payload === false, 'permission_id 编码失败');
-        self::throwIf(strlen($payload) > 255, 'permission_id 长度超过 255，请减少权限节点数量');
-    }
-
-    /**
-     * 清理指定角色关联的所有用户权限缓存
-     * 遍历角色下所有用户 × 所有平台，逐一删除缓存 key
-     */
-
     private function clearPermissionCacheByRoleIds(array $roleIds): void
     {
         $userIds = $this->dep(UsersDep::class)->getIdsByRoleIds($roleIds);

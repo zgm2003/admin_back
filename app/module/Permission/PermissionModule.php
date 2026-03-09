@@ -45,10 +45,10 @@ class PermissionModule extends BaseModule
         $param = $this->validate($request, PermissionValidate::add((int)$param['type'], $param['platform'] === 'admin'), $param);
 
         $platform = $param['platform'];
-        $parentId = empty($param['parent_id']) ? -1 : (int)$param['parent_id'];
+        $parentId = $this->normalizeParentId($param['parent_id'] ?? null);
         $dep = $this->dep(PermissionDep::class);
 
-        if ($parentId !== -1) {
+        if ($parentId !== PermissionEnum::ROOT_PARENT_ID) {
             $parentPlatform = $dep->getPlatformById($parentId);
             self::throwIf($parentPlatform !== $platform, '???????????');
         }
@@ -95,8 +95,7 @@ class PermissionModule extends BaseModule
             ]);
         }
 
-        PermissionDep::clearCache();
-        DictService::clearPermissionCache();
+        $this->clearPermissionCache();
 
         return self::success();
     }
@@ -111,11 +110,11 @@ class PermissionModule extends BaseModule
         $param = $this->validate($request, PermissionValidate::edit((int)$param['type'], (int)$param['type'] === PermissionEnum::TYPE_BUTTON), $param);
 
         $platform = $param['platform'];
-        $parentId = empty($param['parent_id']) ? -1 : (int)$param['parent_id'];
+        $parentId = $this->normalizeParentId($param['parent_id'] ?? null);
         $id = $param['id'];
         $dep = $this->dep(PermissionDep::class);
 
-        if ($parentId !== -1) {
+        if ($parentId !== PermissionEnum::ROOT_PARENT_ID) {
             $parentPlatform = $dep->getPlatformById($parentId);
             self::throwIf($parentPlatform !== $platform, '???????????');
         }
@@ -162,8 +161,7 @@ class PermissionModule extends BaseModule
             ]);
         }
 
-        PermissionDep::clearCache();
-        DictService::clearPermissionCache();
+        $this->clearPermissionCache();
 
         return self::success();
     }
@@ -190,6 +188,15 @@ class PermissionModule extends BaseModule
     {
         PermissionDep::clearCache();
         DictService::clearPermissionCache();
+    }
+
+    protected function normalizeParentId(mixed $parentId): int
+    {
+        if ($parentId === null || $parentId === '') {
+            return PermissionEnum::ROOT_PARENT_ID;
+        }
+
+        return PermissionEnum::normalizeParentId((int)$parentId);
     }
 
     protected function permissionDep()
@@ -224,7 +231,7 @@ class PermissionModule extends BaseModule
             'id'        => $item->id,
             'name'      => $item->name,
             'path'      => $item->path,
-            'parent_id' => $item->parent_id,
+            'parent_id' => PermissionEnum::normalizeParentId((int)$item->parent_id),
             'icon'      => $item->icon,
             'component' => $item->component,
             'status'    => $item->status,
@@ -236,7 +243,7 @@ class PermissionModule extends BaseModule
             'show_menu' => $item->show_menu,
         ]);
 
-        $data['menu_tree'] = listToTree($data['list']->toArray(), -1);
+        $data['menu_tree'] = listToTree($data['list']->toArray(), PermissionEnum::ROOT_PARENT_ID);
 
         return self::success($data['menu_tree']);
     }
@@ -278,15 +285,14 @@ class PermissionModule extends BaseModule
 
         $dep->add([
             'name'      => $param['name'],
-            'parent_id' => -1,
+            'parent_id' => PermissionEnum::ROOT_PARENT_ID,
             'code'      => $param['code'],
             'type'      => PermissionEnum::TYPE_BUTTON,
             'platform'  => $platform,
             'sort'      => $param['sort'] ?? 1,
         ]);
 
-        PermissionDep::clearCache();
-        DictService::clearPermissionCache();
+        $this->clearPermissionCache();
 
         return self::success();
     }
@@ -306,15 +312,14 @@ class PermissionModule extends BaseModule
 
         $dep->update($id, [
             'name'      => $param['name'],
-            'parent_id' => -1,
+            'parent_id' => PermissionEnum::ROOT_PARENT_ID,
             'code'      => $param['code'],
             'type'      => PermissionEnum::TYPE_BUTTON,
             'platform'  => $platform,
             'sort'      => $param['sort'] ?? 1,
         ]);
 
-        PermissionDep::clearCache();
-        DictService::clearPermissionCache();
+        $this->clearPermissionCache();
 
         return self::success();
     }
@@ -327,8 +332,7 @@ class PermissionModule extends BaseModule
         $param = $this->validate($request, PermissionValidate::status());
         $this->dep(PermissionDep::class)->update($param['id'], ['status' => $param['status']]);
 
-        PermissionDep::clearCache();
-        DictService::clearPermissionCache();
+        $this->clearPermissionCache();
         self::clearAllUserPermCache();
 
         return self::success();

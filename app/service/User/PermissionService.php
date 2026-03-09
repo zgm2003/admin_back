@@ -52,9 +52,9 @@ class PermissionService
             throw new \InvalidArgumentException("无效的平台标识: {$platform}");
         }
 
-        $leafIds = json_decode($role->permission_id ?? '', true);
+        $leafIds = self::normalizeLeafIds($role->permission_id ?? []);
 
-        if (empty($leafIds) || !\is_array($leafIds)) {
+        if (empty($leafIds)) {
             return ['permissions' => [], 'router' => [], 'buttonCodes' => []];
         }
 
@@ -114,6 +114,30 @@ class PermissionService
      * 路径缓存：已确认有效的节点直接跳过，避免重复遍历
      * 环检测：visited 防止数据异常导致死循环
      */
+    private static function normalizeLeafIds(mixed $permissionIds): array
+    {
+        if (is_array($permissionIds)) {
+            return array_values(array_unique(array_filter(
+                array_map('intval', $permissionIds),
+                static fn(int $id) => $id > 0
+            )));
+        }
+
+        if (!is_string($permissionIds) || $permissionIds === '') {
+            return [];
+        }
+
+        $decoded = json_decode($permissionIds, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map('intval', $decoded),
+            static fn(int $id) => $id > 0
+        )));
+    }
+
     private static function resolveEnabledIds(array $leafIds, array $permMap): array
     {
         $enabledIdMap = [];
@@ -145,7 +169,7 @@ class PermissionService
                 $parentId = (int)$permMap[$curr]['parent_id'];
 
                 // 到达根节点
-                if ($parentId === -1) {
+                if ($parentId === PermissionEnum::ROOT_PARENT_ID) {
                     $isValid = true;
                     break;
                 }
@@ -181,14 +205,14 @@ class PermissionService
                 'i18n_key'  => $item['i18n_key'] ?? '',
                 'sort'      => (int)$item['sort'],
                 'show_menu' => isset($item['show_menu']) ? (int)$item['show_menu'] : CommonEnum::YES,
-                'parent_id' => (int)$item['parent_id'],
+                'parent_id' => PermissionEnum::normalizeParentId((int)$item['parent_id']),
             ];
         }
 
         // 第二遍：挂载到父节点或根
         foreach ($map as $id => &$node) {
             $parentId = $node['parent_id'];
-            if ($parentId === -1) {
+            if ($parentId === PermissionEnum::ROOT_PARENT_ID) {
                 $tree[] = &$node;
             } elseif (isset($map[$parentId])) {
                 $map[$parentId]['children'][] = &$node;

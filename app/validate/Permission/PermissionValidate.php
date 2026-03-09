@@ -79,7 +79,7 @@ class PermissionValidate
             'platform'  => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('??'),
             'type'      => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('??'),
             'name'      => v::length(1, 64)->setName('??'),
-            'parent_id' => v::optional(v::intVal()),
+            'parent_id' => v::optional(v::intVal()->min(0)->setName('??ID')),
             'icon'      => v::optional(v::stringType()),
             'path'      => v::optional(v::length(1, 255))->setName('??'),
             'component' => v::optional(v::length(1, 255))->setName('??'),

@@ -27,7 +27,7 @@ class RoleValidate
     {
         return [
             'name'          => v::length(1, 64)->setName('角色名'),
-            'permission_id' => v::arrayType()->setName('权限'),
+            'permission_id' => v::arrayType()->each(v::intVal()->min(1))->setName('权限'),
         ];
     }
 
@@ -36,7 +36,7 @@ class RoleValidate
         return [
             'id'            => v::intVal()->setName('ID'),
             'name'          => v::length(1, 64)->setName('角色名'),
-            'permission_id' => v::arrayType()->setName('权限'),
+            'permission_id' => v::arrayType()->each(v::intVal()->min(1))->setName('权限'),
         ];
     }
 
