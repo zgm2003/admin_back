@@ -41,25 +41,22 @@ class PermissionModule extends BaseModule
      */
     public function add($request)
     {
-        $param = $this->validate($request, PermissionValidate::add());
+        $param = $this->validate($request, PermissionValidate::addBase());
+        $param = $this->validate($request, PermissionValidate::add((int)$param['type'], $param['platform'] === 'admin'), $param);
+
         $platform = $param['platform'];
         $parentId = empty($param['parent_id']) ? -1 : (int)$param['parent_id'];
         $dep = $this->dep(PermissionDep::class);
 
-        // 校验 parent_id 同平台（禁止跨平台挂载）
         if ($parentId !== -1) {
             $parentPlatform = $dep->getPlatformById($parentId);
-            self::throwIf($parentPlatform !== $platform, '父节点与当前平台不一致');
+            self::throwIf($parentPlatform !== $platform, '???????????');
         }
 
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
-            self::throwIf(empty($param['i18n_key']), 'i18n_key 不能为空');
-            self::throwIf(empty($param['show_menu']), 'show_menu 不能为空');
+            self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key']), '???? i18n_key ???');
 
-            // 唯一性检查：platform + i18n_key
-            self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key']), '该平台下 i18n_key 已存在');
-
-            $data = [
+            $dep->add([
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'icon'      => $param['icon'] ?? '',
@@ -68,21 +65,12 @@ class PermissionModule extends BaseModule
                 'i18n_key'  => $param['i18n_key'],
                 'sort'      => $param['sort'],
                 'show_menu' => $param['show_menu'],
-            ];
-            $dep->add($data);
-
+            ]);
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
-            foreach (['path', 'component', 'i18n_key', 'show_menu'] as $f) {
-                self::throwIf(empty($param[$f]), "{$f} 不能为空");
-            }
+            self::throwIf($dep->existsByPlatformPath($platform, $param['path']), '?????? path ???');
+            self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key']), '???? i18n_key ???');
 
-            // 唯一性检查：platform + path
-            self::throwIf($dep->existsByPlatformPath($platform, $param['path']), '该平台下路由 path 已存在');
-
-            // 唯一性检查：platform + i18n_key
-            self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key']), '该平台下 i18n_key 已存在');
-
-            $data = [
+            $dep->add([
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'path'      => $param['path'],
@@ -93,28 +81,18 @@ class PermissionModule extends BaseModule
                 'i18n_key'  => $param['i18n_key'],
                 'sort'      => $param['sort'],
                 'show_menu' => $param['show_menu'],
-            ];
-            $dep->add($data);
-
+            ]);
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
-            // 非 admin 平台按钮无需父级
-            if ($platform === 'admin') {
-                self::throwIf(empty($param['parent_id']), 'parent_id 不能为空');
-            }
-            self::throwIf(empty($param['code']), 'code 不能为空');
+            self::throwIf($dep->existsByPlatformCode($platform, $param['code']), '???????????');
 
-            // 唯一性检查：platform + code
-            self::throwIf($dep->existsByPlatformCode($platform, $param['code']), '该平台下权限标识已存在');
-
-            $data = [
+            $dep->add([
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'code'      => $param['code'],
                 'type'      => $param['type'],
                 'platform'  => $platform,
                 'sort'      => $param['sort'],
-            ];
-            $dep->add($data);
+            ]);
         }
 
         PermissionDep::clearCache();
@@ -129,26 +107,23 @@ class PermissionModule extends BaseModule
      */
     public function edit($request)
     {
-        $param = $this->validate($request, PermissionValidate::edit());
+        $param = $this->validate($request, PermissionValidate::editBase());
+        $param = $this->validate($request, PermissionValidate::edit((int)$param['type'], (int)$param['type'] === PermissionEnum::TYPE_BUTTON), $param);
+
         $platform = $param['platform'];
         $parentId = empty($param['parent_id']) ? -1 : (int)$param['parent_id'];
         $id = $param['id'];
         $dep = $this->dep(PermissionDep::class);
 
-        // 校验 parent_id 同平台（禁止跨平台挂载）
         if ($parentId !== -1) {
             $parentPlatform = $dep->getPlatformById($parentId);
-            self::throwIf($parentPlatform !== $platform, '父节点与当前平台不一致');
+            self::throwIf($parentPlatform !== $platform, '???????????');
         }
 
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
-            self::throwIf(empty($param['i18n_key']), 'i18n_key 不能为空');
-            self::throwIf(empty($param['show_menu']), 'show_menu 不能为空');
+            self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key'], $id), '???? i18n_key ???');
 
-            // 唯一性检查：platform + i18n_key（排除自己）
-            self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key'], $id), '该平台下 i18n_key 已存在');
-
-            $data = [
+            $dep->update($id, [
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'icon'      => $param['icon'] ?? '',
@@ -157,21 +132,12 @@ class PermissionModule extends BaseModule
                 'i18n_key'  => $param['i18n_key'],
                 'sort'      => $param['sort'],
                 'show_menu' => $param['show_menu'],
-            ];
-            $dep->update($id, $data);
-
+            ]);
         } elseif ($param['type'] == PermissionEnum::TYPE_PAGE) {
-            foreach (['path', 'component', 'i18n_key', 'show_menu'] as $f) {
-                self::throwIf(empty($param[$f]), "{$f} 不能为空");
-            }
+            self::throwIf($dep->existsByPlatformPath($platform, $param['path'], $id), '?????? path ???');
+            self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key'], $id), '???? i18n_key ???');
 
-            // 唯一性检查：platform + path（排除自己）
-            self::throwIf($dep->existsByPlatformPath($platform, $param['path'], $id), '该平台下路由 path 已存在');
-
-            // 唯一性检查：platform + i18n_key（排除自己）
-            self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key'], $id), '该平台下 i18n_key 已存在');
-
-            $data = [
+            $dep->update($id, [
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'path'      => $param['path'],
@@ -182,25 +148,18 @@ class PermissionModule extends BaseModule
                 'i18n_key'  => $param['i18n_key'],
                 'sort'      => $param['sort'],
                 'show_menu' => $param['show_menu'],
-            ];
-            $dep->update($id, $data);
-
+            ]);
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
-            self::throwIf(empty($param['parent_id']), 'parent_id 不能为空');
-            self::throwIf(empty($param['code']), 'code 不能为空');
+            self::throwIf($dep->existsByPlatformCode($platform, $param['code'], $id), '???????????');
 
-            // 唯一性检查：platform + code（排除自己）
-            self::throwIf($dep->existsByPlatformCode($platform, $param['code'], $id), '该平台下权限标识已存在');
-
-            $data = [
+            $dep->update($id, [
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'code'      => $param['code'],
                 'type'      => $param['type'],
                 'platform'  => $platform,
                 'sort'      => $param['sort'] ?? 1,
-            ];
-            $dep->update($id, $data);
+            ]);
         }
 
         PermissionDep::clearCache();
@@ -310,16 +269,12 @@ class PermissionModule extends BaseModule
      */
     public function appButtonAdd($request)
     {
-        $param = $this->validate($request, PermissionValidate::add());
+        $param = $this->validate($request, PermissionValidate::appButtonAdd());
         $platform = $param['platform'];
         $dep = $this->dep(PermissionDep::class);
 
-        // 只允许非 PC 后台平台
-        self::throwIf($platform === 'admin', '请使用 PC 后台权限管理');
-        self::throwIf(empty($param['code']), 'code 不能为空');
-
-        // 唯一性检查：platform + code
-        self::throwIf($dep->existsByPlatformCode($platform, $param['code']), '该平台下权限标识已存在');
+        self::throwIf($platform === 'admin', '??? PC ??????');
+        self::throwIf($dep->existsByPlatformCode($platform, $param['code']), '???????????');
 
         $dep->add([
             'name'      => $param['name'],
@@ -341,17 +296,13 @@ class PermissionModule extends BaseModule
      */
     public function appButtonEdit($request)
     {
-        $param = $this->validate($request, PermissionValidate::edit());
+        $param = $this->validate($request, PermissionValidate::appButtonEdit());
         $platform = $param['platform'];
         $id = $param['id'];
         $dep = $this->dep(PermissionDep::class);
 
-        // 只允许非 PC 后台平台
-        self::throwIf($platform === 'admin', '请使用 PC 后台权限管理');
-        self::throwIf(empty($param['code']), 'code 不能为空');
-
-        // 唯一性检查：platform + code（排除自己）
-        self::throwIf($dep->existsByPlatformCode($platform, $param['code'], $id), '该平台下权限标识已存在');
+        self::throwIf($platform === 'admin', '??? PC ??????');
+        self::throwIf($dep->existsByPlatformCode($platform, $param['code'], $id), '???????????');
 
         $dep->update($id, [
             'name'      => $param['name'],

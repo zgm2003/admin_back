@@ -52,7 +52,10 @@ class AiConversationsDep extends BaseDep
      */
     public function updateTitle($ids, string $title, int $userId): int
     {
-        $ids = is_array($ids) ? $ids : [$ids];
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
         return $this->model
             ->whereIn('id', $ids)
             ->where('user_id', $userId)
@@ -65,7 +68,10 @@ class AiConversationsDep extends BaseDep
      */
     public function deleteByUser($ids, int $userId): int
     {
-        $ids = is_array($ids) ? $ids : [$ids];
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
         return $this->model
             ->whereIn('id', $ids)
             ->where('user_id', $userId)
@@ -78,7 +84,10 @@ class AiConversationsDep extends BaseDep
      */
     public function updateStatus($ids, int $status, int $userId): int
     {
-        $ids = is_array($ids) ? $ids : [$ids];
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
         return $this->model
             ->whereIn('id', $ids)
             ->where('user_id', $userId)

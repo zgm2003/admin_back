@@ -96,6 +96,7 @@ class UsersListModule extends BaseModule
     {
         $param = $this->validate($request, UsersListValidate::del());
         $this->dep(UsersDep::class)->delete($param['id']);
+        $this->dep(UserProfileDep::class)->delete($param['id']);
         return self::success();
     }
 
@@ -104,24 +105,17 @@ class UsersListModule extends BaseModule
      */
     public function batchEdit($request): array
     {
-        $param = $this->validate($request, UsersListValidate::batchEdit());
+        $input = method_exists($request, 'all') ? $request->all() : [];
+        $base = $this->validate($request, UsersListValidate::batchEditBase(), $input);
+        $param = $this->validate($request, UsersListValidate::batchEdit($base['field']), $input);
 
-        $ids = $param['ids'];
-        $field = $param['field'];
-
-        $updateData = match ($field) {
-            'sex'            => ['sex' => (int)$param['sex']],
-            'address'        => ['address_id' => (int)$param['address']],
-            'detail_address' => ['detail_address' => $param['detail_address'] ?? ''],
-            default          => null,
+        $updateData = match ($param['field']) {
+            'sex' => ['sex' => (int)$param['sex']],
+            'address' => ['address_id' => (int)$param['address']],
+            'detail_address' => ['detail_address' => $param['detail_address']],
         };
-        self::throwUnless($updateData, '不支持的批量编辑字段');
 
-        // 校验值非空
-        $valueMap = ['sex' => '性别', 'address' => '地址', 'detail_address' => '详细地址'];
-        self::throwIf(empty($param[$field]), ($valueMap[$field] ?? $field) . '不能为空');
-
-        $this->dep(UserProfileDep::class)->updateByUserIds($ids, $updateData);
+        $this->dep(UserProfileDep::class)->updateByUserIds($param['ids'], $updateData);
 
         return self::success();
     }

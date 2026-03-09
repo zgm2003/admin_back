@@ -9,39 +9,34 @@ use app\service\Permission\AuthPlatformService;
 
 class PermissionValidate
 {
-    public static function add(): array
+    public static function addBase(): array
     {
-        return [
-            'platform'  => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('平台'),
-            'type'      => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('类型'),
-            'name'      => v::length(1, 64)->setName('名称'),
-            'parent_id' => v::optional(v::intVal()),
-            'icon'      => v::optional(v::stringType()),
-            'path'      => v::optional(v::stringType()),
-            'component' => v::optional(v::stringType()),
-            'i18n_key'  => v::optional(v::length(1, 128)),
-            'code'      => v::optional(v::length(1, 128)),
-            'sort'      => v::intVal()->between(1, 1000)->setName('排序'),
-            'show_menu' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO]))->setName('是否显示菜单'),
-        ];
+        return self::baseRules();
     }
 
-    public static function edit(): array
+    public static function add(int $type, bool $requireButtonParent = false): array
     {
-        return [
-            'id'        => v::intVal()->setName('ID'),
-            'platform'  => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('平台'),
-            'type'      => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('类型'),
-            'name'      => v::length(1, 64)->setName('名称'),
-            'parent_id' => v::optional(v::intVal()),
-            'icon'      => v::optional(v::stringType()),
-            'path'      => v::optional(v::stringType()),
-            'component' => v::optional(v::stringType()),
-            'i18n_key'  => v::optional(v::length(1, 128)),
-            'code'      => v::optional(v::length(1, 128)),
-            'sort'      => v::intVal()->between(1, 1000)->setName('排序'),
-            'show_menu' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO]))->setName('是否显示菜单'),
-        ];
+        return array_merge(self::addBase(), self::typeRules($type, $requireButtonParent));
+    }
+
+    public static function editBase(): array
+    {
+        return ['id' => v::intVal()->setName('ID')] + self::baseRules();
+    }
+
+    public static function edit(int $type, bool $requireButtonParent = false): array
+    {
+        return array_merge(self::editBase(), self::typeRules($type, $requireButtonParent));
+    }
+
+    public static function appButtonAdd(): array
+    {
+        return self::add(PermissionEnum::TYPE_BUTTON);
+    }
+
+    public static function appButtonEdit(): array
+    {
+        return self::edit(PermissionEnum::TYPE_BUTTON);
     }
 
     public static function del(): array
@@ -55,7 +50,7 @@ class PermissionValidate
     {
         return [
             'ids'         => v::arrayType()->setName('ids'),
-            'field'       => v::stringType()->setName('字段'),
+            'field'       => v::stringType()->setName('??'),
             'description' => v::optional(v::stringType()),
         ];
     }
@@ -63,10 +58,10 @@ class PermissionValidate
     public static function list(): array
     {
         return [
-            'platform'     => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('平台'),
-            'name'         => v::optional(v::stringType()),
-            'path'         => v::optional(v::stringType()),
-            'type'         => v::optional(v::intVal()),
+            'platform' => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('??'),
+            'name'     => v::optional(v::stringType()),
+            'path'     => v::optional(v::stringType()),
+            'type'     => v::optional(v::intVal()),
         ];
     }
 
@@ -74,7 +69,45 @@ class PermissionValidate
     {
         return [
             'id'     => v::intVal()->setName('ID'),
-            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('状态'),
+            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('??'),
         ];
+    }
+
+    private static function baseRules(): array
+    {
+        return [
+            'platform'  => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('??'),
+            'type'      => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('??'),
+            'name'      => v::length(1, 64)->setName('??'),
+            'parent_id' => v::optional(v::intVal()),
+            'icon'      => v::optional(v::stringType()),
+            'path'      => v::optional(v::length(1, 255))->setName('??'),
+            'component' => v::optional(v::length(1, 255))->setName('??'),
+            'i18n_key'  => v::optional(v::length(1, 128))->setName('????'),
+            'code'      => v::optional(v::length(1, 128))->setName('????'),
+            'sort'      => v::intVal()->between(1, 1000)->setName('??'),
+            'show_menu' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO]))->setName('??????'),
+        ];
+    }
+
+    private static function typeRules(int $type, bool $requireButtonParent = false): array
+    {
+        return match ($type) {
+            PermissionEnum::TYPE_DIR => [
+                'i18n_key'  => v::length(1, 128)->setName('????'),
+                'show_menu' => v::intVal()->in([CommonEnum::YES, CommonEnum::NO])->setName('??????'),
+            ],
+            PermissionEnum::TYPE_PAGE => [
+                'path'      => v::length(1, 255)->setName('??'),
+                'component' => v::length(1, 255)->setName('??'),
+                'i18n_key'  => v::length(1, 128)->setName('????'),
+                'show_menu' => v::intVal()->in([CommonEnum::YES, CommonEnum::NO])->setName('??????'),
+            ],
+            PermissionEnum::TYPE_BUTTON => array_filter([
+                'parent_id' => $requireButtonParent ? v::intVal()->min(1)->setName('???') : null,
+                'code'      => v::length(1, 128)->setName('????'),
+            ]),
+            default => [],
+        };
     }
 }

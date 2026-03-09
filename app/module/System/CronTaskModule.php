@@ -114,8 +114,7 @@ class CronTaskModule extends BaseModule
     public function del($request): array
     {
         $param = $this->validate($request, CronTaskValidate::del());
-        $ids = \is_array($param['id']) ? array_map('intval', $param['id']) : [(int)$param['id']];
-        $this->dep(CronTaskDep::class)->delete($ids);
+        $this->dep(CronTaskDep::class)->delete($param['id']);
 
         return self::success();
     }

@@ -92,13 +92,12 @@ class NotificationTaskDep extends BaseDep
     /**
      * 取消任务（仅待发送状态可取消）
      */
-    public function cancel(int $id): bool
+    public function cancel(int $id): int
     {
-        $affected = $this->query()
+        return $this->query()
             ->where('id', $id)
             ->where('status', NotificationEnum::STATUS_PENDING)
             ->where('is_del', CommonEnum::NO)
             ->update(['is_del' => CommonEnum::YES]);
-        return $affected > 0;
     }
 }

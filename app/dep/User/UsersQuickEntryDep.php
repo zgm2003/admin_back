@@ -26,6 +26,7 @@ class UsersQuickEntryDep extends BaseDep
     {
         return $this->model
             ->where('user_id', $userId)
+            ->where('permission_id', '>', 0)
             ->where('is_del', CommonEnum::NO)
             ->orderBy('sort', 'asc')
             ->get()

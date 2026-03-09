@@ -91,8 +91,7 @@ class AiConversationsModule extends BaseModule
             return self::success(['affected' => 0]);
         }
 
-        $ids = \is_array($param['id']) ? $param['id'] : [$param['id']];
-        $this->dep(AiConversationsDep::class)->updateTitle($ids, $param['title'], $request->userId);
+        $this->dep(AiConversationsDep::class)->updateTitle($param['id'], $param['title'], $request->userId);
 
         return self::success();
     }
@@ -104,8 +103,7 @@ class AiConversationsModule extends BaseModule
     {
         $param = $this->validate($request, AiConversationsValidate::del());
 
-        $ids = \is_array($param['id']) ? $param['id'] : [$param['id']];
-        $this->dep(AiConversationsDep::class)->deleteByUser($ids, $request->userId);
+        $this->dep(AiConversationsDep::class)->deleteByUser($param['id'], $request->userId);
 
         return self::success();
     }

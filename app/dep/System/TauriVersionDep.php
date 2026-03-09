@@ -23,6 +23,7 @@ class TauriVersionDep extends BaseDep
     public function list(array $param)
     {
         return $this->model
+            ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['platform']), fn($q) => $q->where('platform', $param['platform']))
             ->orderBy('id', 'desc')
             ->paginate($param['page_size'], ['*'], 'page', $param['current_page']);
@@ -33,7 +34,7 @@ class TauriVersionDep extends BaseDep
      */
     public function getLatest(string $platform = 'windows-x86_64')
     {
-        return $this->model->where('platform', $platform)->where('is_latest', CommonEnum::YES)->first();
+        return $this->model->where('platform', $platform)->where('is_del', CommonEnum::NO)->where('is_latest', CommonEnum::YES)->first();
     }
 
     /**
@@ -41,24 +42,19 @@ class TauriVersionDep extends BaseDep
      */
     public function setLatest(int $id, string $platform): int
     {
-        $this->model->where('platform', $platform)->update(['is_latest' => CommonEnum::NO]);
+        $this->model->where('platform', $platform)->where('is_del', CommonEnum::NO)->update(['is_latest' => CommonEnum::NO]);
         return $this->model->where('id', $id)->update(['is_latest' => CommonEnum::YES]);
     }
 
     /**
      * 真删除版本（这个表不用软删除）
      */
-    public function hardDelete(int $id): int
-    {
-        return $this->model->where('id', $id)->delete();
-    }
-
     /**
      * 根据条件获取版本记录
      */
     public function getByCondition(array $condition)
     {
-        $query = $this->model;
+        $query = $this->model->where('is_del', CommonEnum::NO);
         foreach ($condition as $field => $value) {
             $query = $query->where($field, $value);
         }
@@ -73,6 +69,7 @@ class TauriVersionDep extends BaseDep
         return $this->model
             ->where('version', $version)
             ->where('platform', $platform)
+            ->where('is_del', CommonEnum::NO)
             ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
             ->exists();
     }

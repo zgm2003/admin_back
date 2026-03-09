@@ -19,12 +19,12 @@ class ChatParticipantDep extends BaseDep
      * 批量添加参与者
      *
      * @param array $participants 每项包含 conversation_id, user_id, role
-     * @return bool
+     * @return int
      */
-    public function addBatch(array $participants): bool
+    public function addBatch(array $participants): int
     {
         if (empty($participants)) {
-            return true;
+            return 0;
         }
 
         $now = date('Y-m-d H:i:s');
@@ -40,7 +40,7 @@ class ChatParticipantDep extends BaseDep
             ];
         }, $participants);
 
-        return $this->query()->insert($rows);
+        return $this->query()->insert($rows) ? count($rows) : 0;
     }
 
     /**

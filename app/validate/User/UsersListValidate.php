@@ -45,15 +45,27 @@ class UsersListValidate
         ];
     }
 
-    public static function batchEdit(): array
+    public static function batchEditBase(): array
     {
         return [
-            'ids' => v::arrayType()->setName('ids'),
-            'field' => v::stringType()->setName('字段'),
-            'sex' => v::optional(v::intVal()->in(array_keys(CommonEnum::$sexArr))),
-            'address' => v::optional(v::intVal()),
-            'detail_address' => v::optional(v::stringType()),
+            'ids' => v::arrayType()->notEmpty()->setName('ids'),
+            'field' => v::in(['sex', 'address', 'detail_address'])->setName('字段'),
         ];
+    }
+
+    public static function batchEdit(string $field): array
+    {
+        return self::batchEditBase() + match ($field) {
+            'sex' => [
+                'sex' => v::intVal()->in(array_keys(CommonEnum::$sexArr))->setName('性别'),
+            ],
+            'address' => [
+                'address' => v::intVal()->min(1)->setName('地址'),
+            ],
+            'detail_address' => [
+                'detail_address' => v::stringType()->notEmpty()->setName('详细地址'),
+            ],
+        };
     }
 
     public static function export(): array
@@ -63,4 +75,3 @@ class UsersListValidate
         ];
     }
 }
-

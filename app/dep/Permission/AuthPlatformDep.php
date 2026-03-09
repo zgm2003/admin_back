@@ -128,12 +128,13 @@ class AuthPlatformDep extends BaseDep
         return $id;
     }
 
-    public function updateById(int $id, array $data, ?string $oldCode = null): bool
+    public function updateById(int $id, array $data, ?string $oldCode = null): int
     {
         $exists = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->exists();
         if (!$exists) {
-            return false;
+            return 0;
         }
+
         $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->update($data);
         if ($oldCode) {
             $this->clearCache($oldCode);
@@ -141,31 +142,41 @@ class AuthPlatformDep extends BaseDep
         if (!empty($data['code'])) {
             $this->clearCache($data['code']);
         }
-        return true;
+
+        return 1;
     }
 
-    public function deleteByIds($ids): bool
+    public function deleteByIds($ids): int
     {
-        $ids = \is_array($ids) ? $ids : [$ids];
-        $rows = $this->model->whereIn('id', $ids)->where('is_del', CommonEnum::NO)->get(['code']);
-        $count = $this->model->whereIn('id', $ids)->update(['is_del' => CommonEnum::YES]);
-        if ($count > 0) {
-            foreach ($rows as $r) {
-                $this->clearCache($r->code);
-            }
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
         }
-        return $count > 0;
+
+        $rows = $this->model->whereIn('id', $ids)->where('is_del', CommonEnum::NO)->get(['code']);
+        if ($rows->isEmpty()) {
+            return 0;
+        }
+
+        $this->model->whereIn('id', $ids)->where('is_del', CommonEnum::NO)->update(['is_del' => CommonEnum::YES]);
+        foreach ($rows as $r) {
+            $this->clearCache($r->code);
+        }
+
+        return $rows->count();
     }
 
-    public function setStatusById(int $id, int $status): bool
+    public function setStatusById(int $id, int $status): int
     {
         $row = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->first(['code']);
         if (!$row) {
-            return false;
+            return 0;
         }
+
         $this->model->where('id', $id)->update(['status' => $status]);
         $this->clearCache($row->code);
-        return true;
+
+        return 1;
     }
 
     // ==================== 缓存管理 ====================

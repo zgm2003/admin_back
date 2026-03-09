@@ -87,7 +87,7 @@ class TauriVersionModule extends BaseModule
         $param = $this->validate($request, TauriVersionValidate::edit());
         $dep = $this->dep(TauriVersionDep::class);
 
-        $version = $dep->findOrFail($param['id']);
+        $version = $dep->getOrFail($param['id']);
 
         // 如果修改了版本号，检查是否与其他记录冲突
         $newVersion = $param['version'] ?? $version->version;
@@ -112,7 +112,7 @@ class TauriVersionModule extends BaseModule
         $param = $this->validate($request, TauriVersionValidate::setLatest());
         $dep = $this->dep(TauriVersionDep::class);
 
-        $version = $dep->findOrFail($param['id']);
+        $version = $dep->getOrFail($param['id']);
 
         $this->withTransaction(function () use ($dep, $param, $version) {
             $dep->setLatest($param['id'], $version->platform);
@@ -130,10 +130,10 @@ class TauriVersionModule extends BaseModule
         $param = $this->validate($request, TauriVersionValidate::del());
         $dep = $this->dep(TauriVersionDep::class);
 
-        $version = $dep->findOrFail($param['id']);
+        $version = $dep->getOrFail($param['id']);
         self::throwIf($version->is_latest === CommonEnum::YES, '不能删除当前最新版本');
 
-        $dep->hardDelete($param['id']);
+        $dep->delete($param['id']);
 
         return self::success();
     }
@@ -144,8 +144,9 @@ class TauriVersionModule extends BaseModule
     public function forceUpdate($request): array
     {
         $param = $this->validate($request, TauriVersionValidate::forceUpdate());
-        $affected = $this->dep(TauriVersionDep::class)->update($param['id'], ['force_update' => $param['force_update']]);
-        self::throwIf(!$affected, '版本不存在');
+        $dep = $this->dep(TauriVersionDep::class);
+        $dep->getOrFail($param['id']);
+        $dep->update($param['id'], ['force_update' => $param['force_update']]);
 
         return self::success();
     }

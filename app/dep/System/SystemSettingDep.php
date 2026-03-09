@@ -61,7 +61,7 @@ class SystemSettingDep extends BaseDep
     /**
      * 原始写入（不做类型转换）
      */
-    public function setRaw(string $key, string $value, int $type = 1, string $remark = ''): bool
+    public function setRaw(string $key, string $value, int $type = 1, string $remark = ''): int
     {
         $exists = $this->findByKey($key);
         $data = [
@@ -80,7 +80,7 @@ class SystemSettingDep extends BaseDep
         }
 
         Cache::delete('sys_setting_raw_' . str_replace('.', '_', $key));
-        return true;
+        return 1;
     }
 
     // ==================== 列表查询 ====================
@@ -127,44 +127,64 @@ class SystemSettingDep extends BaseDep
     /**
      * 根据 ID 更新（带缓存清理）
      */
-    public function updateById(int $id, array $data): bool
+    public function updateById(int $id, array $data): int
     {
         $row = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->first();
         if (!$row) {
-            return false;
+            return 0;
         }
+
         $this->model->where('id', $id)->update($data);
         Cache::delete('sys_setting_raw_' . str_replace('.', '_', $row->setting_key));
-        return true;
+
+        return 1;
     }
 
     /**
      * 根据 ID 删除（带缓存清理）
      */
-    public function deleteById($ids): bool
+    public function deleteById($ids): int
     {
-        $ids = is_array($ids) ? $ids : [$ids];
-        $rows = $this->model->whereIn('id', $ids)->get(['setting_key'])->toArray();
-        $this->model->whereIn('id', $ids)->update(['is_del' => CommonEnum::YES]);
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $rows = $this->model
+            ->whereIn('id', $ids)
+            ->where('is_del', CommonEnum::NO)
+            ->get(['setting_key'])
+            ->toArray();
+        if (empty($rows)) {
+            return 0;
+        }
+
+        $this->model
+            ->whereIn('id', $ids)
+            ->where('is_del', CommonEnum::NO)
+            ->update(['is_del' => CommonEnum::YES]);
         foreach ($rows as $r) {
             if (!empty($r['setting_key'])) {
                 Cache::delete('sys_setting_raw_' . str_replace('.', '_', $r['setting_key']));
             }
         }
-        return true;
+
+        return count($rows);
     }
 
     /**
      * 根据 ID 设置状态（带缓存清理）
      */
-    public function setStatusById(int $id, int $status): bool
+    public function setStatusById(int $id, int $status): int
     {
         $row = $this->model->where('id', $id)->where('is_del', CommonEnum::NO)->first();
         if (!$row) {
-            return false;
+            return 0;
         }
+
         $this->model->where('id', $id)->update(['status' => $status]);
         Cache::delete('sys_setting_raw_' . str_replace('.', '_', $row->setting_key));
-        return true;
+
+        return 1;
     }
 }

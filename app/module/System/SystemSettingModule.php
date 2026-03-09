@@ -91,12 +91,12 @@ class SystemSettingModule extends BaseModule
             ? (is_string($param['value']) ? $param['value'] : json_encode($param['value']))
             : (string)$param['value'];
 
-        $ok = $this->dep(SystemSettingDep::class)->updateById((int)$param['id'], [
+        $affected = $this->dep(SystemSettingDep::class)->updateById((int)$param['id'], [
             'setting_value' => $settingValue,
             'value_type'    => (int)$param['type'],
             'remark'        => $param['remark'] ?? '',
         ]);
-        self::throwIf(!$ok, '配置不存在');
+        self::throwIf($affected === 0, '配置不存在');
 
         return self::success();
     }
@@ -117,8 +117,8 @@ class SystemSettingModule extends BaseModule
     public function status($request): array
     {
         $param = $this->validate($request, SystemSettingValidate::status());
-        $ok = $this->dep(SystemSettingDep::class)->setStatusById((int)$param['id'], (int)$param['status']);
-        self::throwIf(!$ok, '配置项不存在');
+        $affected = $this->dep(SystemSettingDep::class)->setStatusById((int)$param['id'], (int)$param['status']);
+        self::throwIf($affected === 0, '配置项不存在');
         return self::success();
     }
 

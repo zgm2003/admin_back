@@ -110,7 +110,7 @@ class AuthPlatformModule extends BaseModule
         $row = $dep->get((int)$param['id']);
         self::throwNotFound($row);
 
-        $ok = $dep->updateById((int)$param['id'], [
+        $affected = $dep->updateById((int)$param['id'], [
             'name'           => $param['name'],
             'login_types'    => \json_encode($param['login_types']),
             'access_ttl'     => (int)$param['access_ttl'],
@@ -123,7 +123,7 @@ class AuthPlatformModule extends BaseModule
             'allow_register' => (int)$param['allow_register'],
         ], $row->code);
 
-        self::throwIf(!$ok, '更新失败');
+        self::throwIf($affected === 0, '更新失败');
         return self::success();
     }
 
@@ -143,8 +143,8 @@ class AuthPlatformModule extends BaseModule
     public function status($request): array
     {
         $param = $this->validate($request, AuthPlatformValidate::status());
-        $ok = $this->dep(AuthPlatformDep::class)->setStatusById((int)$param['id'], (int)$param['status']);
-        self::throwIf(!$ok, '平台不存在');
+        $affected = $this->dep(AuthPlatformDep::class)->setStatusById((int)$param['id'], (int)$param['status']);
+        self::throwIf($affected === 0, '平台不存在');
         return self::success();
     }
 }

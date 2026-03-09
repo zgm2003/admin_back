@@ -36,7 +36,7 @@ class SettingService
     /**
      * 设置配置值（带类型转换）
      */
-    public static function set(string $key, $value, int $type = 1, string $remark = ''): bool
+    public static function set(string $key, $value, int $type = 1, string $remark = ''): int
     {
         // 类型转换：将值转为字符串存储
         $strValue = match ($type) {

@@ -2,13 +2,13 @@
 
 namespace app\dep;
 
+use app\enum\CommonEnum;
 use app\model\AddressModel;
 use support\Cache;
 use support\Model;
 
 /**
- * 地址 Dep
- * 注意：此表没有 is_del 字段，数据几乎不变，使用永久缓存
+ * Address Dep
  */
 class AddressDep extends BaseDep
 {
@@ -19,19 +19,18 @@ class AddressDep extends BaseDep
         return new AddressModel();
     }
 
-    // ==================== 查询方法 ====================
+    // ==================== Query ====================
 
-    /**
-     * 根据名称查询
-     */
     public function findByName(string $name)
     {
-        return $this->model->where('name', $name)->first();
+        return $this->model
+            ->where('name', $name)
+            ->where('is_del', CommonEnum::NO)
+            ->first();
     }
 
     /**
-     * 获取全量地址 Map（永久缓存）
-     * @return array id => address_row
+     * @return array id => address row
      */
     public function getAllMap(): array
     {
@@ -40,30 +39,19 @@ class AddressDep extends BaseDep
             return $cached;
         }
 
-        $all = $this->model->get();
+        $all = $this->model->where('is_del', CommonEnum::NO)->get();
         $map = [];
         foreach ($all as $item) {
             $map[$item->id] = $item->toArray();
         }
 
-        Cache::set(self::CACHE_KEY_ALL_MAP, $map); // 无 TTL = 永久
+        Cache::set(self::CACHE_KEY_ALL_MAP, $map);
 
         return $map;
     }
 
-    /**
-     * 清除地址缓存
-     */
     public static function clearCache(): void
     {
         Cache::delete(self::CACHE_KEY_ALL_MAP);
-    }
-
-    /**
-     * 视盖父类方法：此表没有 is_del 字段
-     */
-    public function get(int $id)
-    {
-        return $this->find($id);
     }
 }

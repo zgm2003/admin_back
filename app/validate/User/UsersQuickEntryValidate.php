@@ -9,7 +9,7 @@ class UsersQuickEntryValidate
     public static function add(): array
     {
         return [
-            'permission_id' => v::intVal()->setName('权限ID'),
+            'permission_id' => v::intVal()->min(1)->setName('??ID'),
         ];
     }
 
@@ -23,7 +23,7 @@ class UsersQuickEntryValidate
     public static function sort(): array
     {
         return [
-            'items' => v::arrayType()->setName('排序项'),
+            'items' => v::arrayType()->setName('???'),
         ];
     }
 }

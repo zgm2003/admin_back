@@ -2,18 +2,19 @@
 
 namespace app\module\User;
 
+use app\dep\Permission\PermissionDep;
 use app\dep\User\UsersQuickEntryDep;
 use app\module\BaseModule;
 use app\validate\User\UsersQuickEntryValidate;
 
 /**
- * 用户快捷入口模块
- * 负责：快捷入口的添加、删除、排序
+ * ????????
+ * ????????????????
  */
 class UsersQuickEntryModule extends BaseModule
 {
     /**
-     * 添加快捷入口
+     * ??????
      */
     public function add($request): array
     {
@@ -22,12 +23,11 @@ class UsersQuickEntryModule extends BaseModule
         $userId = $request->userId;
         $permissionId = (int)$param['permission_id'];
 
+        self::throwIf(!$this->dep(PermissionDep::class)->get($permissionId), '?????');
+
         $dep = $this->dep(UsersQuickEntryDep::class);
+        self::throwIf($dep->existsByUserAndPermission($userId, $permissionId), '??????');
 
-        // 检查是否已添加
-        self::throwIf($dep->existsByUserAndPermission($userId, $permissionId), '该入口已添加');
-
-        // 获取当前最大 sort，添加记录
         $maxSort = $dep->getMaxSort($userId);
         $id = $dep->add([
             'user_id'       => $userId,
@@ -39,7 +39,7 @@ class UsersQuickEntryModule extends BaseModule
     }
 
     /**
-     * 删除快捷入口
+     * ??????
      */
     public function del($request): array
     {
@@ -49,7 +49,7 @@ class UsersQuickEntryModule extends BaseModule
     }
 
     /**
-     * 更新排序
+     * ????
      */
     public function sort($request): array
     {

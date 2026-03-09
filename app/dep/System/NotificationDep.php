@@ -90,7 +90,10 @@ class NotificationDep extends BaseDep
      */
     public function deleteByUser($ids, int $userId): int
     {
-        $ids = \is_array($ids) ? $ids : [$ids];
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
         return $this->model->newQuery()
             ->whereIn('id', $ids)
             ->where('user_id', $userId)

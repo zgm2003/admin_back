@@ -3,6 +3,7 @@
 namespace app\dep\System;
 
 use app\dep\BaseDep;
+use app\enum\CommonEnum;
 use app\model\System\CronTaskLogModel;
 use Carbon\Carbon;
 use support\Model;
@@ -23,6 +24,7 @@ class CronTaskLogDep extends BaseDep
     {
         return $this->model
             ->select(['id', 'task_id', 'task_name', 'start_time', 'end_time', 'duration_ms', 'status', 'error_msg', 'created_at'])
+            ->where('is_del', CommonEnum::NO)
             ->where('task_id', $taskId)
             ->orderBy('id', 'desc')
             ->limit($limit)
@@ -36,6 +38,7 @@ class CronTaskLogDep extends BaseDep
     {
         return $this->model
             ->select(['id', 'task_id', 'task_name', 'start_time', 'end_time', 'duration_ms', 'status', 'error_msg', 'created_at'])
+            ->where('is_del', CommonEnum::NO)
             ->where('task_name', $taskName)
             ->orderBy('id', 'desc')
             ->limit($limit)
@@ -52,6 +55,7 @@ class CronTaskLogDep extends BaseDep
         $columns = ['id', 'task_id', 'task_name', 'start_time', 'end_time', 'duration_ms', 'status', 'result', 'error_msg', 'created_at'];
         return $this->model
             ->select($columns)
+            ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['task_id']), fn($q) => $q->where('task_id', $param['task_id']))
             ->when(!empty($param['task_name']), fn($q) => $q->where('task_name', $param['task_name']))
             ->when(!empty($param['status']), fn($q) => $q->where('status', $param['status']))
@@ -87,7 +91,7 @@ class CronTaskLogDep extends BaseDep
     public function logEnd(int $logId, bool $success, ?string $result = null, ?string $errorMsg = null): int
     {
         $endTime = date('Y-m-d H:i:s');
-        $log = $this->model->select(['id', 'start_time'])->find($logId);
+        $log = $this->getOrFail($logId);
         $startTime = strtotime($log->start_time);
         $duration = (int)((time() - $startTime) * 1000);
 
@@ -109,7 +113,8 @@ class CronTaskLogDep extends BaseDep
     {
         $cutoff = date('Y-m-d H:i:s', strtotime("-{$days} days"));
         return $this->model
+            ->where('is_del', CommonEnum::NO)
             ->where('created_at', '<', $cutoff)
-            ->delete();
+            ->update(['is_del' => CommonEnum::YES]);
     }
 }

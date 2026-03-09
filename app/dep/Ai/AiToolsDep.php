@@ -63,7 +63,10 @@ class AiToolsDep extends BaseDep
      */
     public function softDelete($ids): int
     {
-        $ids = is_array($ids) ? $ids : [$ids];
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
         $affected = 0;
         foreach ($ids as $id) {
             $suffix = '__del_' . $id;

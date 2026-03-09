@@ -2,18 +2,36 @@
 
 namespace tests\Unit;
 
+use app\dep\Permission\AuthPlatformDep;
+use app\enum\CommonEnum;
+use app\enum\PermissionEnum;
 use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
 use app\dep\Permission\RoleDep as RoleDepClass;
+use app\dep\AddressDep;
+use app\dep\Chat\ChatParticipantDep;
 use app\dep\System\ExportTaskDep;
+use app\dep\System\NotificationTaskDep;
+use app\dep\System\SystemSettingDep;
+use app\enum\NotificationEnum;
 use app\dep\User\UserProfileDep;
 use app\dep\User\UsersDep;
 use app\exception\BusinessException;
+use app\module\Permission\AuthPlatformModule;
 use app\module\Permission\PermissionModule;
 use app\module\Permission\RoleModule;
 use app\module\System\ExportTaskModule;
+use app\module\System\NotificationTaskModule;
+use app\module\System\SystemSettingModule;
 use app\module\User\UsersListModule;
+use app\module\User\UsersQuickEntryModule;
+use app\validate\Permission\PermissionValidate;
 use app\validate\System\ExportTaskValidate;
+use app\validate\User\UsersListValidate;
+use app\validate\User\UsersQuickEntryValidate;
+use app\service\AddressService;
+use app\service\Permission\AuthPlatformService;
+use app\service\System\SettingService;
 use app\service\User\PermissionService;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -28,6 +46,32 @@ class RefactorSafetyGuardsTest extends TestCase
             $prop = $serviceRef->getProperty($property);
             $prop->setAccessible(true);
             $prop->setValue(null, null);
+        }
+
+        AuthPlatformService::flushMemCache();
+
+        $addressServiceRef = new ReflectionClass(AddressService::class);
+        $addressDepProp = $addressServiceRef->getProperty('dep');
+        $addressDepProp->setAccessible(true);
+        $addressDepProp->setValue(null, null);
+
+        $settingServiceRef = new ReflectionClass(SettingService::class);
+        $depProp = $settingServiceRef->getProperty('dep');
+        $depProp->setAccessible(true);
+        $depProp->setValue(null, null);
+    }
+
+    private function stubAllowedPlatforms(array $platforms = ['admin', 'app']): void
+    {
+        $serviceRef = new ReflectionClass(AuthPlatformService::class);
+
+        foreach ([
+            'memCodes' => $platforms,
+            'memCodesAt' => time(),
+        ] as $property => $value) {
+            $prop = $serviceRef->getProperty($property);
+            $prop->setAccessible(true);
+            $prop->setValue(null, $value);
         }
     }
 
@@ -267,6 +311,40 @@ class RefactorSafetyGuardsTest extends TestCase
         $this->assertSame([5, 6, 7], $permissionDep->deletedIds);
     }
 
+    public function testPermissionValidateRequiresDirectoryFields(): void
+    {
+        $this->stubAllowedPlatforms();
+        $rules = PermissionValidate::add(PermissionEnum::TYPE_DIR);
+
+        $this->assertTrue($rules['i18n_key']->validate('system.menu'));
+        $this->assertFalse($rules['i18n_key']->validate(''));
+        $this->assertTrue($rules['show_menu']->validate(CommonEnum::NO));
+    }
+
+    public function testPermissionValidateRequiresPageFields(): void
+    {
+        $this->stubAllowedPlatforms();
+        $rules = PermissionValidate::edit(PermissionEnum::TYPE_PAGE);
+
+        $this->assertTrue($rules['path']->validate('/system/role'));
+        $this->assertFalse($rules['path']->validate(''));
+        $this->assertTrue($rules['component']->validate('Main/system/role/index'));
+        $this->assertFalse($rules['component']->validate(''));
+    }
+
+    public function testPermissionValidateRequiresButtonParentOnlyInAdminFlow(): void
+    {
+        $this->stubAllowedPlatforms();
+        $adminRules = PermissionValidate::add(PermissionEnum::TYPE_BUTTON, true);
+        $appRules = PermissionValidate::appButtonAdd();
+
+        $this->assertFalse($adminRules['parent_id']->validate(null));
+        $this->assertTrue($adminRules['parent_id']->validate(8));
+        $this->assertTrue($appRules['parent_id']->validate(null));
+        $this->assertTrue($appRules['code']->validate('user:create'));
+        $this->assertFalse($appRules['code']->validate(''));
+    }
+
     public function testPermissionBatchEditRejectsDescriptionFieldWithoutSchemaSupport(): void
     {
         $permissionDep = new class {
@@ -501,4 +579,397 @@ class RefactorSafetyGuardsTest extends TestCase
         $this->assertFalse($rule->validate([]));
     }
 
+
+
+    public function testAddressServiceBuildPathUsesNegativeOneRootSentinel(): void
+    {
+        $dep = new class extends AddressDep {
+            public function __construct()
+            {
+            }
+
+            public function getAllMap(): array
+            {
+                return [
+                    1 => ['id' => 1, 'name' => '???', 'parent_id' => -1],
+                    2 => ['id' => 2, 'name' => '???', 'parent_id' => 1],
+                    3 => ['id' => 3, 'name' => '???', 'parent_id' => 2],
+                ];
+            }
+        };
+
+        $serviceRef = new ReflectionClass(AddressService::class);
+        $depProp = $serviceRef->getProperty('dep');
+        $depProp->setAccessible(true);
+        $depProp->setValue(null, $dep);
+
+        $this->assertSame('???-???-???', AddressService::buildAddressPath(3));
+    }
+
+    public function testUsersQuickEntryAddValidationRejectsZeroPermissionId(): void
+    {
+        $rule = UsersQuickEntryValidate::add()['permission_id'];
+
+        $this->assertTrue($rule->validate(8));
+        $this->assertFalse($rule->validate(0));
+    }
+
+    public function testUsersQuickEntryAddRejectsMissingPermission(): void
+    {
+        $quickEntryDep = new class {
+            public bool $addCalled = false;
+
+            public function existsByUserAndPermission(int $userId, int $permissionId): bool
+            {
+                return false;
+            }
+
+            public function getMaxSort(int $userId): int
+            {
+                return 2;
+            }
+
+            public function add(array $data): int
+            {
+                $this->addCalled = true;
+                return 3;
+            }
+        };
+
+        $permissionDep = new class {
+            public function get(int $id)
+            {
+                return null;
+            }
+        };
+
+        $module = new class(['permission_id' => 99], [
+            \app\dep\User\UsersQuickEntryDep::class => $quickEntryDep,
+            PermissionDep::class => $permissionDep,
+        ]) extends UsersQuickEntryModule {
+            public function __construct(private array $validated, private array $deps)
+            {
+            }
+
+            protected function validate($request, array $rules, ?array $input = null): array
+            {
+                return $this->validated;
+            }
+
+            protected function dep(string $class)
+            {
+                return $this->deps[$class];
+            }
+        };
+
+        $request = new class {
+            public int $userId = 1;
+        };
+
+        try {
+            $module->add($request);
+            $this->fail('Expected BusinessException was not thrown.');
+        } catch (BusinessException $e) {
+            $this->assertStringContainsString('?????', $e->getMessage());
+        }
+
+        $this->assertFalse($quickEntryDep->addCalled);
+    }
+
+    public function testUsersListBatchEditValidationRequiresFieldSpecificPayload(): void
+    {
+        $sexRules = UsersListValidate::batchEdit('sex');
+        $addressRules = UsersListValidate::batchEdit('address');
+        $detailRules = UsersListValidate::batchEdit('detail_address');
+
+        $this->assertTrue($sexRules['sex']->validate(0));
+        $this->assertFalse($sexRules['sex']->validate(''));
+
+        $this->assertTrue($addressRules['address']->validate(330106));
+        $this->assertFalse($addressRules['address']->validate(0));
+
+        $this->assertTrue($detailRules['detail_address']->validate('detail ok'));
+        $this->assertFalse($detailRules['detail_address']->validate(''));
+    }
+
+    public function testSystemSettingEditUsesAffectedRowsContract(): void
+    {
+        $dep = new class {
+            public array $calls = [];
+
+            public function updateById(int $id, array $data): int
+            {
+                $this->calls[] = ['id' => $id, 'data' => $data];
+                return 1;
+            }
+        };
+
+        $module = new class([
+            'id' => 9,
+            'type' => 1,
+            'value' => 'on',
+            'remark' => 'demo',
+        ], [SystemSettingDep::class => $dep]) extends SystemSettingModule {
+            public function __construct(private array $validated, private array $deps)
+            {
+            }
+
+            protected function validate($request, array $rules, ?array $input = null): array
+            {
+                return $this->validated;
+            }
+
+            protected function dep(string $class)
+            {
+                return $this->deps[$class];
+            }
+        };
+
+        $result = $module->edit(new \stdClass());
+
+        $this->assertSame([[], 0, 'success'], $result);
+        $this->assertSame([[
+            'id' => 9,
+            'data' => [
+                'setting_value' => 'on',
+                'value_type' => 1,
+                'remark' => 'demo',
+            ],
+        ]], $dep->calls);
+    }
+
+    public function testSystemSettingStatusThrowsWhenAffectedRowsIsZero(): void
+    {
+        $dep = new class {
+            public function setStatusById(int $id, int $status): int
+            {
+                return 0;
+            }
+        };
+
+        $module = new class([
+            'id' => 9,
+            'status' => 1,
+        ], [SystemSettingDep::class => $dep]) extends SystemSettingModule {
+            public function __construct(private array $validated, private array $deps)
+            {
+            }
+
+            protected function validate($request, array $rules, ?array $input = null): array
+            {
+                return $this->validated;
+            }
+
+            protected function dep(string $class)
+            {
+                return $this->deps[$class];
+            }
+        };
+
+        $this->expectException(BusinessException::class);
+        $module->status(new \stdClass());
+    }
+
+    public function testSettingServiceSetUsesAffectedRowsContract(): void
+    {
+        $dep = new class extends SystemSettingDep {
+            public array $calls = [];
+
+            public function __construct()
+            {
+            }
+
+            public function setRaw(string $key, string $value, int $type = 1, string $remark = ''): int
+            {
+                $this->calls[] = compact('key', 'value', 'type', 'remark');
+                return 1;
+            }
+        };
+
+        $serviceRef = new ReflectionClass(SettingService::class);
+        $depProp = $serviceRef->getProperty('dep');
+        $depProp->setAccessible(true);
+        $depProp->setValue(null, $dep);
+
+        $result = SettingService::set('demo.json', ['enabled' => true], 4, 'demo');
+
+        $this->assertSame(1, $result);
+        $this->assertSame([[
+            'key' => 'demo.json',
+            'value' => '{"enabled":true}',
+            'type' => 4,
+            'remark' => 'demo',
+        ]], $dep->calls);
+    }
+
+    public function testNotificationTaskCancelThrowsWhenAffectedRowsIsZero(): void
+    {
+        $dep = new class {
+            public function get(int $id)
+            {
+                return (object) ['id' => $id, 'status' => NotificationEnum::STATUS_PENDING];
+            }
+
+            public function cancel(int $id): int
+            {
+                return 0;
+            }
+        };
+
+        $module = new class(['id' => 11], [NotificationTaskDep::class => $dep]) extends NotificationTaskModule {
+            public function __construct(private array $validated, private array $deps)
+            {
+            }
+
+            protected function validate($request, array $rules, ?array $input = null): array
+            {
+                return $this->validated;
+            }
+
+            protected function dep(string $class)
+            {
+                return $this->deps[$class];
+            }
+        };
+
+        $this->expectException(BusinessException::class);
+        $module->cancel(new \stdClass());
+    }
+
+    public function testChatParticipantAddBatchUsesProcessedCountContract(): void
+    {
+        $query = new class {
+            public array $rows = [];
+
+            public function insert(array $rows): bool
+            {
+                $this->rows = $rows;
+                return true;
+            }
+        };
+
+        $dep = new class($query) extends ChatParticipantDep {
+            public function __construct(private readonly object $mockQuery)
+            {
+            }
+
+            protected function createModel(): \support\Model
+            {
+                throw new \LogicException('not used');
+            }
+
+            protected function query()
+            {
+                return $this->mockQuery;
+            }
+        };
+
+        $emptyResult = $dep->addBatch([]);
+        $result = $dep->addBatch([
+            ['conversation_id' => 1, 'user_id' => 10],
+            ['conversation_id' => 1, 'user_id' => 11],
+        ]);
+
+        $this->assertSame(0, $emptyResult);
+        $this->assertSame(2, $result);
+        $this->assertCount(2, $query->rows);
+    }
+
+    public function testAuthPlatformEditUsesAffectedRowsContract(): void
+    {
+        $dep = new class {
+            public array $calls = [];
+
+            public function get(int $id)
+            {
+                return (object) ['code' => 'admin'];
+            }
+
+            public function updateById(int $id, array $data, ?string $oldCode = null): int
+            {
+                $this->calls[] = ['id' => $id, 'data' => $data, 'oldCode' => $oldCode];
+                return 1;
+            }
+        };
+
+        $module = new class([
+            'id' => 3,
+            'name' => '????',
+            'login_types' => ['password', 'sms'],
+            'access_ttl' => 3600,
+            'refresh_ttl' => 86400,
+            'bind_platform' => 1,
+            'bind_device' => 0,
+            'bind_ip' => 0,
+            'single_session' => 1,
+            'max_sessions' => 2,
+            'allow_register' => 0,
+        ], [AuthPlatformDep::class => $dep]) extends AuthPlatformModule {
+            public function __construct(private array $validated, private array $deps)
+            {
+            }
+
+            protected function validate($request, array $rules, ?array $input = null): array
+            {
+                return $this->validated;
+            }
+
+            protected function dep(string $class)
+            {
+                return $this->deps[$class];
+            }
+        };
+
+        $result = $module->edit(new \stdClass());
+
+        $this->assertSame([[], 0, 'success'], $result);
+        $this->assertSame([[
+            'id' => 3,
+            'data' => [
+                'name' => '????',
+                'login_types' => json_encode(['password', 'sms']),
+                'access_ttl' => 3600,
+                'refresh_ttl' => 86400,
+                'bind_platform' => 1,
+                'bind_device' => 0,
+                'bind_ip' => 0,
+                'single_session' => 1,
+                'max_sessions' => 2,
+                'allow_register' => 0,
+            ],
+            'oldCode' => 'admin',
+        ]], $dep->calls);
+    }
+
+    public function testAuthPlatformStatusThrowsWhenAffectedRowsIsZero(): void
+    {
+        $dep = new class {
+            public function setStatusById(int $id, int $status): int
+            {
+                return 0;
+            }
+        };
+
+        $module = new class([
+            'id' => 3,
+            'status' => 2,
+        ], [AuthPlatformDep::class => $dep]) extends AuthPlatformModule {
+            public function __construct(private array $validated, private array $deps)
+            {
+            }
+
+            protected function validate($request, array $rules, ?array $input = null): array
+            {
+                return $this->validated;
+            }
+
+            protected function dep(string $class)
+            {
+                return $this->deps[$class];
+            }
+        };
+
+        $this->expectException(BusinessException::class);
+        $module->status(new \stdClass());
+    }
 }

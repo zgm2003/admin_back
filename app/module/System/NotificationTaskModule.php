@@ -144,7 +144,8 @@ class NotificationTaskModule extends BaseModule
         $task = $this->dep(NotificationTaskDep::class)->get($param['id']);
         self::throwIf(!$task, '任务不存在');
         self::throwIf($task->status !== NotificationEnum::STATUS_PENDING, '只能取消待发送的任务');
-        $this->dep(NotificationTaskDep::class)->cancel($param['id']);
+        $affected = $this->dep(NotificationTaskDep::class)->cancel($param['id']);
+        self::throwIf($affected === 0, '任务状态已变更，请刷新后重试');
         return self::success();
     }
 

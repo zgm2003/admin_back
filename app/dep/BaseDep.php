@@ -29,6 +29,21 @@ abstract class BaseDep
         $this->model = $this->createModel();
     }
 
+    protected function primaryKey(): string
+    {
+        return $this->model->getKeyName();
+    }
+
+    protected function normalizeIds($ids): array
+    {
+        $ids = is_array($ids) ? $ids : [$ids];
+
+        return array_values(array_unique(array_filter(
+            array_map('intval', $ids),
+            static fn(int $id) => $id > 0
+        )));
+    }
+
     // ==================== 查询方法 ====================
 
     /**
@@ -36,7 +51,7 @@ abstract class BaseDep
      */
     public function find(int $id)
     {
-        return $this->model->where('id', $id)->first();
+        return $this->model->where($this->primaryKey(), $id)->first();
     }
 
     /**
@@ -57,7 +72,7 @@ abstract class BaseDep
     public function get(int $id)
     {
         return $this->model
-            ->where('id', $id)
+            ->where($this->primaryKey(), $id)
             ->where('is_del', CommonEnum::NO)
             ->first();
     }
@@ -81,14 +96,18 @@ abstract class BaseDep
      */
     public function getMap(array $ids, array $columns = ['*'])
     {
+        $ids = $this->normalizeIds($ids);
         if (empty($ids)) {
             return collect();
         }
+
+        $key = $this->primaryKey();
+
         return $this->model
             ->select($columns)
-            ->whereIn('id', array_unique($ids))
+            ->whereIn($key, $ids)
             ->get()
-            ->keyBy('id');
+            ->keyBy($key);
     }
 
     /**
@@ -97,15 +116,19 @@ abstract class BaseDep
      */
     public function getMapActive(array $ids, array $columns = ['*'])
     {
+        $ids = $this->normalizeIds($ids);
         if (empty($ids)) {
             return collect();
         }
+
+        $key = $this->primaryKey();
+
         return $this->model
             ->select($columns)
-            ->whereIn('id', array_unique($ids))
+            ->whereIn($key, $ids)
             ->where('is_del', CommonEnum::NO)
             ->get()
-            ->keyBy('id');
+            ->keyBy($key);
     }
 
     // ==================== 写入方法 ====================
@@ -115,7 +138,13 @@ abstract class BaseDep
      */
     public function add(array $data): int
     {
-        return $this->model->insertGetId($data);
+        $key = $this->primaryKey();
+        if (array_key_exists($key, $data)) {
+            $this->model->insert($data);
+            return (int) $data[$key];
+        }
+
+        return (int) $this->model->insertGetId($data);
     }
 
     /**
@@ -123,8 +152,12 @@ abstract class BaseDep
      */
     public function update($ids, array $data): int
     {
-        $ids = is_array($ids) ? $ids : [$ids];
-        return $this->model->whereIn('id', $ids)->update($data);
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
+
+        return $this->model->whereIn($this->primaryKey(), $ids)->update($data);
     }
 
     /**
@@ -132,9 +165,13 @@ abstract class BaseDep
      */
     public function delete($ids): int
     {
-        $ids = is_array($ids) ? $ids : [$ids];
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
+
         return $this->model
-            ->whereIn('id', $ids)
+            ->whereIn($this->primaryKey(), $ids)
             ->where('is_del', CommonEnum::NO)
             ->update(['is_del' => CommonEnum::YES]);
     }
@@ -144,9 +181,13 @@ abstract class BaseDep
      */
     public function setStatus($ids, int $status): int
     {
-        $ids = is_array($ids) ? $ids : [$ids];
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return 0;
+        }
+
         return $this->model
-            ->whereIn('id', $ids)
+            ->whereIn($this->primaryKey(), $ids)
             ->where('is_del', CommonEnum::NO)
             ->update(['status' => $status]);
     }
@@ -160,7 +201,7 @@ abstract class BaseDep
         $amount = $this->validateCounterAmount($amount);
 
         return $this->model
-            ->where('id', $id)
+            ->where($this->primaryKey(), $id)
             ->where($column, '>=', $amount)
             ->decrement($column, $amount);
     }
@@ -174,7 +215,7 @@ abstract class BaseDep
         $amount = $this->validateCounterAmount($amount);
 
         return $this->model
-            ->where('id', $id)
+            ->where($this->primaryKey(), $id)
             ->increment($column, $amount);
     }
 
@@ -214,7 +255,8 @@ abstract class BaseDep
     {
         $pageSize = $param['page_size'];
         $cursor = $param['cursor'];
-        
+        $key = $this->primaryKey();
+
         $query = $this->model->select($columns);
         
         // 有 is_del 字段的表自动加条件
@@ -224,7 +266,7 @@ abstract class BaseDep
         
         // 游标条件：id < cursor
         if ($cursor) {
-            $query->where('id', '<', $cursor);
+            $query->where($key, '<', $cursor);
         }
         
         // 额外条件
@@ -233,7 +275,7 @@ abstract class BaseDep
         }
         
         // 多取一条判断 has_more
-        $list = $query->orderBy('id', 'desc')->limit($pageSize + 1)->get();
+        $list = $query->orderBy($key, 'desc')->limit($pageSize + 1)->get();
         
         $hasMore = $list->count() > $pageSize;
         if ($hasMore) {
@@ -242,7 +284,7 @@ abstract class BaseDep
         
         return [
             'list' => $list,
-            'next_cursor' => $hasMore ? $list->last()->id : null,
+            'next_cursor' => $hasMore ? $list->last()->{$key} : null,
             'has_more' => $hasMore
         ];
     }
@@ -263,7 +305,7 @@ abstract class BaseDep
     public function exists(int $id): bool
     {
         return $this->model
-            ->where('id', $id)
+            ->where($this->primaryKey(), $id)
             ->where('is_del', CommonEnum::NO)
             ->exists();
     }
