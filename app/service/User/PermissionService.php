@@ -205,7 +205,7 @@ class PermissionService
                 'i18n_key'  => $item['i18n_key'] ?? '',
                 'sort'      => (int)$item['sort'],
                 'show_menu' => isset($item['show_menu']) ? (int)$item['show_menu'] : CommonEnum::YES,
-                'parent_id' => PermissionEnum::normalizeParentId((int)$item['parent_id']),
+                'parent_id' => (int)$item['parent_id'],
             ];
         }
 

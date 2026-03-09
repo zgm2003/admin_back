@@ -42,7 +42,7 @@ class AddressService
 
             array_unshift($parts, $name);
 
-            if ($parentId <= 0) {
+            if ($parentId === 0) {
                 break;
             }
             $currentId = $parentId;

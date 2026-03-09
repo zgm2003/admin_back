@@ -196,7 +196,7 @@ class PermissionModule extends BaseModule
             return PermissionEnum::ROOT_PARENT_ID;
         }
 
-        return PermissionEnum::normalizeParentId((int)$parentId);
+        return (int)$parentId;
     }
 
     protected function permissionDep()
@@ -231,7 +231,7 @@ class PermissionModule extends BaseModule
             'id'        => $item->id,
             'name'      => $item->name,
             'path'      => $item->path,
-            'parent_id' => PermissionEnum::normalizeParentId((int)$item->parent_id),
+            'parent_id' => (int)$item->parent_id,
             'icon'      => $item->icon,
             'component' => $item->component,
             'status'    => $item->status,

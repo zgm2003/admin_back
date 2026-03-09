@@ -183,7 +183,7 @@ What changed:
 - live data root rows are rewritten from `-1` to `0`
 - both columns are now `int unsigned not null default 0`
 - code paths that build trees and upward paths now use `0` as the canonical root parent id
-- a narrow compatibility layer still treats legacy `-1` as root if stale cached data is encountered before cache refresh
+- no legacy `-1` root compatibility remains in application code
 
 Post-check result:
 

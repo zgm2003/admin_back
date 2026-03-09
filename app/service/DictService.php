@@ -252,7 +252,7 @@ class DictService
             'id'        => $item['id'],
             'label'     => ($item['platform'] ? '[' . ($platformMap[$item['platform']] ?? $item['platform']) . '] ' : '') . $item['name'],
             'value'     => $item['id'],
-            'parent_id' => PermissionEnum::normalizeParentId((int)$item['parent_id']),
+            'parent_id' => (int)$item['parent_id'],
             'platform'  => $item['platform'] ?? '',
         ], $allPermissions);
 
@@ -280,7 +280,7 @@ class DictService
             'id'        => $item['id'],
             'label'     => $item['name'],
             'value'     => $item['id'],
-            'parent_id' => (int)$item['parent_id'] > 0 ? (int)$item['parent_id'] : 0,
+            'parent_id' => (int)$item['parent_id'],
         ], $allAddressMap);
 
         $tree = listToTree($resCategory, 0);
