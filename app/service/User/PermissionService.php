@@ -4,6 +4,7 @@ namespace app\service\User;
 
 use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
+use app\dep\Permission\RolePermissionDep;
 use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\service\Permission\AuthPlatformService;
@@ -16,6 +17,7 @@ use app\service\Permission\AuthPlatformService;
 class PermissionService
 {
     private static ?RoleDep $roleDep = null;
+    private static ?RolePermissionDep $rolePermissionDep = null;
     private static ?PermissionDep $permissionDep = null;
 
     private static function roleDep(): RoleDep
@@ -26,6 +28,11 @@ class PermissionService
     private static function permDep(): PermissionDep
     {
         return self::$permissionDep ??= new PermissionDep();
+    }
+
+    private static function rolePermissionDep(): RolePermissionDep
+    {
+        return self::$rolePermissionDep ??= new RolePermissionDep();
     }
 
     /**
@@ -52,7 +59,7 @@ class PermissionService
             throw new \InvalidArgumentException("无效的平台标识: {$platform}");
         }
 
-        $leafIds = self::normalizeLeafIds($role->permission_id ?? []);
+        $leafIds = self::normalizeLeafIds(self::rolePermissionDep()->getPermissionIdsByRoleId($roleId));
 
         if (empty($leafIds)) {
             return ['permissions' => [], 'router' => [], 'buttonCodes' => []];
@@ -114,26 +121,10 @@ class PermissionService
      * 路径缓存：已确认有效的节点直接跳过，避免重复遍历
      * 环检测：visited 防止数据异常导致死循环
      */
-    private static function normalizeLeafIds(mixed $permissionIds): array
+    private static function normalizeLeafIds(array $permissionIds): array
     {
-        if (is_array($permissionIds)) {
-            return array_values(array_unique(array_filter(
-                array_map('intval', $permissionIds),
-                static fn(int $id) => $id > 0
-            )));
-        }
-
-        if (!is_string($permissionIds) || $permissionIds === '') {
-            return [];
-        }
-
-        $decoded = json_decode($permissionIds, true);
-        if (!is_array($decoded)) {
-            return [];
-        }
-
         return array_values(array_unique(array_filter(
-            array_map('intval', $decoded),
+            array_map('intval', $permissionIds),
             static fn(int $id) => $id > 0
         )));
     }

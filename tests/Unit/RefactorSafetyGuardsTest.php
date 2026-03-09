@@ -8,6 +8,7 @@ use app\enum\PermissionEnum;
 use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
 use app\dep\Permission\RoleDep as RoleDepClass;
+use app\dep\Permission\RolePermissionDep;
 use app\dep\AddressDep;
 use app\dep\Chat\ChatParticipantDep;
 use app\dep\System\ExportTaskDep;
@@ -42,7 +43,7 @@ class RefactorSafetyGuardsTest extends TestCase
     {
         $serviceRef = new ReflectionClass(PermissionService::class);
 
-        foreach (['roleDep', 'permissionDep'] as $property) {
+        foreach (['roleDep', 'rolePermissionDep', 'permissionDep'] as $property) {
             $prop = $serviceRef->getProperty($property);
             $prop->setAccessible(true);
             $prop->setValue(null, null);
@@ -159,7 +160,13 @@ class RefactorSafetyGuardsTest extends TestCase
             ->disableOriginalConstructor()
             ->onlyMethods(['find'])
             ->getMock();
-        $roleDep->method('find')->willReturn((object) ['permission_id' => [2]]);
+        $roleDep->method('find')->willReturn((object) ['id' => 9]);
+
+        $rolePermissionDep = $this->getMockBuilder(RolePermissionDep::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['getPermissionIdsByRoleId'])
+            ->getMock();
+        $rolePermissionDep->method('getPermissionIdsByRoleId')->with(9)->willReturn([2]);
 
         $permissionDep = $this->getMockBuilder(PermissionDep::class)
             ->disableOriginalConstructor()
@@ -200,6 +207,9 @@ class RefactorSafetyGuardsTest extends TestCase
         $roleDepProp = $serviceRef->getProperty('roleDep');
         $roleDepProp->setAccessible(true);
         $roleDepProp->setValue(null, $roleDep);
+        $rolePermissionDepProp = $serviceRef->getProperty('rolePermissionDep');
+        $rolePermissionDepProp->setAccessible(true);
+        $rolePermissionDepProp->setValue(null, $rolePermissionDep);
         $permissionDepProp = $serviceRef->getProperty('permissionDep');
         $permissionDepProp->setAccessible(true);
         $permissionDepProp->setValue(null, $permissionDep);
@@ -512,7 +522,7 @@ class RefactorSafetyGuardsTest extends TestCase
         $this->assertFalse($permissionDep->updateCalled);
     }
 
-    public function testRoleAddAcceptsExpandedPermissionPayloadWhenStorageIsJson(): void
+    public function testRoleAddSyncsExpandedPermissionPayloadThroughPivotDep(): void
     {
         $roleDep = new class {
             public bool $addCalled = false;
@@ -527,14 +537,23 @@ class RefactorSafetyGuardsTest extends TestCase
             {
                 $this->addCalled = true;
                 $this->received = $data;
-                return 1;
+                return 11;
+            }
+        };
+
+        $rolePermissionDep = new class {
+            public array $syncCalls = [];
+
+            public function syncPermissions(int $roleId, array $permissionIds): void
+            {
+                $this->syncCalls[] = ['roleId' => $roleId, 'permissionIds' => $permissionIds];
             }
         };
 
         $module = new class([
             'name' => 'oversized-role',
             'permission_id' => range(1, 88),
-        ], [RoleDepClass::class => $roleDep]) extends RoleModule {
+        ], [RoleDepClass::class => $roleDep, RolePermissionDep::class => $rolePermissionDep]) extends RoleModule {
             public function __construct(private array $validated, private array $deps)
             {
             }
@@ -548,6 +567,11 @@ class RefactorSafetyGuardsTest extends TestCase
             {
                 return $this->deps[$class];
             }
+
+            protected function withTransaction(callable $callback)
+            {
+                return $callback();
+            }
         };
 
         $result = $module->add(new \stdClass());
@@ -556,11 +580,14 @@ class RefactorSafetyGuardsTest extends TestCase
         $this->assertTrue($roleDep->addCalled);
         $this->assertSame([
             'name' => 'oversized-role',
-            'permission_id' => range(1, 88),
         ], $roleDep->received);
+        $this->assertSame([[
+            'roleId' => 11,
+            'permissionIds' => range(1, 88),
+        ]], $rolePermissionDep->syncCalls);
     }
 
-    public function testRoleEditAcceptsExpandedPermissionPayloadWhenStorageIsJson(): void
+    public function testRoleEditSyncsExpandedPermissionPayloadThroughPivotDep(): void
     {
         $roleDep = new class {
             public bool $updateCalled = false;
@@ -581,6 +608,15 @@ class RefactorSafetyGuardsTest extends TestCase
             }
         };
 
+        $rolePermissionDep = new class {
+            public array $syncCalls = [];
+
+            public function syncPermissions(int $roleId, array $permissionIds): void
+            {
+                $this->syncCalls[] = ['roleId' => $roleId, 'permissionIds' => $permissionIds];
+            }
+        };
+
         $usersDep = new class {
             public function getIdsByRoleIds(array $roleIds)
             {
@@ -592,7 +628,7 @@ class RefactorSafetyGuardsTest extends TestCase
             'id' => 9,
             'name' => 'oversized-role',
             'permission_id' => range(1, 88),
-        ], [RoleDepClass::class => $roleDep, UsersDep::class => $usersDep]) extends RoleModule {
+        ], [RoleDepClass::class => $roleDep, RolePermissionDep::class => $rolePermissionDep, UsersDep::class => $usersDep]) extends RoleModule {
             public function __construct(private array $validated, private array $deps)
             {
             }
@@ -606,9 +642,13 @@ class RefactorSafetyGuardsTest extends TestCase
             {
                 return $this->deps[$class] ?? array_values($this->deps)[0] ?? null;
             }
+
+            protected function withTransaction(callable $callback)
+            {
+                return $callback();
+            }
         };
 
-        $this->stubAllowedPlatforms();
         $result = $module->edit(new \stdClass());
 
         $this->assertSame([[], 0, 'success'], $result);
@@ -616,8 +656,83 @@ class RefactorSafetyGuardsTest extends TestCase
         $this->assertSame(9, $roleDep->receivedId);
         $this->assertSame([
             'name' => 'oversized-role',
-            'permission_id' => range(1, 88),
         ], $roleDep->received);
+        $this->assertSame([[
+            'roleId' => 9,
+            'permissionIds' => range(1, 88),
+        ]], $rolePermissionDep->syncCalls);
+    }
+
+    public function testRoleDeleteSoftDeletesPivotRelationsTogether(): void
+    {
+        $roleDep = new class {
+            public array $deleteCalls = [];
+
+            public function getMapActive(array $ids)
+            {
+                return collect([
+                    5 => ['id' => 5],
+                    7 => ['id' => 7],
+                ]);
+            }
+
+            public function hasDefaultIn(array $ids): bool
+            {
+                return false;
+            }
+
+            public function delete($ids): int
+            {
+                $this->deleteCalls[] = $ids;
+                return is_array($ids) ? count($ids) : 1;
+            }
+        };
+
+        $rolePermissionDep = new class {
+            public array $deleteCalls = [];
+
+            public function deleteByRoleIds(array $roleIds): int
+            {
+                $this->deleteCalls[] = $roleIds;
+                return count($roleIds);
+            }
+        };
+
+        $usersDep = new class {
+            public function getIdsByRoleIds(array $roleIds)
+            {
+                return collect([]);
+            }
+        };
+
+        $module = new class([
+            'id' => [5, 7],
+        ], [RoleDepClass::class => $roleDep, RolePermissionDep::class => $rolePermissionDep, UsersDep::class => $usersDep]) extends RoleModule {
+            public function __construct(private array $validated, private array $deps)
+            {
+            }
+
+            protected function validate($request, array $rules, ?array $input = null): array
+            {
+                return $this->validated;
+            }
+
+            protected function dep(string $class)
+            {
+                return $this->deps[$class];
+            }
+
+            protected function withTransaction(callable $callback)
+            {
+                return $callback();
+            }
+        };
+
+        $result = $module->del(new \stdClass());
+
+        $this->assertSame([[], 0, 'success'], $result);
+        $this->assertSame([[5, 7]], $roleDep->deleteCalls);
+        $this->assertSame([[5, 7]], $rolePermissionDep->deleteCalls);
     }
 
     public function testExportTaskDeleteUsesBatchDeleteForSingleId(): void

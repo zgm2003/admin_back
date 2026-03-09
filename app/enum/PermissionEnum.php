@@ -5,11 +5,10 @@ namespace app\enum;
 class PermissionEnum
 {
     const ROOT_PARENT_ID = 0;
-    const ParentCategory = self::ROOT_PARENT_ID; //父级分类
     const ChildCategory = 1; //子级分类
 
     public static $statusArr = [
-        self::ParentCategory => "一级菜单",
+        self::ROOT_PARENT_ID => "一级菜单",
         self::ChildCategory => "二级页面",
 
     ];

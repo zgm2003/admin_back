@@ -3,6 +3,7 @@
 namespace app\module\Permission;
 
 use app\dep\Permission\RoleDep;
+use app\dep\Permission\RolePermissionDep;
 use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
@@ -38,10 +39,13 @@ class RoleModule extends BaseModule
         $dep = $this->dep(RoleDep::class);
         self::throwIf($dep->existsByName($param['name']), '角色名已存在');
 
-        $dep->add([
-            'name'          => $param['name'],
-            'permission_id' => $param['permission_id'],
-        ]);
+        $this->withTransaction(function () use ($param, $dep) {
+            $roleId = $dep->add([
+                'name' => $param['name'],
+            ]);
+
+            $this->dep(RolePermissionDep::class)->syncPermissions($roleId, $param['permission_id']);
+        });
 
         return self::success();
     }
@@ -62,7 +66,10 @@ class RoleModule extends BaseModule
         self::throwIf($dep->hasDefaultIn($ids), '默认角色不能删除');
         self::throwIf($this->dep(UsersDep::class)->getIdsByRoleIds($ids)->count() > 0, '角色已绑定用户，不能删除');
 
-        $dep->delete($ids);
+        $this->withTransaction(function () use ($dep, $ids) {
+            $dep->delete($ids);
+            $this->dep(RolePermissionDep::class)->deleteByRoleIds($ids);
+        });
 
         $this->clearPermissionCacheByRoleIds($ids);
 
@@ -79,10 +86,13 @@ class RoleModule extends BaseModule
         $dep = $this->dep(RoleDep::class);
         self::throwIf($dep->existsByName($param['name'], $param['id']), '角色名已存在');
 
-        $dep->update($param['id'], [
-            'name'          => $param['name'],
-            'permission_id' => $param['permission_id'],
-        ]);
+        $this->withTransaction(function () use ($param, $dep) {
+            $dep->update($param['id'], [
+                'name' => $param['name'],
+            ]);
+
+            $this->dep(RolePermissionDep::class)->syncPermissions((int)$param['id'], $param['permission_id']);
+        });
 
         $this->clearPermissionCacheByRoleIds([(int)$param['id']]);
 
@@ -96,11 +106,12 @@ class RoleModule extends BaseModule
     {
         $param = $this->validate($request, RoleValidate::list());
         $resList = $this->dep(RoleDep::class)->list($param);
+        $permissionMap = $this->dep(RolePermissionDep::class)->getPermissionIdsByRoleIds($resList->pluck('id')->all());
 
         $data['list'] = $resList->map(fn($item) => [
             'id'            => $item['id'],
             'name'          => $item['name'],
-            'permission_id' => is_array($item['permission_id']) ? $item['permission_id'] : [],
+            'permission_id' => $permissionMap[(int)$item['id']] ?? [],
             'is_default'    => $item['is_default'] ?? CommonEnum::NO,
             'created_at'    => $item['created_at'],
             'updated_at'    => $item['updated_at'],

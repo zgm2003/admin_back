@@ -7,8 +7,4 @@ use app\model\BaseModel;
 class RoleModel extends BaseModel
 {
     protected $table = 'role';
-
-    protected $casts = [
-        'permission_id' => 'array',
-    ];
 }

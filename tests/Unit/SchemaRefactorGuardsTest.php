@@ -96,7 +96,7 @@ class SchemaRefactorGuardsTest extends TestCase
     }
 
 
-    public function testRoleDepAddNormalizesPermissionIdsToJsonString(): void
+    public function testRoleDepAddDropsPermissionIdsAfterPivotRefactor(): void
     {
         $model = new FakeSchemaGuardModel('id');
 
@@ -120,11 +120,10 @@ class SchemaRefactorGuardsTest extends TestCase
         $this->assertSame(456, $result);
         $this->assertSame([
             'name' => 'role-A',
-            'permission_id' => '[3,2]',
         ], $model->insertGetIdPayload);
     }
 
-    public function testRoleDepUpdateNormalizesPermissionIdsToJsonString(): void
+    public function testRoleDepUpdateDropsPermissionIdsAfterPivotRefactor(): void
     {
         $model = new FakeSchemaGuardModel('id');
         $model->updateResult = 1;
@@ -142,13 +141,14 @@ class SchemaRefactorGuardsTest extends TestCase
         };
 
         $result = $dep->update(8, [
+            'name' => 'role-B',
             'permission_id' => [5, '4', 0, 5],
         ]);
 
         $this->assertSame(1, $result);
         $this->assertSame(['column' => 'id', 'values' => [8]], $model->whereInCall);
         $this->assertSame([
-            'permission_id' => '[5,4]',
+            'name' => 'role-B',
         ], $model->updatePayload);
     }
 }
