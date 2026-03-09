@@ -3,6 +3,7 @@
 namespace app\controller\Ai;
 
 use app\controller\Controller;
+use app\middleware\AccessControl;
 use app\module\Ai\AiChatModule;
 use app\validate\Ai\AiChatValidate;
 use support\Request;
@@ -21,15 +22,13 @@ class AiChatController extends Controller
      */
     private function getSseHeaders(Request $request): array
     {
-        $origin = $request->header('origin', '*');
-        return [
+        return array_merge([
             'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
             'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no',
-            'Access-Control-Allow-Origin' => $origin,
-            'Access-Control-Allow-Credentials' => 'true',
-        ];
+            'Vary' => 'Origin',
+        ], AccessControl::buildOriginHeaders($request->header('origin')));
     }
 
     /**

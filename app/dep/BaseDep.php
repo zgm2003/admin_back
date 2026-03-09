@@ -5,6 +5,7 @@ namespace app\dep;
 use app\enum\CommonEnum;
 use support\Model;
 use RuntimeException;
+use InvalidArgumentException;
 
 /**
  * Dep 基类
@@ -155,10 +156,13 @@ abstract class BaseDep
      */
     public function decrement(int $id, string $column, int $amount = 1): int
     {
+        $column = $this->validateCounterColumn($column);
+        $amount = $this->validateCounterAmount($amount);
+
         return $this->model
             ->where('id', $id)
-            ->where($column, '>', 0)
-            ->update([$column => \support\Db::raw("{$column} - {$amount}")]);
+            ->where($column, '>=', $amount)
+            ->decrement($column, $amount);
     }
 
     /**
@@ -166,9 +170,30 @@ abstract class BaseDep
      */
     public function increment(int $id, string $column, int $amount = 1): int
     {
+        $column = $this->validateCounterColumn($column);
+        $amount = $this->validateCounterAmount($amount);
+
         return $this->model
             ->where('id', $id)
-            ->update([$column => \support\Db::raw("{$column} + {$amount}")]);
+            ->increment($column, $amount);
+    }
+
+    protected function validateCounterColumn(string $column): string
+    {
+        if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $column) !== 1) {
+            throw new InvalidArgumentException('Invalid counter column.');
+        }
+
+        return $column;
+    }
+
+    protected function validateCounterAmount(int $amount): int
+    {
+        if ($amount <= 0) {
+            throw new InvalidArgumentException('Counter amount must be greater than 0.');
+        }
+
+        return $amount;
     }
 
     // ==================== 游标分页（深分页优化） ====================

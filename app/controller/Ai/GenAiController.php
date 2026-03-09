@@ -3,6 +3,7 @@
 namespace app\controller\Ai;
 
 use app\controller\Controller;
+use app\middleware\AccessControl;
 use app\module\Ai\GenAiModule;
 use support\Request;
 use Workerman\Protocols\Http\Response as WorkermanResponse;
@@ -88,15 +89,13 @@ class GenAiController extends Controller
      */
     private function getSseHeaders(Request $request): array
     {
-        $origin = $request->header('origin', '*');
-        return [
-            'Content-Type'  => 'text/event-stream',
+        return array_merge([
+            'Content-Type' => 'text/event-stream',
             'Cache-Control' => 'no-cache',
-            'Connection'    => 'keep-alive',
+            'Connection' => 'keep-alive',
             'X-Accel-Buffering' => 'no',
-            'Access-Control-Allow-Origin' => $origin,
-            'Access-Control-Allow-Credentials' => 'true',
-        ];
+            'Vary' => 'Origin',
+        ], AccessControl::buildOriginHeaders($request->header('origin')));
     }
 
     /**

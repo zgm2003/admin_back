@@ -25,6 +25,11 @@ return [
     'controller_suffix' => 'Controller',
     'controller_reuse' => false,
 
+    'cors_allowed_origins' => array_values(array_filter(array_unique(array_merge(
+        ['https://zgm2003.cn'],
+        array_map('trim', explode(',', (string) (getenv('CORS_ALLOWED_ORIGINS') ?: '')))
+    )))),
+
     // 用于hash token的pepper（不要泄露，不要放前端）
     'token_pepper' => env('TOKEN_PEPPER', ''),
 
