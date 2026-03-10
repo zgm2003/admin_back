@@ -130,7 +130,7 @@ class GoodsModule extends BaseModule
             'main_img'   => $param['main_img'] ?? '',
             'platform'   => (int)($param['platform'] ?? -1),
             'link'       => $param['link'] ?? '',
-            'image_list' => !empty($param['image_list']) ? \json_encode($param['image_list']) : null,
+            'image_list' => !empty($param['image_list']) ? $param['image_list'] : null,
             'status'     => GoodsEnum::STATUS_PENDING,
             'is_del'     => CommonEnum::NO,
         ];
@@ -158,10 +158,10 @@ class GoodsModule extends BaseModule
             }
         }
         if (isset($param['image_list'])) {
-            $data['image_list'] = \json_encode($param['image_list']);
+            $data['image_list'] = $param['image_list'];
         }
         if (isset($param['image_list_success'])) {
-            $data['image_list_success'] = \json_encode($param['image_list_success']);
+            $data['image_list_success'] = $param['image_list_success'];
         }
         if (isset($param['meta'])) {
             $data['meta'] = \json_encode($param['meta']);
@@ -199,7 +199,7 @@ class GoodsModule extends BaseModule
             'main_img'   => $images[0] ?? '',
             'platform'   => $platformId,
             'link'       => $param['link'] ?? '',
-            'image_list' => \json_encode($images),
+            'image_list' => $images,
             'meta'       => !empty($param['meta']) ? \json_encode($param['meta']) : null,
             'status'     => GoodsEnum::STATUS_PENDING,
             'is_del'     => CommonEnum::NO,
@@ -226,7 +226,7 @@ class GoodsModule extends BaseModule
 
         // 乐观锁切状态 → OCR中
         $affected = $dep->transitStatus($id, $goods->status, GoodsEnum::STATUS_OCR, [
-            'image_list_success' => \json_encode($images),
+            'image_list_success' => $images,
         ]);
         self::throwIf($affected === 0, '状态已变更，请刷新后重试');
 

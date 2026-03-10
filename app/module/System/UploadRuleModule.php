@@ -36,8 +36,8 @@ class UploadRuleModule extends BaseModule
         $this->dep(UploadRuleDep::class)->add([
             'title'       => $param['title'],
             'max_size_mb' => $param['max_size_mb'],
-            'image_exts'  => json_encode($param['image_exts']),
-            'file_exts'   => json_encode($param['file_exts']),
+            'image_exts'  => $param['image_exts'],
+            'file_exts'   => $param['file_exts'],
         ]);
         return self::success();
     }
@@ -53,8 +53,8 @@ class UploadRuleModule extends BaseModule
         $this->dep(UploadRuleDep::class)->update($param['id'], [
             'title'       => $param['title'],
             'max_size_mb' => $param['max_size_mb'],
-            'image_exts'  => json_encode($param['image_exts']),
-            'file_exts'   => json_encode($param['file_exts']),
+            'image_exts'  => $param['image_exts'],
+            'file_exts'   => $param['file_exts'],
         ]);
         return self::success();
     }
@@ -81,8 +81,8 @@ class UploadRuleModule extends BaseModule
             'id'         => $item['id'],
             'title'      => $item['title'],
             'max_size_mb' => $item['max_size_mb'],
-            'image_exts' => json_decode($item['image_exts']),
-            'file_exts'  => json_decode($item['file_exts']),
+            'image_exts' => $item['image_exts'],
+            'file_exts'  => $item['file_exts'],
             'created_at' => $item['created_at'],
             'updated_at' => $item['updated_at'],
         ]);

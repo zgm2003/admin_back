@@ -7,11 +7,54 @@ use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
 use app\dep\Permission\RolePermissionDep;
 use app\dep\User\UserProfileDep;
+use Illuminate\Database\Capsule\Manager as Capsule;
 use PHPUnit\Framework\TestCase;
 use support\Model;
 
 class SchemaRefactorGuardsTest extends TestCase
 {
+    private static bool $dbInitialized = false;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        if (!self::$dbInitialized) {
+            $this->initDatabase();
+            self::$dbInitialized = true;
+        }
+    }
+
+    private function initDatabase(): void
+    {
+        // Load .env file
+        $envFile = __DIR__ . '/../../.env';
+        if (file_exists($envFile)) {
+            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (strpos(trim($line), '#') === 0) continue;
+                if (strpos($line, '=') !== false) {
+                    [$key, $value] = explode('=', $line, 2);
+                    putenv(trim($key) . '=' . trim($value));
+                }
+            }
+        }
+
+        $capsule = new Capsule;
+        $capsule->addConnection([
+            'driver'    => getenv('DB_CONNECTION') ?: 'mysql',
+            'host'      => getenv('DB_HOST') ?: '127.0.0.1',
+            'port'      => (int)(getenv('DB_PORT') ?: 3306),
+            'database'  => getenv('DB_DATABASE') ?: 'admin',
+            'username'  => getenv('DB_USERNAME') ?: 'root',
+            'password'  => getenv('DB_PASSWORD') ?: '',
+            'charset'   => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix'    => '',
+        ]);
+        $capsule->setAsGlobal();
+        $capsule->bootEloquent();
+    }
+
     public function testBaseDepAddUsesProvidedPrimaryKeyForCustomKeyModels(): void
     {
         $model = new FakeSchemaGuardModel('user_id');
@@ -204,6 +247,59 @@ class SchemaRefactorGuardsTest extends TestCase
         $this->assertSame([3, 5, 6], $dep->exposeFilterActiveLeafPermissionIds([
             1, '2', 3, 4, 5, 6, 0, -1, 999, 3,
         ]));
+    }
+
+    public function test_all_tables_use_0900_ai_ci(): void
+    {
+        $result = Capsule::select("
+            SELECT TABLE_NAME, TABLE_COLLATION
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = 'admin'
+              AND TABLE_TYPE = 'BASE TABLE'
+              AND TABLE_COLLATION != 'utf8mb4_0900_ai_ci'
+        ");
+        $this->assertEmpty($result, 'Tables with non-0900_ai_ci collation: ' . json_encode($result));
+    }
+
+    public function test_ai_runs_index_count(): void
+    {
+        $count = Capsule::selectOne("
+            SELECT COUNT(DISTINCT INDEX_NAME) AS cnt
+            FROM information_schema.STATISTICS
+            WHERE TABLE_SCHEMA='admin' AND TABLE_NAME='ai_runs' AND INDEX_NAME != 'PRIMARY'
+        ")->cnt;
+        $this->assertEquals(5, $count, 'ai_runs should have exactly 5 non-primary indexes');
+    }
+
+    public function test_no_signed_int_except_goods_platform_and_test_age(): void
+    {
+        $result = Capsule::select("
+            SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA='admin'
+              AND DATA_TYPE = 'int'
+              AND COLUMN_TYPE NOT LIKE '%unsigned%'
+              AND NOT (TABLE_NAME='goods' AND COLUMN_NAME='platform')
+              AND NOT (TABLE_NAME='test' AND COLUMN_NAME='age')
+        ");
+        $this->assertEmpty($result, 'Signed int columns remaining: ' . json_encode($result));
+    }
+
+    public function test_json_columns_use_native_json_type(): void
+    {
+        $columns = [
+            ['goods', 'image_list'],
+            ['goods', 'image_list_success'],
+            ['upload_rule', 'image_exts'],
+            ['upload_rule', 'file_exts'],
+        ];
+        foreach ($columns as [$table, $col]) {
+            $type = Capsule::selectOne("
+                SELECT DATA_TYPE FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA='admin' AND TABLE_NAME=? AND COLUMN_NAME=?
+            ", [$table, $col])->DATA_TYPE;
+            $this->assertEquals('json', $type, "$table.$col should be json, got $type");
+        }
     }
 }
 

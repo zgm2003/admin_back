@@ -9,8 +9,8 @@ class GoodsModel extends BaseModel
     protected $table = 'goods';
 
     protected $casts = [
-        'image_list' => 'array',
-        'image_list_success' => 'array',
+        'image_list' => 'json',
+        'image_list_success' => 'json',
         'meta' => 'json',
     ];
 }

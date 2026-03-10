@@ -50,8 +50,8 @@ class UploadModule extends BaseModule
         // 合并上传规则信息
         $data['rule'] = [
             'maxSize'   => (int)$setting['max_size_mb'],
-            'imageExts' => \json_decode($setting['image_exts'] ?? '[]'),
-            'fileExts'  => \json_decode($setting['file_exts'] ?? '[]'),
+            'imageExts' => $setting['image_exts'] ?? [],
+            'fileExts'  => $setting['file_exts'] ?? [],
         ];
 
         return self::success($data);
