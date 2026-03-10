@@ -34,6 +34,12 @@ class CosUploadService
      */
     public function uploadFromUrl(string $imageUrl, string $folderName = 'ai_image_video'): ?string
     {
+        // 防 SSRF：只允许 https 协议 + 外网域名
+        if (!$this->isSafeUrl($imageUrl)) {
+            log_daily('CosUploadService')->warning("COS 上传拒绝不安全 URL: {$imageUrl}");
+            return null;
+        }
+
         $imageData = @file_get_contents($imageUrl);
         if ($imageData === false) {
             return null;
@@ -55,5 +61,42 @@ class CosUploadService
             log_daily('CosUploadService')->info("COS 上传失败: {$e->getMessage()}");
             return null;
         }
+    }
+
+    /**
+     * 校验 URL 是否安全（防 SSRF）
+     * 只允许 https 协议，禁止内网 IP 和本地协议
+     */
+    private function isSafeUrl(string $url): bool
+    {
+        $parsed = parse_url($url);
+        if (!$parsed || !isset($parsed['scheme'], $parsed['host'])) {
+            return false;
+        }
+
+        // 只允许 https（http 降级场景由调用方自行判断）
+        if (!in_array($parsed['scheme'], ['https', 'http'], true)) {
+            return false;
+        }
+
+        $host = $parsed['host'];
+
+        // 禁止 localhost / 回环地址
+        if (in_array($host, ['localhost', '127.0.0.1', '0.0.0.0', '[::1]'], true)) {
+            return false;
+        }
+
+        // 解析域名获取 IP，检查是否为内网地址
+        $ip = gethostbyname($host);
+        if ($ip === $host) {
+            return false; // 域名无法解析
+        }
+
+        // 禁止内网 IP 段
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+            return false;
+        }
+
+        return true;
     }
 }

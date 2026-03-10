@@ -176,8 +176,12 @@ class BaseModule
         }
         
         // 未知异常：记录日志，返回通用错误信息
-        // TODO: Log::error('Unexpected error', ['exception' => $e]);
-        
+        log_daily('unexpected')->error('Unexpected error: ' . $e->getMessage(), [
+            'exception' => get_class($e),
+            'file'      => $e->getFile() . ':' . $e->getLine(),
+            'trace'     => $e->getTraceAsString(),
+        ]);
+
         $msg = config('app.debug') ? $e->getMessage() : 'server error';
         return [[], self::CODE_SERVER_ERROR, $msg];
     }

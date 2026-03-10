@@ -43,7 +43,10 @@ class CheckPermission implements MiddlewareInterface
                     Cache::set($cacheKey, $buttonCodes, CacheTTLEnum::PERMISSION_BUTTONS);
                 }
             } catch (\Exception $e) {
-                // 记录日志或忽略，走下面的错误返回逻辑
+                log_daily('permission')->error('权限加载失败: ' . $e->getMessage(), [
+                    'user_id'  => $request->userId,
+                    'platform' => $platform,
+                ]);
             }
         }
 

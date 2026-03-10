@@ -41,7 +41,13 @@ class Handler extends ExceptionHandler
             ]);
         }
 
-        // 未知异常：生产环境隐藏细节
+        // 未知异常：生产环境隐藏细节，但记录完整日志
+        log_daily('unexpected')->error('Unhandled exception: ' . $e->getMessage(), [
+            'exception' => get_class($e),
+            'file'      => $e->getFile() . ':' . $e->getLine(),
+            'trace'     => $e->getTraceAsString(),
+        ]);
+
         $msg = config('app.debug') ? $e->getMessage() : '服务器错误';
         
         return json([
