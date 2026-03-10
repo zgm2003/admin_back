@@ -3,7 +3,9 @@
 namespace tests\Unit;
 
 use app\dep\BaseDep;
+use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
+use app\dep\Permission\RolePermissionDep;
 use app\dep\User\UserProfileDep;
 use PHPUnit\Framework\TestCase;
 use support\Model;
@@ -150,6 +152,58 @@ class SchemaRefactorGuardsTest extends TestCase
         $this->assertSame([
             'name' => 'role-B',
         ], $model->updatePayload);
+    }
+
+    public function testRolePermissionDepFiltersToActiveLeafIdsOnly(): void
+    {
+        $permissionDep = new class([
+            ['id' => 1, 'parent_id' => 0],
+            ['id' => 2, 'parent_id' => 1],
+            ['id' => 3, 'parent_id' => 2],
+            ['id' => 4, 'parent_id' => 0],
+            ['id' => 5, 'parent_id' => 4],
+            ['id' => 6, 'parent_id' => 0],
+        ]) extends PermissionDep {
+            public function __construct(private readonly array $items)
+            {
+            }
+
+            protected function createModel(): Model
+            {
+                return new FakeSchemaGuardModel('id');
+            }
+
+            public function allActive()
+            {
+                return collect(array_map(static fn(array $item) => (object)$item, $this->items));
+            }
+        };
+
+        $dep = new class($permissionDep) extends RolePermissionDep {
+            public function __construct(private readonly PermissionDep $mockPermissionDep)
+            {
+                parent::__construct();
+            }
+
+            protected function createModel(): Model
+            {
+                return new FakeSchemaGuardModel('id');
+            }
+
+            protected function permissionDep(): PermissionDep
+            {
+                return $this->mockPermissionDep;
+            }
+
+            public function exposeFilterActiveLeafPermissionIds(array $permissionIds): array
+            {
+                return $this->filterActiveLeafPermissionIds($permissionIds);
+            }
+        };
+
+        $this->assertSame([3, 5, 6], $dep->exposeFilterActiveLeafPermissionIds([
+            1, '2', 3, 4, 5, 6, 0, -1, 999, 3,
+        ]));
     }
 }
 

@@ -47,7 +47,7 @@ class RolePermissionDep extends BaseDep
             return;
         }
 
-        $permissionIds = $this->normalizeIds($permissionIds);
+        $permissionIds = $this->filterActiveLeafPermissionIds($permissionIds);
 
         $current = $this->model
             ->where('role_id', $roleId)
@@ -109,5 +109,37 @@ class RolePermissionDep extends BaseDep
         ]);
 
         return 1;
+    }
+
+    protected function permissionDep(): PermissionDep
+    {
+        return new PermissionDep();
+    }
+
+    protected function filterActiveLeafPermissionIds(array $permissionIds): array
+    {
+        $permissionIds = $this->normalizeIds($permissionIds);
+        if (empty($permissionIds)) {
+            return [];
+        }
+
+        $activeIdMap = [];
+        $parentIdMap = [];
+
+        foreach ($this->permissionDep()->allActive() as $permission) {
+            $id = (int)(is_array($permission) ? ($permission['id'] ?? 0) : ($permission->id ?? 0));
+            $parentId = (int)(is_array($permission) ? ($permission['parent_id'] ?? 0) : ($permission->parent_id ?? 0));
+            if ($id <= 0) {
+                continue;
+            }
+
+            $activeIdMap[$id] = true;
+            $parentIdMap[$parentId] = true;
+        }
+
+        return array_values(array_filter(
+            $permissionIds,
+            static fn(int $permissionId): bool => isset($activeIdMap[$permissionId]) && !isset($parentIdMap[$permissionId])
+        ));
     }
 }
