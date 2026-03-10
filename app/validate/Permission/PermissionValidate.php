@@ -50,7 +50,7 @@ class PermissionValidate
     {
         return [
             'ids'         => v::arrayType()->setName('ids'),
-            'field'       => v::stringType()->setName('??'),
+            'field'       => v::stringType()->setName('字段'),
             'description' => v::optional(v::stringType()),
         ];
     }
@@ -58,7 +58,7 @@ class PermissionValidate
     public static function list(): array
     {
         return [
-            'platform' => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('??'),
+            'platform' => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('平台'),
             'name'     => v::optional(v::stringType()),
             'path'     => v::optional(v::stringType()),
             'type'     => v::optional(v::intVal()),
@@ -69,24 +69,24 @@ class PermissionValidate
     {
         return [
             'id'     => v::intVal()->setName('ID'),
-            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('??'),
+            'status' => v::intVal()->in(array_keys(CommonEnum::$statusArr))->setName('状态'),
         ];
     }
 
     private static function baseRules(): array
     {
         return [
-            'platform'  => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('??'),
-            'type'      => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('??'),
-            'name'      => v::length(1, 64)->setName('??'),
-            'parent_id' => v::optional(v::intVal()->min(0)->setName('??ID')),
+            'platform'  => v::stringType()->in(AuthPlatformService::getAllowedPlatforms())->setName('平台'),
+            'type'      => v::intVal()->in([PermissionEnum::TYPE_DIR, PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON])->setName('类型'),
+            'name'      => v::length(1, 64)->setName('名称'),
+            'parent_id' => v::optional(v::intVal()->min(0)->setName('父级ID')),
             'icon'      => v::optional(v::stringType()),
-            'path'      => v::optional(v::length(1, 255))->setName('??'),
-            'component' => v::optional(v::length(1, 255))->setName('??'),
-            'i18n_key'  => v::optional(v::length(1, 128))->setName('????'),
-            'code'      => v::optional(v::length(1, 128))->setName('????'),
-            'sort'      => v::intVal()->between(1, 1000)->setName('??'),
-            'show_menu' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO]))->setName('??????'),
+            'path'      => v::optional(v::length(1, 255))->setName('路径'),
+            'component' => v::optional(v::length(1, 255))->setName('组件'),
+            'i18n_key'  => v::optional(v::length(1, 128))->setName('国际化键'),
+            'code'      => v::optional(v::length(1, 128))->setName('权限编码'),
+            'sort'      => v::intVal()->between(1, 1000)->setName('排序'),
+            'show_menu' => v::optional(v::intVal()->in([CommonEnum::YES, CommonEnum::NO]))->setName('是否显示菜单'),
         ];
     }
 
@@ -94,18 +94,18 @@ class PermissionValidate
     {
         return match ($type) {
             PermissionEnum::TYPE_DIR => [
-                'i18n_key'  => v::length(1, 128)->setName('????'),
-                'show_menu' => v::intVal()->in([CommonEnum::YES, CommonEnum::NO])->setName('??????'),
+                'i18n_key'  => v::length(1, 128)->setName('国际化键'),
+                'show_menu' => v::intVal()->in([CommonEnum::YES, CommonEnum::NO])->setName('是否显示菜单'),
             ],
             PermissionEnum::TYPE_PAGE => [
-                'path'      => v::length(1, 255)->setName('??'),
-                'component' => v::length(1, 255)->setName('??'),
-                'i18n_key'  => v::length(1, 128)->setName('????'),
-                'show_menu' => v::intVal()->in([CommonEnum::YES, CommonEnum::NO])->setName('??????'),
+                'path'      => v::length(1, 255)->setName('路径'),
+                'component' => v::length(1, 255)->setName('组件'),
+                'i18n_key'  => v::length(1, 128)->setName('国际化键'),
+                'show_menu' => v::intVal()->in([CommonEnum::YES, CommonEnum::NO])->setName('是否显示菜单'),
             ],
             PermissionEnum::TYPE_BUTTON => array_filter([
-                'parent_id' => $requireButtonParent ? v::intVal()->min(1)->setName('???') : null,
-                'code'      => v::length(1, 128)->setName('????'),
+                'parent_id' => $requireButtonParent ? v::intVal()->min(1)->setName('父节点') : null,
+                'code'      => v::length(1, 128)->setName('权限编码'),
             ]),
             default => [],
         };
