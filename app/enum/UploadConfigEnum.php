@@ -86,6 +86,7 @@ class UploadConfigEnum
     const FOLDER_RELEASES = 'releases';
     const FOLDER_CHAT_IMAGES = 'chat_images';
     const FOLDER_CHAT_FILES = 'chat_files';
+
     public static $folderArr = [
         self::FOLDER_AVATARS => 'avatars',
         self::FOLDER_IMAGES => 'images',

@@ -48,7 +48,7 @@ Route::group('/api', function () {
 
 
 
-    Route::post('/getUploadToken', [controller\UploadController::class, 'getUploadToken']);
+    Route::post('/getUploadToken', [controller\System\UploadController::class, 'getUploadToken']);
 
 
 })->middleware([
