@@ -26,7 +26,7 @@
 ### 3. `role.permission_id`
 
 - Historical state: `varchar(255)` storing a JSON-encoded permission-id array.
-- This is a legacy denormalized design, not a true common-field exception.
+- This is a legacy denormalized design, not a true Common-field exception.
 - This batch upgrades the storage contract to native `json` via `database/migrations/2026_03_09_upgrade_role_permission_payload_to_json.sql`.
 - Remaining long-term direction:
   - keep `json` as a transitional contract, or
@@ -145,9 +145,9 @@ Remaining signed tinyint exception after this batch:
   - kept signed because the domain still uses `-1` as unknown/unset
 
 
-## Nullable common-field and comment-encoding follow-up
+## Nullable Common-field and comment-encoding follow-up
 
-A final consistency sweep found a small tail of common-field drift:
+A final consistency sweep found a small tail of Common-field drift:
 
 - `notification_task.status` and `notification_task.is_del` were nullable even though query paths treat them as required flags.
 - `chat_messages.updated_at` and `tauri_version.created_at` / `tauri_version.updated_at` were nullable despite always being filled by defaults.
@@ -164,7 +164,7 @@ This follow-up normalizes them via `database/migrations/2026_03_09_normalize_nul
 Post-check result:
 
 - every base table now has `is_del`, `created_at`, and `updated_at`
-- no common field in `status`, `is_del`, `created_at`, or `updated_at` remains nullable
+- no Common field in `status`, `is_del`, `created_at`, or `updated_at` remains nullable
 - no mojibake schema comments remain in the live database
 - the only remaining signed numeric exception in this sweep is `goods.platform`
 

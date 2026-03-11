@@ -1,4 +1,4 @@
--- Normalize common soft-delete/status flags and selected reference key chains.
+-- Normalize Common soft-delete/status flags and selected reference key chains.
 -- This batch intentionally leaves documented special-case columns unchanged.
 
 -- 1) Clean invalid quick-entry data before tightening validation/index assumptions.
@@ -43,7 +43,7 @@ ALTER TABLE `goods`
 ALTER TABLE `user_sessions`
   MODIFY COLUMN `is_del` TINYINT UNSIGNED NOT NULL DEFAULT '2' COMMENT '2 normal 1 deleted';
 
--- 3) Normalize remaining common status/is_del flags.
+-- 3) Normalize remaining Common status/is_del flags.
 ALTER TABLE `ai_prompts`
   MODIFY COLUMN `is_del` TINYINT UNSIGNED NOT NULL DEFAULT '2';
 

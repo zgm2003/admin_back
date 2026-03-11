@@ -4,9 +4,9 @@ namespace app\module\System;
 
 use app\dep\System\CronTaskDep;
 use app\dep\System\CronTaskLogDep;
-use app\module\BaseModule;
 use app\enum\CommonEnum;
-use app\service\DictService;
+use app\module\BaseModule;
+use app\service\Common\DictService;
 use app\validate\System\CronTaskValidate;
 
 /**

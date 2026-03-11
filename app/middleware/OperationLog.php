@@ -3,7 +3,7 @@
 namespace app\middleware;
 
 use app\enum\CommonEnum;
-use app\service\AnnotationHelper;
+use app\service\Common\AnnotationHelper;
 use Throwable;
 use Webman\Http\Request;
 use Webman\Http\Response;

@@ -5,7 +5,7 @@ namespace app\module\System;
 use app\dep\System\NotificationDep;
 use app\enum\NotificationEnum;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\validate\System\NotificationValidate;
 
 /**

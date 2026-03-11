@@ -6,7 +6,7 @@ use app\dep\System\NotificationTaskDep;
 use app\dep\User\UsersDep;
 use app\enum\NotificationEnum;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\validate\System\NotificationTaskValidate;
 use Webman\RedisQueue\Client as RedisQueue;
 

@@ -7,7 +7,7 @@ use app\dep\Ai\AiToolsDep;
 use app\enum\AiEnum;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\validate\Ai\AiToolsValidate;
 
 /**

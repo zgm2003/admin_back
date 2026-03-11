@@ -4,7 +4,7 @@ namespace app\module\System;
 
 use app\dep\System\UploadRuleDep;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\validate\System\UploadRuleValidate;
 
 /**

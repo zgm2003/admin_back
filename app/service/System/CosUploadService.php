@@ -1,6 +1,6 @@
 <?php
 
-namespace app\service;
+namespace app\service\System;
 
 use Qcloud\Cos\Client;
 

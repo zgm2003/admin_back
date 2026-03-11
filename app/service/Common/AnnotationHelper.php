@@ -1,6 +1,6 @@
 <?php
 
-namespace app\service;
+namespace app\service\Common;
 
 use Webman\Http\Request;
 

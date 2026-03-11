@@ -39,7 +39,7 @@ class CodeGenParser
 
     /** 仅允许 PATCH_FILE 修改的文件（禁止 WRITE_FILE 覆盖） */
     private const PATCH_ONLY_FILES = [
-        'app/service/DictService.php',
+        'app/service/Common/DictService.php',
         'routes/admin.php',
     ];
 
@@ -512,7 +512,7 @@ class CodeGenParser
      */
     private function parsePatchFile(): void
     {
-        // 格式：```php:PATCH_FILE:app/service/DictService.php:BEFORE_METHOD:getDict
+        // 格式：```php:PATCH_FILE:app/service/Common/DictService.php:BEFORE_METHOD:getDict
         // 表示在 getDict 方法之前插入代码
         preg_match_all('/```(?:php|typescript|vue|ts):PATCH_FILE:([\w\/\.\-]+):BEFORE_METHOD:(\w+)\s*\r?\n(.*?)```/s', $this->buffer, $matches, PREG_SET_ORDER);
 
@@ -523,7 +523,7 @@ class CodeGenParser
 
             try {
                 $result = $this->executePatchFile($filePath, $methodName, $newCode);
-                if ($filePath === 'app/service/DictService.php') {
+                if ($filePath === 'app/service/Common/DictService.php') {
                     $this->stats['dict_patch_added'] += (int)($result['added'] ?? 0);
                     $this->stats['dict_patch_skipped'] += (int)($result['skipped'] ?? 0);
                 }
@@ -535,7 +535,7 @@ class CodeGenParser
                     'code_length' => strlen($newCode),
                 ]);
             } catch (\Throwable $e) {
-                if ($filePath === 'app/service/DictService.php') {
+                if ($filePath === 'app/service/Common/DictService.php') {
                     $this->stats['dict_patch_failed']++;
                 }
                 Log::warning("[CodeGenParser] PATCH_FILE 执行失败: {$filePath} @ {$methodName}, err={$e->getMessage()}");

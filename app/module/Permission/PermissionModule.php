@@ -5,7 +5,7 @@ namespace app\module\Permission;
 use app\dep\Permission\PermissionDep;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\service\Permission\AuthPlatformService;
 use app\validate\Permission\PermissionValidate;
 use support\Redis;

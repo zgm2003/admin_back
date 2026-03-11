@@ -7,7 +7,7 @@ use app\enum\AiEnum;
 use app\enum\CommonEnum;
 use app\lib\Crypto\KeyVault;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\validate\Ai\AiModelsValidate;
 
 /**

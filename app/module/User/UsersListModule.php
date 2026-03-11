@@ -2,16 +2,16 @@
 
 namespace app\module\User;
 
-use app\dep\System\ExportTaskDep;
 use app\dep\Permission\RoleDep;
-use app\dep\User\UsersDep;
+use app\dep\System\ExportTaskDep;
 use app\dep\User\UserProfileDep;
+use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
-use app\service\AddressService;
-use app\service\DictService;
-use support\Cache;
+use app\service\Common\AddressService;
+use app\service\Common\DictService;
 use app\validate\User\UsersListValidate;
+use support\Cache;
 use Webman\RedisQueue\Client as RedisQueue;
 
 /**

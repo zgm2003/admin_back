@@ -3,15 +3,15 @@
 
 namespace app\middleware;
 
-use app\enum\ErrorCodeEnum;
+use app\dep\User\UsersDep;
 use app\enum\CacheTTLEnum;
+use app\enum\ErrorCodeEnum;
+use app\service\Common\AnnotationHelper;
+use app\service\User\PermissionService;
 use support\Cache;
 use Webman\Http\Request;
 use Webman\Http\Response;
 use Webman\MiddlewareInterface;
-use app\service\AnnotationHelper;
-use app\dep\User\UsersDep;
-use app\service\User\PermissionService;
 
 class CheckPermission implements MiddlewareInterface
 {

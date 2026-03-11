@@ -7,7 +7,7 @@ use app\dep\Ai\GoodsDep;
 use app\enum\CommonEnum;
 use app\enum\GoodsEnum;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\validate\Ai\GoodsValidate;
 
 /**

@@ -3,7 +3,7 @@
 namespace app\queue\redis\slow;
 
 use app\dep\System\ExportTaskDep;
-use app\service\ExportService;
+use app\service\System\ExportService;
 use app\enum\NotificationEnum;
 use app\service\System\NotificationService;
 use Webman\RedisQueue\Consumer;

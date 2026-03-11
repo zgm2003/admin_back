@@ -2,21 +2,21 @@
 
 namespace tests\Unit;
 
+use app\dep\AddressDep;
+use app\dep\Chat\ChatParticipantDep;
 use app\dep\Permission\AuthPlatformDep;
-use app\enum\CommonEnum;
-use app\enum\PermissionEnum;
 use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RoleDep;
 use app\dep\Permission\RoleDep as RoleDepClass;
 use app\dep\Permission\RolePermissionDep;
-use app\dep\AddressDep;
-use app\dep\Chat\ChatParticipantDep;
 use app\dep\System\ExportTaskDep;
 use app\dep\System\NotificationTaskDep;
 use app\dep\System\SystemSettingDep;
-use app\enum\NotificationEnum;
 use app\dep\User\UserProfileDep;
 use app\dep\User\UsersDep;
+use app\enum\CommonEnum;
+use app\enum\NotificationEnum;
+use app\enum\PermissionEnum;
 use app\exception\BusinessException;
 use app\module\Permission\AuthPlatformModule;
 use app\module\Permission\PermissionModule;
@@ -26,14 +26,14 @@ use app\module\System\NotificationTaskModule;
 use app\module\System\SystemSettingModule;
 use app\module\User\UsersListModule;
 use app\module\User\UsersQuickEntryModule;
+use app\service\Common\AddressService;
+use app\service\Permission\AuthPlatformService;
+use app\service\System\SettingService;
+use app\service\User\PermissionService;
 use app\validate\Permission\PermissionValidate;
 use app\validate\System\ExportTaskValidate;
 use app\validate\User\UsersListValidate;
 use app\validate\User\UsersQuickEntryValidate;
-use app\service\AddressService;
-use app\service\Permission\AuthPlatformService;
-use app\service\System\SettingService;
-use app\service\User\PermissionService;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 

@@ -865,10 +865,10 @@ class {Entity}Dep extends BaseDep
   ❌ `HANDLE_PENDING` / `HANDLE_PROCESSING` / `HANDLE` / `HANDLE_CLOSED`（`HANDLE` 缺少后缀）
 
 ### DictService 修改规则（强制 — 违反将导致执行失败）
-DictService（`app/service/DictService.php`）是全局共享文件，**严禁使用 WRITE_FILE 覆盖**（系统会直接拒绝执行）。
+DictService（`app/service/Common/DictService.php`）是全局共享文件，**严禁使用 WRITE_FILE 覆盖**（系统会直接拒绝执行）。
 必须使用 `PATCH_FILE` 增量追加，系统会自动插入到指定方法之前：
 
-```php:PATCH_FILE:app/service/DictService.php:BEFORE_METHOD:getDict
+```php:PATCH_FILE:app/service/Common/DictService.php:BEFORE_METHOD:getDict
     public function setXxxArr(): static
     {
         $this->dict['xxx_arr'] = self::enumToDict(\app\enum\Domain\XxxEnum::$xxxArr);
@@ -1045,7 +1045,7 @@ onMounted(() => {
 - `WRITE_FILE`：用于新建文件或需要全量覆盖的场景
 - `PATCH_FILE`：用于在已有文件中追加方法（如 DictService），只输出新增的方法代码，系统会自动插入到指定方法之前
 - `PATCH_ROUTES`：仅用于 `routes/admin.php` 的路由行增量补丁
-- ⚠️ `app/service/DictService.php` 只能用 `PATCH_FILE`；`routes/admin.php` 只能用 `PATCH_ROUTES`；使用 `WRITE_FILE` 会被系统拒绝
+- ⚠️ `app/service/Common/DictService.php` 只能用 `PATCH_FILE`；`routes/admin.php` 只能用 `PATCH_ROUTES`；使用 `WRITE_FILE` 会被系统拒绝
 INSTRUCTION;
 
         return implode("\n\n", $parts);

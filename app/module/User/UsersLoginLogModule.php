@@ -2,11 +2,11 @@
 
 namespace app\module\User;
 
-use app\dep\User\UsersLoginLogDep;
 use app\dep\User\UsersDep;
-use app\module\BaseModule;
-use app\service\DictService;
+use app\dep\User\UsersLoginLogDep;
 use app\enum\SystemEnum;
+use app\module\BaseModule;
+use app\service\Common\DictService;
 use app\service\Permission\AuthPlatformService;
 use app\validate\User\UsersLoginLogValidate;
 

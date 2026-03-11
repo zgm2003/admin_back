@@ -6,7 +6,7 @@ use app\dep\System\SystemSettingDep;
 use app\enum\CommonEnum;
 use app\enum\SystemEnum;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\service\System\SettingService;
 use app\validate\System\SystemSettingValidate;
 

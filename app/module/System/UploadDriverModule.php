@@ -6,7 +6,7 @@ use app\dep\System\UploadDriverDep;
 use app\enum\UploadConfigEnum;
 use app\lib\Crypto\KeyVault;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\validate\System\UploadDriverValidate;
 
 /**

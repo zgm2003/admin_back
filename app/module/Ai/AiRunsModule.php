@@ -10,7 +10,7 @@ use app\dep\Ai\AiRunStepsDep;
 use app\dep\User\UsersDep;
 use app\enum\AiEnum;
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 use app\validate\Ai\AiRunsValidate;
 
 /**

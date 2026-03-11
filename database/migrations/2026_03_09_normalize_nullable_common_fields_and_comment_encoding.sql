@@ -1,4 +1,4 @@
--- Normalize nullable common fields and repair corrupted schema comments.
+-- Normalize nullable Common fields and repair corrupted schema comments.
 -- Keep comments ASCII-only here to avoid Windows codepage corruption during manual execution.
 
 ALTER TABLE `notification_task`

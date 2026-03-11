@@ -3,7 +3,7 @@
 namespace app\module\System;
 
 use app\module\BaseModule;
-use app\service\DictService;
+use app\service\Common\DictService;
 
 /**
  * 系统日志模块
