@@ -128,7 +128,6 @@ This batch normalizes them to `tinyint unsigned` via `database/migrations/2026_0
 - `notifications.is_read`
 - `operation_logs.is_success`
 - `permission.type`
-- `permission.keep_alive`
 - `permission.show_menu`
 - `tauri_version.is_latest`
 - `tauri_version.force_update`

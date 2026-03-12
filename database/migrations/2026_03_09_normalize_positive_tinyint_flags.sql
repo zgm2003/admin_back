@@ -22,7 +22,6 @@ ALTER TABLE `operation_logs`
 
 ALTER TABLE `permission`
   MODIFY COLUMN `type` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'type: 1 dir 2 page 3 button',
-  MODIFY COLUMN `keep_alive` TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'keep-alive',
   MODIFY COLUMN `show_menu` TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'show menu: 1 yes 2 no';
 
 ALTER TABLE `tauri_version`
