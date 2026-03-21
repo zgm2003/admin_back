@@ -10,7 +10,7 @@ use GatewayWorker\Lib\Gateway;
 /**
  * 通知服务
  * 负责：发送通知（写入数据库 + WebSocket 实时推送）
- * 支持按平台推送（all/admin/app），支持紧急/成功/警告/错误等快捷方法
+ * 支持按平台推送（all 或任意已配置平台码），支持紧急/成功/警告/错误等快捷方法
  */
 class NotificationService
 {

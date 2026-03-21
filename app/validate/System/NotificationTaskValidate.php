@@ -2,9 +2,10 @@
 
 namespace app\validate\System;
 
-use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 use app\enum\NotificationEnum;
+use app\service\Permission\AuthPlatformService;
+use Respect\Validation\Validator as v;
 
 class NotificationTaskValidate
 {
@@ -26,7 +27,7 @@ class NotificationTaskValidate
             'type' => v::optional(v::intVal()->in(array_keys(NotificationEnum::$typeArr)))->setName('类型'),
             'level' => v::optional(v::intVal()->in(array_keys(NotificationEnum::$levelArr)))->setName('级别'),
             'link' => v::optional(v::stringType()->length(0, 500))->setName('链接'),
-            'platform' => v::optional(v::in(['all', 'admin', 'app']))->setName('平台'),
+            'platform' => v::optional(v::stringType()->in(self::allowedPlatforms()))->setName('平台'),
             'target_type' => v::intVal()->in(array_keys(NotificationEnum::$targetTypeArr))->setName('目标类型'),
             'target_ids' => v::optional(v::arrayType())->setName('目标ID列表'),
             'send_at' => v::optional(v::stringType())->setName('发送时间'),
@@ -38,5 +39,13 @@ class NotificationTaskValidate
         return [
             'id' => v::intVal()->setName('任务ID'),
         ];
+    }
+
+    private static function allowedPlatforms(): array
+    {
+        return array_values(array_unique([
+            'all',
+            ...AuthPlatformService::getAllowedPlatforms(),
+        ]));
     }
 }

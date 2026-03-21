@@ -7,6 +7,7 @@ use app\dep\User\UsersDep;
 use app\enum\NotificationEnum;
 use app\module\BaseModule;
 use app\service\Common\DictService;
+use app\service\Permission\AuthPlatformService;
 use app\validate\System\NotificationTaskValidate;
 use Webman\RedisQueue\Client as RedisQueue;
 
@@ -14,6 +15,7 @@ use Webman\RedisQueue\Client as RedisQueue;
  * 通知任务管理模块
  * 负责：通知任务的发布、列表、状态统计、取消、删除
  * 支持定时发送（send_at）和立即发送（入 Redis 队列异步处理）
+ * 平台范围来自认证平台配置，额外支持 all=全平台
  */
 class NotificationTaskModule extends BaseModule
 {
@@ -68,7 +70,7 @@ class NotificationTaskModule extends BaseModule
             'level'            => $item->level,
             'level_text'       => NotificationEnum::$levelArr[$item->level] ?? '未知',
             'platform'         => $item->platform ?? 'all',
-            'platform_text'    => ['all' => '全平台', 'admin' => 'PC后台', 'app' => 'H5/APP'][$item->platform] ?? '未知',
+            'platform_text'    => $this->getPlatformText($item->platform ?? 'all'),
             'target_type'      => $item->target_type,
             'target_type_text' => NotificationEnum::$targetTypeArr[$item->target_type] ?? '未知',
             'status'           => $item->status,
@@ -163,5 +165,15 @@ class NotificationTaskModule extends BaseModule
             NotificationEnum::TARGET_ROLES => $this->dep(UsersDep::class)->getIdsByRoleIds($targetIds)->count(),
             default => 0,
         };
+    }
+
+    private function getPlatformText(?string $platform): string
+    {
+        $platform = $platform ?: 'all';
+        if ($platform === 'all') {
+            return '全平台';
+        }
+        return AuthPlatformService::getPlatformName($platform);
+
     }
 }
