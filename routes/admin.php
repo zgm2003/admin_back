@@ -288,6 +288,48 @@ Route::group('/api/admin', function () {
     Route::post('/Chat/onlineStatus', [controller\Chat\ChatController::class, 'onlineStatus']);
     Route::post('/Chat/recallMessage', [controller\Chat\ChatController::class, 'recallMessage']);
     Route::post('/Chat/setAdmin', [controller\Chat\ChatController::class, 'setAdmin']);
+
+    // ==================== 支付管理 ====================
+    // 支付渠道
+    Route::post('/PayChannel/init', [controller\Pay\PayChannelController::class, 'init']);
+    Route::post('/PayChannel/list', [controller\Pay\PayChannelController::class, 'list']);
+    Route::post('/PayChannel/add', [controller\Pay\PayChannelController::class, 'add']);
+    Route::post('/PayChannel/edit', [controller\Pay\PayChannelController::class, 'edit']);
+    Route::post('/PayChannel/del', [controller\Pay\PayChannelController::class, 'del']);
+    Route::post('/PayChannel/status', [controller\Pay\PayChannelController::class, 'status']);
+
+    // 订单管理
+    Route::post('/PayOrder/init', [controller\Pay\OrderController::class, 'init']);
+    Route::post('/PayOrder/list', [controller\Pay\OrderController::class, 'list']);
+    Route::post('/PayOrder/detail', [controller\Pay\OrderController::class, 'detail']);
+    Route::post('/PayOrder/statusCount', [controller\Pay\OrderController::class, 'statusCount']);
+    Route::post('/PayOrder/close', [controller\Pay\OrderController::class, 'close']);
+    Route::post('/PayOrder/remark', [controller\Pay\OrderController::class, 'remark']);
+
+    // 支付流水
+    Route::post('/PayTransaction/init', [controller\Pay\PayTransactionController::class, 'init']);
+    Route::post('/PayTransaction/list', [controller\Pay\PayTransactionController::class, 'list']);
+    Route::post('/PayTransaction/detail', [controller\Pay\PayTransactionController::class, 'detail']);
+
+    // 退款管理
+    Route::post('/PayRefund/init', [controller\Pay\PayRefundController::class, 'init']);
+    Route::post('/PayRefund/list', [controller\Pay\PayRefundController::class, 'list']);
+    Route::post('/PayRefund/detail', [controller\Pay\PayRefundController::class, 'detail']);
+    Route::post('/PayRefund/apply', [controller\Pay\PayRefundController::class, 'apply']);
+
+    // 钱包管理
+    Route::post('/UserWallet/init', [controller\Pay\UserWalletController::class, 'init']);
+    Route::post('/UserWallet/list', [controller\Pay\UserWalletController::class, 'list']);
+    Route::post('/UserWallet/transactions', [controller\Pay\UserWalletController::class, 'transactions']);
+    Route::post('/UserWallet/adjust', [controller\Pay\UserWalletController::class, 'adjust']);
+
+    // 对账管理
+    Route::post('/PayReconcile/init', [controller\Pay\PayReconcileController::class, 'init']);
+    Route::post('/PayReconcile/list', [controller\Pay\PayReconcileController::class, 'list']);
+    Route::post('/PayReconcile/detail', [controller\Pay\PayReconcileController::class, 'detail']);
+    Route::post('/PayReconcile/retry', [controller\Pay\PayReconcileController::class, 'retry']);
+
+    // 支付回调（无需 CheckPermission / OperationLog）
 })->middleware([
     app\middleware\CheckToken::class,
     app\middleware\CheckPermission::class,

@@ -62,3 +62,15 @@ Route::group('/api/app', function () {
     app\middleware\CheckPermission::class,
     app\middleware\OperationLog::class,
 ]);
+
+// 用户端支付（只需要 CheckToken，不需要按钮权限）
+Route::group('/api/app', function () {
+    Route::post('/Pay/recharge', [controller\Pay\OrderController::class, 'recharge']);
+    Route::post('/Pay/createPay', [controller\Pay\OrderController::class, 'createPay']);
+    Route::post('/Pay/queryResult', [controller\Pay\OrderController::class, 'queryResult']);
+    Route::post('/Pay/orderDetail', [controller\Pay\OrderController::class, 'orderDetail']);
+    Route::post('/Pay/walletInfo', [controller\Pay\OrderController::class, 'walletInfo']);
+    Route::post('/Pay/walletBills', [controller\Pay\OrderController::class, 'walletBills']);
+})->middleware([
+    app\middleware\CheckToken::class,
+]);

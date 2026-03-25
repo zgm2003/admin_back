@@ -48,7 +48,8 @@
     "ext-curl": "*",
     "webman/event": "^1.0",
     "ext-openssl": "*",
-    "neuron-core/neuron-ai": "^3.0"
+    "neuron-core/neuron-ai": "^3.0",
+    "yansongda/pay": "~3.7.0"
   },
   "suggest": {
     "ext-event": "For better performance. "

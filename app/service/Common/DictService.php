@@ -344,6 +344,93 @@ class DictService
         return $this;
     }
 
+    // ==================== 支付相关字典 ====================
+
+    /** 支付渠道类型 */
+    public function setPayChannelArr(): static
+    {
+        $this->dict['channel_arr'] = self::enumToDict(\app\enum\PayEnum::$channelArr);
+        return $this;
+    }
+
+    /** 支付方式 */
+    public function setPayMethodArr(): static
+    {
+        $this->dict['pay_method_arr'] = self::enumToDict(\app\enum\PayEnum::$methodArr);
+        return $this;
+    }
+
+    /** 订单类型 */
+    public function setOrderTypeArr(): static
+    {
+        $this->dict['order_type_arr'] = self::enumToDict(\app\enum\PayEnum::$orderTypeArr);
+        return $this;
+    }
+
+    /** 订单支付状态 */
+    public function setPayStatusArr(): static
+    {
+        $this->dict['pay_status_arr'] = self::enumToDict(\app\enum\PayEnum::$payStatusArr);
+        return $this;
+    }
+
+    /** 订单业务状态 */
+    public function setBizStatusArr(): static
+    {
+        $this->dict['biz_status_arr'] = self::enumToDict(\app\enum\PayEnum::$bizStatusArr);
+        return $this;
+    }
+
+    /** 退款状态 */
+    public function setRefundStatusArr(): static
+    {
+        $this->dict['refund_status_arr'] = self::enumToDict(\app\enum\PayEnum::$refundStatusArr);
+        return $this;
+    }
+
+    /** 支付流水状态 */
+    public function setTxnStatusArr(): static
+    {
+        $this->dict['txn_status_arr'] = self::enumToDict(\app\enum\PayEnum::$txnStatusArr);
+        return $this;
+    }
+
+    /** 履约状态 */
+    public function setFulfillStatusArr(): static
+    {
+        $this->dict['fulfill_status_arr'] = self::enumToDict(\app\enum\PayEnum::$fulfillStatusArr);
+        return $this;
+    }
+
+    /** 退款记录状态 */
+    public function setRefundRecordStatusArr(): static
+    {
+        $this->dict['refund_record_status_arr'] = self::enumToDict(\app\enum\PayEnum::$refundRecordStatusArr);
+        return $this;
+    }
+
+    /** 钱包流水类型 */
+    public function setWalletTypeArr(): static
+    {
+        $this->dict['wallet_type_arr'] = self::enumToDict(\app\enum\PayEnum::$walletTypeArr);
+        return $this;
+    }
+
+    /** 对账任务状态 */
+    public function setReconcileStatusArr(): static
+    {
+        $this->dict['reconcile_status_arr'] = self::enumToDict(\app\enum\PayEnum::$reconcileStatusArr);
+        return $this;
+    }
+
+    /** 充值金额档位 */
+    public function setRechargePresetArr(): static
+    {
+        $presets = \app\enum\PayEnum::$rechargePresetArr;
+        $this->dict['recharge_preset_arr'] = array_map(fn($label, $value) => ['label' => $label, 'value' => $value], $presets, array_keys($presets));
+        return $this;
+    }
+
     // ==================== 输出 ====================
 
     /**

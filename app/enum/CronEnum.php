@@ -6,6 +6,8 @@ class CronEnum
 {
     // 常用 Cron 表达式（秒 分 时 日 月 周）
     const EVERY_MINUTE = '0 * * * * *';
+    const EVERY_2_MINUTES = '0 */2 * * * *';
+    const EVERY_3_MINUTES = '0 */3 * * * *';
     const EVERY_5_MINUTES = '0 */5 * * * *';
     const EVERY_10_MINUTES = '0 */10 * * * *';
     const EVERY_30_MINUTES = '0 */30 * * * *';
@@ -23,6 +25,8 @@ class CronEnum
 
     public static array $presetArr = [
         self::EVERY_MINUTE => '每分钟',
+        self::EVERY_2_MINUTES => '每2分钟',
+        self::EVERY_3_MINUTES => '每3分钟',
         self::EVERY_5_MINUTES => '每5分钟',
         self::EVERY_10_MINUTES => '每10分钟',
         self::EVERY_30_MINUTES => '每30分钟',

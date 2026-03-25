@@ -97,4 +97,21 @@ return [
     'clean_expired_contact_request' => [
         'handler' => app\process\CleanExpiredContactRequestTask::class,
     ],
+
+    // ==================== 支付域定时任务（BaseCronTask，cron 表达式在 cron_task 表中）====================
+    'pay_close_expired_order' => [
+        'handler' => app\process\Pay\PayCloseExpiredOrderTask::class,
+    ],
+    'pay_sync_pending_transaction' => [
+        'handler' => app\process\Pay\PaySyncPendingTransactionTask::class,
+    ],
+    'pay_fulfillment_retry' => [
+        'handler' => app\process\Pay\PayFulfillmentRetryTask::class,
+    ],
+    'pay_refund_sync' => [
+        'handler' => app\process\Pay\PayRefundSyncTask::class,
+    ],
+    'pay_reconcile_daily' => [
+        'handler' => app\process\Pay\PayReconcileDailyTask::class,
+    ],
 ];
