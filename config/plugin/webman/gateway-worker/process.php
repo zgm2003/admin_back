@@ -21,10 +21,10 @@ return [
     ],
     'worker' => [
         'handler'     => BusinessWorker::class,
-        'count'       => cpu_count()*2,
+        'count'       => cpu_count() * 2,
         'constructor' => ['config' => [
             'eventHandler'    => plugin\webman\gateway\Events::class,
-            'name'            => 'ChatBusinessWorker',
+            'name'            => 'ChatBusinessWorker-' . substr(md5(uniqid()), 0, 8),
             'registerAddress' => '127.0.0.1:1236',
         ]]
     ],
