@@ -298,6 +298,14 @@ Route::group('/api/admin', function () {
     Route::post('/PayChannel/del', [controller\Pay\PayChannelController::class, 'del']);
     Route::post('/PayChannel/status', [controller\Pay\PayChannelController::class, 'status']);
 
+    // 用户端支付接口
+    Route::post('/pay/recharge', [controller\Pay\OrderController::class, 'recharge']);
+    Route::post('/pay/createPay', [controller\Pay\OrderController::class, 'createPay']);
+    Route::post('/pay/queryResult', [controller\Pay\OrderController::class, 'queryResult']);
+    Route::post('/pay/orderDetail', [controller\Pay\OrderController::class, 'orderDetail']);
+    Route::post('/pay/walletInfo', [controller\Pay\OrderController::class, 'walletInfo']);
+    Route::post('/pay/walletBills', [controller\Pay\OrderController::class, 'walletBills']);
+    
     // 订单管理
     Route::post('/PayOrder/init', [controller\Pay\OrderController::class, 'init']);
     Route::post('/PayOrder/list', [controller\Pay\OrderController::class, 'list']);

@@ -40,13 +40,7 @@ Route::group('/api', function () {
 
 
 Route::group('/api', function () {
-    // 需要认证的用户端支付接口
-    Route::post('/pay/recharge', [controller\Pay\OrderController::class, 'recharge']);
-    Route::post('/pay/createPay', [controller\Pay\OrderController::class, 'createPay']);
-    Route::post('/pay/queryResult', [controller\Pay\OrderController::class, 'queryResult']);
-    Route::post('/pay/orderDetail', [controller\Pay\OrderController::class, 'orderDetail']);
-    Route::post('/pay/walletInfo', [controller\Pay\OrderController::class, 'walletInfo']);
-    Route::post('/pay/walletBills', [controller\Pay\OrderController::class, 'walletBills']);
+
     // 需要认证的接口
     Route::post('/Users/init', [controller\User\UsersController::class, 'init']);
     Route::post('/Users/logout', [controller\User\UsersController::class, 'logout']);

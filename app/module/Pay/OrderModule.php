@@ -19,6 +19,8 @@ use app\service\Pay\OrderNoGenerator;
 use app\service\Pay\WalletService;
 use app\validate\Pay\OrderValidate;
 use RuntimeException;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 use support\Db;
 use support\Request;
 use Webman\RedisQueue\Client as RedisQueue;
@@ -200,12 +202,13 @@ class OrderModule extends BaseModule
         $amount = (int) ($body['amount'] ?? 0);
         $payMethod = $body['pay_method'] ?? '';
         $channelId = (int) ($body['channel_id'] ?? 0);
+        $channelType = (int) ($body['channel'] ?? 0);
         $ip = $request->getRealIp();
 
         self::throwUnless($amount >= 1, '充值金额最小1分');
         self::throwUnless(in_array($payMethod, array_keys(PayEnum::$methodArr)), '不支持的支付方式');
 
-        $channel = $this->dep(PayChannelDep::class)->findActive($channelId);
+        $channel = $this->resolveRechargeChannel($channelId, $channelType);
         self::throwUnless($channel, '支付渠道不可用');
 
         $lockKey = "pay_create_order_{$userId}";
@@ -255,6 +258,45 @@ class OrderModule extends BaseModule
         } finally {
             RedisLock::unlock($lockKey, $lockVal);
         }
+    }
+
+    /**
+     * 兼容旧调用方：
+     * - 若显式传了渠道类型，优先按渠道类型解析
+     * - 若 channel_id 可能是旧渠道枚举值（1/2），优先按枚举含义解析
+     * - 最后再回退到真实 pay_channel.id
+     */
+    private function resolveRechargeChannel(int $channelId, int $channelType = 0): ?object
+    {
+        $channelDep = $this->dep(PayChannelDep::class);
+        $channelById = $channelId > 0 ? $channelDep->findActive($channelId) : null;
+        $legacyChannelEnum = $channelId > 0 && isset(PayEnum::$channelArr[$channelId]);
+        $channelByLegacyType = $legacyChannelEnum ? $channelDep->getPreferredActiveByChannel($channelId) : null;
+
+        if ($channelType > 0) {
+            if ($channelById && (int) $channelById->channel === $channelType) {
+                return $channelById;
+            }
+
+            $channelByType = $channelDep->getPreferredActiveByChannel($channelType);
+            if ($channelByType) {
+                return $channelByType;
+            }
+
+            return $channelById;
+        }
+
+        if ($legacyChannelEnum) {
+            if ($channelById && (int) $channelById->channel === $channelId) {
+                return $channelById;
+            }
+
+            if ($channelByLegacyType) {
+                return $channelByLegacyType;
+            }
+        }
+
+        return $channelById;
     }
 
     /** 发起支付（App端） */
@@ -443,6 +485,19 @@ class OrderModule extends BaseModule
             return $response;
         }
 
+        if ($response instanceof ResponseInterface) {
+            return [
+                'content' => $this->normalizeStreamContent($response->getBody()),
+                'status_code' => $response->getStatusCode(),
+                'reason_phrase' => $response->getReasonPhrase(),
+                'headers' => $response->getHeaders(),
+            ];
+        }
+
+        if ($response instanceof StreamInterface) {
+            return ['content' => $this->normalizeStreamContent($response)];
+        }
+
         if (is_object($response)) {
             if (method_exists($response, 'toArray')) {
                 /** @var callable $toArray */
@@ -453,13 +508,38 @@ class OrderModule extends BaseModule
             if (method_exists($response, 'getContent')) {
                 /** @var callable $getContent */
                 $getContent = [$response, 'getContent'];
-                return ['content' => (string) $getContent()];
+                $content = $getContent();
+                if (is_array($content)) {
+                    return $content;
+                }
+                return ['content' => (string) $content];
             }
 
-            return json_decode(json_encode($response, JSON_UNESCAPED_UNICODE), true) ?: ['content' => (string) $response];
+            $json = json_encode($response, JSON_UNESCAPED_UNICODE);
+            if ($json !== false) {
+                $decoded = json_decode($json, true);
+                if (is_array($decoded) && $decoded !== []) {
+                    return $decoded;
+                }
+            }
+
+            if (method_exists($response, '__toString')) {
+                return ['content' => (string) $response];
+            }
+
+            return ['content' => get_debug_type($response)];
         }
 
         return ['content' => (string) $response];
+    }
+
+    private function normalizeStreamContent(StreamInterface $stream): string
+    {
+        if ($stream->isSeekable()) {
+            $stream->rewind();
+        }
+
+        return (string) $stream;
     }
 
     /** 支付查询（App端） */
@@ -524,14 +604,22 @@ class OrderModule extends BaseModule
     public function walletInfo(Request $request): array
     {
         $userId = (int) ($request->user_id ?? 0);
-        $wallet = (new WalletService())->getOrCreateWallet($userId);
+        $wallet = $this->dep(UserWalletDep::class)->findByUserId($userId);
+
+        if (!$wallet) {
+            return self::success([
+                'wallet_exists' => CommonEnum::NO,
+            ]);
+        }
 
         return self::success([
-            'balance'        => $wallet['balance'],
-            'frozen'         => $wallet['frozen'],
-            'total_recharge' => $wallet['total_recharge'],
-            'total_consume'  => $wallet['total_consume'],
-            'total_refund'   => $wallet['total_refund'],
+            'wallet_exists'  => CommonEnum::YES,
+            'balance'        => $wallet->balance,
+            'frozen'         => $wallet->frozen,
+            'total_recharge' => $wallet->total_recharge,
+            'total_consume'  => $wallet->total_consume,
+            'total_refund'   => $wallet->total_refund,
+            'created_at'     => $wallet->created_at,
         ]);
     }
 

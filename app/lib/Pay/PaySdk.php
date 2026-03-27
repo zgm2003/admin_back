@@ -265,14 +265,23 @@ class PaySdk
         }
 
         $extra = is_array($channel->extra_config) ? $channel->extra_config : ($channel->extra_config ? json_decode($channel->extra_config, true) : []);
+        $appId = trim((string) ($channel->app_id ?? ''));
+        if ($appId === '') {
+            throw new RuntimeException('配置异常: 缺少支付宝 app_id');
+        }
+
+        $appCertPath = $this->resolveStoredCertPath((string) ($channel->public_cert_path ?? ''), '应用公钥证书');
+        $platformCertPath = $this->resolveStoredCertPath((string) ($channel->platform_cert_path ?? ''), '支付宝公钥证书');
+        $rootCertPath = $this->resolveStoredCertPath((string) ($channel->root_cert_path ?? ''), '支付宝根证书');
+
         $config = [
             'alipay' => [
                 'default' => [
-                    'app_id'               => $channel->app_id,
+                    'app_id'               => $appId,
                     'app_secret_cert'      => $this->decrypt($channel->app_private_key_enc),
-                    'app_public_cert_path' => $channel->public_cert_path ?: '',
-                    'alipay_public_cert_path' => $channel->platform_cert_path ?: '',
-                    'alipay_root_cert_path'   => $channel->root_cert_path ?: '',
+                    'app_public_cert_path' => $appCertPath,
+                    'alipay_public_cert_path' => $platformCertPath,
+                    'alipay_root_cert_path'   => $rootCertPath,
                     'notify_url'           => $channel->notify_url ?: '',
                     'return_url'          => $channel->return_url ?: '',
                     'mode'                => $channel->is_sandbox === CommonEnum::YES ? Pay::MODE_SANDBOX : Pay::MODE_NORMAL,
@@ -292,6 +301,24 @@ class PaySdk
         ];
 
         return $config;
+    }
+
+    private function resolveStoredCertPath(string $path, string $label): string
+    {
+        $normalizedPath = trim(str_replace('\\', '/', $path));
+        if ($normalizedPath === '') {
+            throw new RuntimeException("配置异常: 缺少{$label}路径");
+        }
+
+        if (!preg_match('#^[A-Za-z]:/#', $normalizedPath) && !str_starts_with($normalizedPath, '/')) {
+            $normalizedPath = str_replace('\\', '/', base_path()) . '/' . ltrim($normalizedPath, '/');
+        }
+
+        if (!is_file($normalizedPath)) {
+            throw new RuntimeException("配置异常: {$label}不存在或不可读 ({$normalizedPath})");
+        }
+
+        return $normalizedPath;
     }
 
     /** 解密密钥 */

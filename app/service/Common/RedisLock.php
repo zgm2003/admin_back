@@ -34,7 +34,7 @@ else
     return 0
 end
 LUA;
-        $result = Redis::eval($script, [$key, $value], 1);
+        $result = Redis::eval($script, 1, $key, $value);
         return $result === 1;
     }
 }

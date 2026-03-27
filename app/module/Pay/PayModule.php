@@ -28,7 +28,7 @@ class PayModule extends BaseModule
     /** 充值履约（由 PayOrderFulfillment 队列调用） */
     public function fulfillRecharge(array $fulfill): void
     {
-        $payload = $fulfill['request_payload'] ? json_decode($fulfill['request_payload'], true) : [];
+        $payload = $this->decodeFulfillPayload($fulfill['request_payload'] ?? null);
         $amount = $payload['amount'] ?? 0;
 
         $this->withTransaction(function () use ($fulfill, $amount) {
@@ -60,7 +60,7 @@ class PayModule extends BaseModule
     /** 消费履约（P1 扩展） */
     public function fulfillConsume(array $fulfill): void
     {
-        $payload = $fulfill['request_payload'] ? json_decode($fulfill['request_payload'], true) : [];
+        $payload = $this->decodeFulfillPayload($fulfill['request_payload'] ?? null);
         $bizActionNo = "FULFILL:CONSUME:{$fulfill['order_no']}";
 
         $walletSvc = new WalletService();
@@ -159,6 +159,20 @@ class PayModule extends BaseModule
             'fulfill_id' => $fulfillId,
             'order_id'   => $order['id'],
         ]);
+    }
+
+    private function decodeFulfillPayload(mixed $payload): array
+    {
+        if (is_array($payload)) {
+            return $payload;
+        }
+
+        if (!is_string($payload) || $payload === '') {
+            return [];
+        }
+
+        $decoded = json_decode($payload, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     /** 订单关闭（内部用，含第三方查单） */
