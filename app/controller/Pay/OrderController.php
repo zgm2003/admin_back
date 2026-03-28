@@ -41,6 +41,11 @@ class OrderController extends Controller
         return $this->run([OrderModule::class, 'queryResult'], $request);
     }
 
+    public function myOrders(Request $request)
+    {
+        return $this->run([OrderModule::class, 'myOrders'], $request);
+    }
+
     public function orderDetail(Request $request)
     {
         return $this->run([OrderModule::class, 'orderDetail'], $request);

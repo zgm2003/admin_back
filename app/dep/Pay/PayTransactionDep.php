@@ -79,10 +79,14 @@ class PayTransactionDep extends BaseDep
     public function getPendingCheck(string $since, int $limit = 100): array
     {
         return $this->model
-            ->whereIn('status', [PayEnum::TXN_CREATED, PayEnum::TXN_WAITING])
-            ->where('created_at', '<=', $since)
-            ->where('is_del', CommonEnum::NO)
-            ->orderBy('id', 'asc')
+            ->leftJoin('orders', 'orders.id', '=', 'pay_transactions.order_id')
+            ->whereIn('pay_transactions.status', [PayEnum::TXN_CREATED, PayEnum::TXN_WAITING])
+            ->whereIn('orders.pay_status', [PayEnum::PAY_STATUS_PENDING, PayEnum::PAY_STATUS_PAYING])
+            ->where('pay_transactions.created_at', '<=', $since)
+            ->where('pay_transactions.is_del', CommonEnum::NO)
+            ->where('orders.is_del', CommonEnum::NO)
+            ->select('pay_transactions.*')
+            ->orderBy('pay_transactions.id', 'asc')
             ->limit($limit)
             ->get()
             ->toArray();

@@ -6,6 +6,7 @@ use app\dep\Pay\OrderDep;
 use app\dep\Pay\OrderItemDep;
 use app\dep\Pay\OrderFulfillmentDep;
 use app\dep\Pay\PayChannelDep;
+use app\dep\Pay\PayTransactionDep;
 use app\enum\CommonEnum;
 use app\enum\PayEnum;
 use app\module\BaseModule;
@@ -195,7 +196,18 @@ class PayModule extends BaseModule
         }
 
         try {
-            $this->dep(OrderDep::class)->closeOrder($order->id, $currentStatus, $reason);
+            $closed = $this->dep(OrderDep::class)->closeOrder($order->id, $currentStatus, $reason);
+            if (!$closed) {
+                return;
+            }
+
+            $txn = $this->dep(PayTransactionDep::class)->findLastActive((int) $order->id);
+            if ($txn) {
+                $this->dep(PayTransactionDep::class)->update($txn->id, [
+                    'status' => PayEnum::TXN_CLOSED,
+                    'closed_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
         } finally {
             RedisLock::unlock($lockKey, $lockVal);
         }

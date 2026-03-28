@@ -306,6 +306,7 @@ Route::group('/api/admin', function () {
     Route::post('/pay/orderDetail', [controller\Pay\OrderController::class, 'orderDetail']);
     Route::post('/pay/walletInfo', [controller\Pay\OrderController::class, 'walletInfo']);
     Route::post('/pay/walletBills', [controller\Pay\OrderController::class, 'walletBills']);
+    Route::post('/pay/myOrders', [controller\Pay\OrderController::class, 'myOrders']);
     
     // 订单管理
     Route::post('/PayOrder/init', [controller\Pay\OrderController::class, 'init']);

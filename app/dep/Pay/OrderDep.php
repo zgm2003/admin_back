@@ -22,6 +22,7 @@ class OrderDep extends BaseDep
                 'id', 'order_no', 'user_id', 'order_type', 'title',
                 'total_amount', 'discount_amount', 'pay_amount', 'refunded_amount',
                 'pay_status', 'biz_status', 'refund_status',
+                'channel_id', 'pay_method', 'expire_time',
                 'pay_time', 'created_at',
             ])
             ->where('is_del', CommonEnum::NO)
@@ -45,6 +46,16 @@ class OrderDep extends BaseDep
     public function findByOrderNo(string $orderNo): ?Model
     {
         return $this->query()->where('order_no', $orderNo)->first();
+    }
+
+    public function findLatestOngoingRechargeByUser(int $userId): ?Model
+    {
+        return $this->query()
+            ->where('user_id', $userId)
+            ->where('order_type', PayEnum::TYPE_RECHARGE)
+            ->whereIn('pay_status', [PayEnum::PAY_STATUS_PENDING, PayEnum::PAY_STATUS_PAYING])
+            ->orderBy('id', 'desc')
+            ->first();
     }
 
     public function findOrFailByOrderNo(string $orderNo): Model
@@ -124,7 +135,7 @@ class OrderDep extends BaseDep
     public function getExpiredPending(string $expireTime, int $limit = 50): array
     {
         return $this->query()
-            ->where('pay_status', PayEnum::PAY_STATUS_PENDING)
+            ->whereIn('pay_status', [PayEnum::PAY_STATUS_PENDING, PayEnum::PAY_STATUS_PAYING])
             ->where('expire_time', '<=', $expireTime)
             ->where('is_del', CommonEnum::NO)
             ->orderBy('id', 'asc')

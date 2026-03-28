@@ -72,6 +72,7 @@ Route::group('/api/app', function () {
     Route::post('/Pay/orderDetail', [controller\Pay\OrderController::class, 'orderDetail']);
     Route::post('/Pay/walletInfo', [controller\Pay\OrderController::class, 'walletInfo']);
     Route::post('/Pay/walletBills', [controller\Pay\OrderController::class, 'walletBills']);
+    Route::post('/Pay/myOrders', [controller\Pay\OrderController::class, 'myOrders']);
 })->middleware([
     app\middleware\CheckToken::class,
 ]);

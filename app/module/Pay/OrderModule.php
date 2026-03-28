@@ -192,6 +192,101 @@ class OrderModule extends BaseModule
         return self::success();
     }
 
+    /** 我的充值订单（用户侧） */
+    public function myOrders(Request $request): array
+    {
+        $userId = (int) $request->userId;
+        $param = $this->validate($request, OrderValidate::list());
+        $param['user_id'] = $userId;
+        $param['order_type'] = PayEnum::TYPE_RECHARGE;
+        $param['page'] = (int) ($param['page'] ?? 1);
+        $param['page_size'] = (int) ($param['page_size'] ?? 10);
+
+        $res = $this->dep(OrderDep::class)->list($param);
+        $channelIds = $res
+            ->pluck('channel_id')
+            ->filter(fn($id) => is_numeric($id) && (int)$id > 0)
+            ->map(fn($id) => (int)$id)
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $channelMap = [];
+        if (!empty($channelIds)) {
+            $channels = Db::table('pay_channel')
+                ->select(['id', 'name'])
+                ->whereIn('id', $channelIds)
+                ->where('is_del', CommonEnum::NO)
+                ->where('status', CommonEnum::YES)
+                ->get();
+            foreach ($channels as $channel) {
+                $channelMap[(int) $channel->id] = (string) $channel->name;
+            }
+        }
+
+        $orderIds = $res
+            ->pluck('id')
+            ->filter(fn($id) => is_numeric($id) && (int)$id > 0)
+            ->map(fn($id) => (int)$id)
+            ->values()
+            ->toArray();
+
+        $transactionMap = [];
+        if (!empty($orderIds)) {
+            $transactions = Db::table('pay_transactions')
+                ->select(['id', 'order_id', 'transaction_no', 'status'])
+                ->whereIn('order_id', $orderIds)
+                ->where('is_del', CommonEnum::NO)
+                ->orderBy('id', 'desc')
+                ->get();
+
+            foreach ($transactions as $transaction) {
+                $orderId = (int) ($transaction->order_id ?? 0);
+                if ($orderId <= 0 || isset($transactionMap[$orderId])) {
+                    continue;
+                }
+
+                $transactionMap[$orderId] = [
+                    'transaction_no' => (string) ($transaction->transaction_no ?? ''),
+                    'transaction_status' => (int) ($transaction->status ?? 0),
+                ];
+            }
+        }
+
+        $list = $res->map(function ($item) use ($channelMap, $transactionMap) {
+            $transaction = $transactionMap[(int) $item->id] ?? null;
+            return [
+                'id'               => $item->id,
+                'order_no'         => $item->order_no,
+                'title'            => $item->title,
+                'pay_amount'       => $item->pay_amount,
+                'pay_status'       => $item->pay_status,
+                'pay_status_text'  => PayEnum::$payStatusArr[$item->pay_status] ?? '',
+                'biz_status'       => $item->biz_status,
+                'biz_status_text'  => PayEnum::$bizStatusArr[$item->biz_status] ?? '',
+                'refund_status'    => $item->refund_status,
+                'refund_status_text'=> PayEnum::$refundStatusArr[$item->refund_status] ?? '',
+                'pay_time'         => $item->pay_time,
+                'created_at'       => $item->created_at,
+                'expire_time'      => $item->expire_time,
+                'channel_id'       => $item->channel_id,
+                'channel_name'     => $channelMap[(int)$item->channel_id] ?? '',
+                'pay_method'       => $item->pay_method,
+                'transaction_no'   => $transaction['transaction_no'] ?? null,
+                'transaction_status' => $transaction['transaction_status'] ?? null,
+            ];
+        });
+
+        $page = [
+            'page_size'    => $res->perPage(),
+            'current_page' => $res->currentPage(),
+            'total_page'   => $res->lastPage(),
+            'total'        => $res->total(),
+        ];
+
+        return self::paginate($list, $page);
+    }
+
     // ==================== 用户侧接口（接受 Request）====================
 
     /** 充值下单（用户侧） */
@@ -217,6 +312,28 @@ class OrderModule extends BaseModule
 
         try {
             return $this->withTransaction(function () use ($userId, $amount, $payMethod, $channel, $ip) {
+                $ongoingOrder = $this->dep(OrderDep::class)->findLatestOngoingRechargeByUser($userId);
+                if ($ongoingOrder) {
+                    $isExpired = !empty($ongoingOrder->expire_time) && strtotime((string) $ongoingOrder->expire_time) <= time();
+                    if ($isExpired) {
+                        $this->dep(OrderDep::class)->closeOrder(
+                            (int) $ongoingOrder->id,
+                            (int) $ongoingOrder->pay_status,
+                            '订单超时自动关闭'
+                        );
+
+                        $ongoingTxn = $this->dep(PayTransactionDep::class)->findLastActive((int) $ongoingOrder->id);
+                        if ($ongoingTxn) {
+                            $this->dep(PayTransactionDep::class)->update((int) $ongoingTxn->id, [
+                                'status' => PayEnum::TXN_CLOSED,
+                                'closed_at' => date('Y-m-d H:i:s'),
+                            ]);
+                        }
+                    } else {
+                        throw new RuntimeException('请先完成或取消当前未支付的充值订单');
+                    }
+                }
+
                 $orderNo = OrderNoGenerator::recharge();
                 $expireTime = date('Y-m-d H:i:s', time() + PayEnum::ORDER_EXPIRE_SECONDS);
 
@@ -485,7 +602,7 @@ class OrderModule extends BaseModule
             'subject'      => mb_substr($title, 0, 128),
         ];
 
-        $quitUrl = (string) ($body['quit_url'] ?? $returnUrl);
+        $quitUrl = trim($returnUrl);
         if ($quitUrl !== '') {
             $payload['quit_url'] = $quitUrl;
         }
