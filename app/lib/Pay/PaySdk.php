@@ -283,7 +283,6 @@ class PaySdk
                     'alipay_public_cert_path' => $platformCertPath,
                     'alipay_root_cert_path'   => $rootCertPath,
                     'notify_url'           => $channel->notify_url ?: '',
-                    'return_url'          => $channel->return_url ?: '',
                     'mode'                => $channel->is_sandbox === CommonEnum::YES ? Pay::MODE_SANDBOX : Pay::MODE_NORMAL,
                 ],
             ],

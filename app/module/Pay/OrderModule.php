@@ -272,6 +272,7 @@ class OrderModule extends BaseModule
                 'channel_id'       => $item->channel_id,
                 'channel_name'     => $channelMap[(int)$item->channel_id] ?? '',
                 'pay_method'       => $item->pay_method,
+                'pay_method_text'  => PayEnum::$methodArr[$item->pay_method] ?? $item->pay_method,
                 'transaction_no'   => $transaction['transaction_no'] ?? null,
                 'transaction_status' => $transaction['transaction_status'] ?? null,
             ];
@@ -305,6 +306,7 @@ class OrderModule extends BaseModule
 
         $channel = $this->resolveRechargeChannel($channelId, $channelType);
         self::throwUnless($channel, '支付渠道不可用');
+        self::throwUnless($this->isPayMethodSupportedByChannel($channel, $payMethod), '该渠道未配置当前支付方式');
 
         $lockKey = "pay_create_order_{$userId}";
         $lockVal = RedisLock::lock($lockKey, 10);
@@ -443,6 +445,7 @@ class OrderModule extends BaseModule
 
                 $channel = $this->dep(PayChannelDep::class)->findActive($channelId);
                 self::throwUnless($channel, '支付渠道不可用');
+                self::throwUnless($this->isPayMethodSupportedByChannel($channel, $payMethod), '该渠道未配置当前支付方式');
 
                 $lastTxn = $this->dep(PayTransactionDep::class)->findLastActive($order->id);
                 if ($lastTxn) {
@@ -473,8 +476,7 @@ class OrderModule extends BaseModule
                     $transactionNo,
                     $order,
                     $request,
-                    $ip,
-                    (string) ($channel->return_url ?? '')
+                    $ip
                 );
                 $payResponse = $this->dispatchPayRequest((int) $channel->channel, (int) $channel->id, $payMethod, $payPayload);
                 $payData = $this->normalizePayResponse($payResponse);
@@ -499,7 +501,6 @@ class OrderModule extends BaseModule
                     'channel'        => $channel->channel,
                     'pay_method'     => $payMethod,
                     'notify_url'     => $channel->notify_url,
-                    'return_url'     => $channel->return_url,
                     'pay_data'       => $payData,
                 ]);
             });
@@ -561,8 +562,7 @@ class OrderModule extends BaseModule
         string $transactionNo,
         object $order,
         Request $request,
-        string $ip,
-        string $returnUrl = ''
+        string $ip
     ): array {
         $title = trim((string) ($order->title ?? '')) ?: "订单支付 {$order->order_no}";
         $title = mb_substr($title, 0, 64);
@@ -602,12 +602,26 @@ class OrderModule extends BaseModule
             'subject'      => mb_substr($title, 0, 128),
         ];
 
-        $quitUrl = trim($returnUrl);
-        if ($quitUrl !== '') {
-            $payload['quit_url'] = $quitUrl;
-        }
-
         return $payload;
+    }
+
+    private function getChannelSupportedMethods(object $channel): array
+    {
+        $extraConfig = is_array($channel->extra_config ?? null)
+            ? $channel->extra_config
+            : (empty($channel->extra_config) ? [] : (json_decode((string) $channel->extra_config, true) ?: []));
+
+        $methods = is_array($extraConfig['supported_methods'] ?? null)
+            ? $extraConfig['supported_methods']
+            : [];
+
+        $normalized = PayEnum::normalizeSupportedMethods((int) $channel->channel, $methods);
+        return $normalized !== [] ? $normalized : PayEnum::getDefaultSupportedMethods((int) $channel->channel);
+    }
+
+    private function isPayMethodSupportedByChannel(object $channel, string $payMethod): bool
+    {
+        return in_array($payMethod, $this->getChannelSupportedMethods($channel), true);
     }
 
     private function dispatchPayRequest(int $channel, int $channelId, string $payMethod, array $payload): mixed

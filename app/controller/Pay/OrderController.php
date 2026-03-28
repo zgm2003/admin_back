@@ -20,7 +20,7 @@ class OrderController extends Controller
     /** @OperationLog("备注订单") @Permission("pay_order_edit") */
     public function remark(Request $request) { return $this->run([OrderModule::class, 'remark'], $request); }
 
-    // ==================== App 端接口 ====================
+    // ==================== 用户侧接口 ====================
     public function recharge(Request $request)
     {
         return $this->run([OrderModule::class, 'recharge'], $request);

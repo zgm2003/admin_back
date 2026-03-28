@@ -30,6 +30,46 @@ class PayEnum
         self::METHOD_MP   => '公众号支付',
     ];
 
+    public static array $channelMethodArr = [
+        self::CHANNEL_WECHAT => [
+            self::METHOD_SCAN,
+            self::METHOD_H5,
+            self::METHOD_APP,
+            self::METHOD_MINI,
+            self::METHOD_MP,
+        ],
+        self::CHANNEL_ALIPAY => [
+            self::METHOD_WEB,
+            self::METHOD_H5,
+            self::METHOD_APP,
+            self::METHOD_SCAN,
+            self::METHOD_MINI,
+        ],
+    ];
+
+    public static function getDefaultSupportedMethods(int $channel): array
+    {
+        return self::$channelMethodArr[$channel] ?? array_keys(self::$methodArr);
+    }
+
+    public static function normalizeSupportedMethods(int $channel, array $methods): array
+    {
+        $allowedMethods = self::getDefaultSupportedMethods($channel);
+        $allowedMap = array_fill_keys($allowedMethods, true);
+
+        $normalized = [];
+        foreach ($methods as $method) {
+            $method = (string) $method;
+            if ($method === '' || !isset($allowedMap[$method])) {
+                continue;
+            }
+
+            $normalized[$method] = $method;
+        }
+
+        return array_values($normalized);
+    }
+
     // ==================== 订单类型 ====================
     const TYPE_RECHARGE = 1;
     const TYPE_CONSUME  = 2;

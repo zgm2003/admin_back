@@ -23,6 +23,7 @@ class PayChannelModule extends BaseModule
             ->setPayChannelArr()
             ->setPayMethodArr()
             ->getDict();
+        $data['dict']['channel_method_arr'] = $this->buildChannelMethodDict();
 
         return self::success($data);
     }
@@ -41,7 +42,11 @@ class PayChannelModule extends BaseModule
             'mch_id'       => $item->mch_id,
             'app_id'       => $item->app_id,
             'notify_url'   => $item->notify_url,
-            'return_url'   => $item->return_url,
+            'supported_methods' => $this->getSupportedMethods($item),
+            'supported_methods_text' => implode(' / ', array_map(
+                fn($method) => PayEnum::$methodArr[$method] ?? $method,
+                $this->getSupportedMethods($item)
+            )),
             'app_private_key_hint' => $item->app_private_key_hint ?? '',
             'public_cert_path'     => $item->public_cert_path ?? '',
             'platform_cert_path'  => $item->platform_cert_path ?? '',
@@ -82,7 +87,12 @@ class PayChannelModule extends BaseModule
             'mch_id'              => $param['mch_id'],
             'app_id'              => $param['app_id'] ?? '',
             'notify_url'          => $param['notify_url'] ?? '',
-            'return_url'          => $param['return_url'] ?? '',
+            'extra_config'        => [
+                'supported_methods' => PayEnum::normalizeSupportedMethods(
+                    (int) $param['channel'],
+                    $param['supported_methods'] ?? []
+                ),
+            ],
             'public_cert_path'    => $param['public_cert_path'] ?? '',
             'platform_cert_path'  => $param['platform_cert_path'] ?? '',
             'root_cert_path'      => $param['root_cert_path'] ?? '',
@@ -109,7 +119,7 @@ class PayChannelModule extends BaseModule
         $id = (int) $param['id'];
         $dep = $this->dep(PayChannelDep::class);
 
-        $dep->getOrFail($id);
+        $record = $dep->getOrFail($id);
 
         if ($dep->existsByChannelMchApp(
             $param['channel'] ?? 0,
@@ -126,7 +136,6 @@ class PayChannelModule extends BaseModule
             'mch_id'              => $param['mch_id'] ?? null,
             'app_id'              => $param['app_id'] ?? null,
             'notify_url'          => $param['notify_url'] ?? null,
-            'return_url'          => $param['return_url'] ?? null,
             'public_cert_path'    => $param['public_cert_path'] ?? null,
             'platform_cert_path'  => $param['platform_cert_path'] ?? null,
             'root_cert_path'      => $param['root_cert_path'] ?? null,
@@ -140,6 +149,22 @@ class PayChannelModule extends BaseModule
         if (!empty($param['app_private_key'])) {
             $data['app_private_key_enc'] = KeyVault::encrypt($param['app_private_key']);
             $data['app_private_key_hint'] = $param['app_private_key_hint'] ?? '';
+        }
+
+        if (array_key_exists('supported_methods', $param) || array_key_exists('channel', $param)) {
+            $channel = isset($param['channel']) ? (int) $param['channel'] : (int) $record->channel;
+            $existingExtraConfig = is_array($record->extra_config)
+                ? $record->extra_config
+                : (empty($record->extra_config) ? [] : (json_decode((string) $record->extra_config, true) ?: []));
+            $existingMethods = is_array($existingExtraConfig['supported_methods'] ?? null)
+                ? $existingExtraConfig['supported_methods']
+                : [];
+
+            $existingExtraConfig['supported_methods'] = PayEnum::normalizeSupportedMethods(
+                $channel,
+                $param['supported_methods'] ?? $existingMethods
+            );
+            $data['extra_config'] = $existingExtraConfig;
         }
 
         $dep->update($id, $data);
@@ -163,5 +188,32 @@ class PayChannelModule extends BaseModule
         $affected = $this->dep(PayChannelDep::class)->setStatus($param['id'], (int) $param['status']);
 
         return self::success(['affected' => $affected]);
+    }
+
+    private function buildChannelMethodDict(): array
+    {
+        $result = [];
+        foreach (PayEnum::$channelMethodArr as $channel => $methods) {
+            $result[$channel] = array_map(fn($method) => [
+                'label' => PayEnum::$methodArr[$method] ?? $method,
+                'value' => $method,
+            ], $methods);
+        }
+
+        return $result;
+    }
+
+    private function getSupportedMethods(object $channel): array
+    {
+        $extraConfig = is_array($channel->extra_config ?? null)
+            ? $channel->extra_config
+            : (empty($channel->extra_config) ? [] : (json_decode((string) $channel->extra_config, true) ?: []));
+
+        $methods = is_array($extraConfig['supported_methods'] ?? null)
+            ? $extraConfig['supported_methods']
+            : [];
+
+        $normalized = PayEnum::normalizeSupportedMethods((int) $channel->channel, $methods);
+        return $normalized !== [] ? $normalized : PayEnum::getDefaultSupportedMethods((int) $channel->channel);
     }
 }

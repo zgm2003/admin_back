@@ -12,10 +12,12 @@ class PayChannelValidate
         return [
             'name'              => v::stringType()->length(1, 50)->setName('渠道名称'),
             'channel'           => v::intVal()->in(array_keys(\app\enum\PayEnum::$channelArr))->setName('渠道类型'),
+            'supported_methods' => v::arrayType()->notEmpty()->each(
+                v::stringType()->in(array_keys(\app\enum\PayEnum::$methodArr))
+            )->setName('支付方式'),
             'mch_id'            => v::stringType()->length(1, 64)->setName('商户号'),
             'app_id'            => v::optional(v::stringType()->length(0, 64))->setName('应用ID'),
             'notify_url'        => v::optional(v::stringType()->length(0, 512))->setName('异步回调地址'),
-            'return_url'        => v::optional(v::stringType()->length(0, 512))->setName('同步回跳地址'),
             'app_private_key'      => v::optional(v::stringType())->setName('应用私钥'),
             'app_private_key_hint' => v::optional(v::stringType()->length(0, 20))->setName('私钥提示'),
             'public_cert_path'  => v::optional(v::stringType()->length(0, 512))->setName('公钥证书路径'),
@@ -34,10 +36,12 @@ class PayChannelValidate
             'id'                => v::intVal()->positive()->setName('ID'),
             'name'              => v::optional(v::stringType()->length(1, 50))->setName('渠道名称'),
             'channel'           => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$channelArr)))->setName('渠道类型'),
+            'supported_methods' => v::optional(v::arrayType()->notEmpty()->each(
+                v::stringType()->in(array_keys(\app\enum\PayEnum::$methodArr))
+            ))->setName('支付方式'),
             'mch_id'            => v::optional(v::stringType()->length(1, 64))->setName('商户号'),
             'app_id'            => v::optional(v::stringType()->length(0, 64))->setName('应用ID'),
             'notify_url'        => v::optional(v::stringType()->length(0, 512))->setName('异步回调地址'),
-            'return_url'        => v::optional(v::stringType()->length(0, 512))->setName('同步回跳地址'),
             'app_private_key'      => v::optional(v::stringType())->setName('应用私钥'),
             'app_private_key_hint' => v::optional(v::stringType()->length(0, 20))->setName('私钥提示'),
             'public_cert_path'  => v::optional(v::stringType()->length(0, 512))->setName('公钥证书路径'),

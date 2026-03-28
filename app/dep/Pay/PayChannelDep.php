@@ -22,7 +22,7 @@ class PayChannelDep extends BaseDep
                 'id', 'name', 'channel', 'mch_id', 'app_id',
                 'app_private_key_hint', 'app_private_key_enc',
                 'public_cert_path', 'platform_cert_path', 'root_cert_path',
-                'notify_url', 'return_url', 'is_sandbox', 'sort', 'status', 'remark', 'created_at',
+                'notify_url', 'extra_config', 'is_sandbox', 'sort', 'status', 'remark', 'created_at',
             ])
             ->where('is_del', CommonEnum::NO)
             ->when(isset($param['channel']) && $param['channel'] !== '', fn($q) => $q->where('channel', (int) $param['channel']))
