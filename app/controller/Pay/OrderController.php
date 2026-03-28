@@ -31,6 +31,11 @@ class OrderController extends Controller
         return $this->run([OrderModule::class, 'createPay'], $request);
     }
 
+    public function cancelOrder(Request $request)
+    {
+        return $this->run([OrderModule::class, 'cancelOrder'], $request);
+    }
+
     public function queryResult(Request $request)
     {
         return $this->run([OrderModule::class, 'queryResult'], $request);

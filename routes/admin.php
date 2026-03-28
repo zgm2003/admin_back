@@ -301,6 +301,7 @@ Route::group('/api/admin', function () {
     // 用户端支付接口
     Route::post('/pay/recharge', [controller\Pay\OrderController::class, 'recharge']);
     Route::post('/pay/createPay', [controller\Pay\OrderController::class, 'createPay']);
+    Route::post('/pay/cancelOrder', [controller\Pay\OrderController::class, 'cancelOrder']);
     Route::post('/pay/queryResult', [controller\Pay\OrderController::class, 'queryResult']);
     Route::post('/pay/orderDetail', [controller\Pay\OrderController::class, 'orderDetail']);
     Route::post('/pay/walletInfo', [controller\Pay\OrderController::class, 'walletInfo']);

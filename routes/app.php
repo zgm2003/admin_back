@@ -67,6 +67,7 @@ Route::group('/api/app', function () {
 Route::group('/api/app', function () {
     Route::post('/Pay/recharge', [controller\Pay\OrderController::class, 'recharge']);
     Route::post('/Pay/createPay', [controller\Pay\OrderController::class, 'createPay']);
+    Route::post('/Pay/cancelOrder', [controller\Pay\OrderController::class, 'cancelOrder']);
     Route::post('/Pay/queryResult', [controller\Pay\OrderController::class, 'queryResult']);
     Route::post('/Pay/orderDetail', [controller\Pay\OrderController::class, 'orderDetail']);
     Route::post('/Pay/walletInfo', [controller\Pay\OrderController::class, 'walletInfo']);

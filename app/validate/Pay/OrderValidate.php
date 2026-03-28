@@ -36,6 +36,14 @@ class OrderValidate
         ];
     }
 
+    public static function cancelOrder(): array
+    {
+        return [
+            'order_no' => v::stringType()->length(1, 64)->setName('订单号'),
+            'reason'   => v::optional(v::stringType()->length(1, 100))->setName('关闭原因'),
+        ];
+    }
+
     public static function remark(): array
     {
         return [

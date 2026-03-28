@@ -192,12 +192,12 @@ class OrderModule extends BaseModule
         return self::success();
     }
 
-    // ==================== App 端接口（接受 Request）====================
+    // ==================== 用户侧接口（接受 Request）====================
 
-    /** 充值下单（App端） */
+    /** 充值下单（用户侧） */
     public function recharge(Request $request): array
     {
-        $userId = (int) ($request->user_id ?? 0);
+        $userId = (int) $request->userId;
         $body = $request->all();
         $amount = (int) ($body['amount'] ?? 0);
         $payMethod = $body['pay_method'] ?? '';
@@ -299,10 +299,10 @@ class OrderModule extends BaseModule
         return $channelById;
     }
 
-    /** 发起支付（App端） */
+    /** 发起支付（用户侧） */
     public function createPay(Request $request): array
     {
-        $userId = (int) ($request->user_id ?? 0);
+        $userId = (int) $request->userId;
         $body = $request->all();
         $orderNo = $body['order_no'] ?? '';
         $ip = $request->getRealIp();
@@ -386,6 +386,53 @@ class OrderModule extends BaseModule
                     'pay_data'       => $payData,
                 ]);
             });
+        } finally {
+            RedisLock::unlock($lockKey, $lockVal);
+        }
+    }
+
+    /** 取消订单（用户侧） */
+    public function cancelOrder(Request $request): array
+    {
+        $userId = (int) $request->userId;
+        $param = $this->validate($request, OrderValidate::cancelOrder());
+        $order = $this->dep(OrderDep::class)->findByOrderNo($param['order_no']);
+
+        self::throwUnless($order, '订单不存在');
+        self::throwUnless($order->user_id === $userId, '无权操作该订单');
+        self::throwIf(
+            !in_array($order->pay_status, [PayEnum::PAY_STATUS_PENDING, PayEnum::PAY_STATUS_PAYING], true),
+            '该订单状态不允许取消'
+        );
+
+        $lockKey = "pay_create_txn_{$order->order_no}";
+        $lockVal = RedisLock::lock($lockKey, 30);
+        self::throwIf(!$lockVal, '正在处理中，请稍后');
+
+        try {
+            $txn = $this->dep(PayTransactionDep::class)->findLastActive($order->id);
+            $channel = $order->channel_id ? $this->dep(PayChannelDep::class)->findActive((int) $order->channel_id) : null;
+
+            $this->withTransaction(function () use ($order, $txn, $param) {
+                $this->dep(OrderDep::class)->closeOrder(
+                    $order->id,
+                    $order->pay_status,
+                    $param['reason'] ?? '用户取消订单'
+                );
+
+                if ($txn) {
+                    $this->dep(PayTransactionDep::class)->update($txn->id, [
+                        'status' => PayEnum::TXN_CLOSED,
+                        'closed_at' => date('Y-m-d H:i:s'),
+                    ]);
+                }
+            });
+
+            if ($txn && $channel) {
+                $this->closeThirdPartyPayment((int) $channel->id, (int) $channel->channel, (string) $txn->transaction_no);
+            }
+
+            return self::success();
         } finally {
             RedisLock::unlock($lockKey, $lockVal);
         }
@@ -542,14 +589,39 @@ class OrderModule extends BaseModule
         return (string) $stream;
     }
 
-    /** 支付查询（App端） */
+    private function closeThirdPartyPayment(int $channelId, int $channel, string $transactionNo): void
+    {
+        if ($channelId <= 0 || $channel <= 0 || $transactionNo === '') {
+            return;
+        }
+
+        $sdk = new PaySdk();
+        $payload = ['out_trade_no' => $transactionNo];
+
+        try {
+            if ($channel === PayEnum::CHANNEL_WECHAT) {
+                $sdk->wechatClose($channelId, $payload);
+                return;
+            }
+
+            if ($channel === PayEnum::CHANNEL_ALIPAY) {
+                $sdk->alipayClose($channelId, $payload);
+            }
+        } catch (\Throwable $e) {
+            // 第三方关闭失败不阻断本地订单关闭，后续仍可依赖查单/回调修正状态。
+        }
+    }
+
+    /** 支付查询（用户侧） */
     public function queryResult(Request $request): array
     {
+        $userId = (int) $request->userId;
         $body = $request->all();
         $orderNo = $body['order_no'] ?? '';
 
         $order = $this->dep(OrderDep::class)->findByOrderNo($orderNo);
         self::throwUnless($order, '订单不存在');
+        self::throwUnless($order->user_id === $userId, '无权查看该订单');
 
         $txn = $this->dep(PayTransactionDep::class)->findLastActive($order->id);
 
@@ -566,14 +638,16 @@ class OrderModule extends BaseModule
         ]);
     }
 
-    /** 订单详情（App端） */
+    /** 订单详情（用户侧） */
     public function orderDetail(Request $request): array
     {
+        $userId = (int) $request->userId;
         $body = $request->all();
         $orderNo = $body['order_no'] ?? '';
 
         $order = $this->dep(OrderDep::class)->findByOrderNo($orderNo);
         self::throwUnless($order, '订单不存在');
+        self::throwUnless($order->user_id === $userId, '无权查看该订单');
 
         $items = $this->dep(OrderItemDep::class)->getByOrderId($order->id);
 
@@ -600,10 +674,10 @@ class OrderModule extends BaseModule
         ]);
     }
 
-    /** 钱包信息（App端） */
+    /** 钱包信息（用户侧） */
     public function walletInfo(Request $request): array
     {
-        $userId = (int) ($request->user_id ?? 0);
+        $userId = (int) $request->userId;
         $wallet = $this->dep(UserWalletDep::class)->findByUserId($userId);
 
         if (!$wallet) {
@@ -623,10 +697,10 @@ class OrderModule extends BaseModule
         ]);
     }
 
-    /** 钱包流水（App端） */
+    /** 钱包流水（用户侧） */
     public function walletBills(Request $request): array
     {
-        $userId = (int) ($request->user_id ?? 0);
+        $userId = (int) $request->userId;
         $body = $request->all();
         $page = (int) ($body['page'] ?? 1);
         $pageSize = (int) ($body['page_size'] ?? 20);
