@@ -13,7 +13,6 @@ use app\module\BaseModule;
 use app\service\Common\DictService;
 use app\service\Common\RedisLock;
 use app\service\Pay\OrderNoGenerator;
-use app\service\Pay\PayService;
 use app\service\Pay\WalletService;
 use app\validate\Pay\PayRefundValidate;
 use RuntimeException;
@@ -118,7 +117,7 @@ class PayRefundModule extends BaseModule
     public function apply($request): array
     {
         $param = $this->validate($request, PayRefundValidate::apply());
-        $operatorId = (int) ($request->user_id ?? 0);
+        $operatorId = (int) ($request->userId ?? 0);
 
         $orderDep = new OrderDep();
         $order = $orderDep->findOrFail($param['order_id']);
@@ -325,7 +324,7 @@ class PayRefundModule extends BaseModule
                 $walletSvc->finalizeRefund(
                     $refund->user_id,
                     $refund->refund_amount,
-                    "REFUND:CONFIRM:{$refundNo}",
+                    $refundNo,
                     $refund->order_id,
                     $refund->order_no,
                 );
@@ -395,7 +394,7 @@ class PayRefundModule extends BaseModule
                 $walletSvc->unfreezeRefund(
                     $refund->user_id,
                     $refund->refund_amount,
-                    "REFUND:FAIL:{$refundNo}",
+                    $refundNo,
                     $refund->order_id,
                     $refund->order_no,
                 );

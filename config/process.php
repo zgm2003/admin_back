@@ -111,7 +111,4 @@ return [
     'pay_refund_sync' => [
         'handler' => app\process\Pay\PayRefundSyncTask::class,
     ],
-    'pay_reconcile_daily' => [
-        'handler' => app\process\Pay\PayReconcileDailyTask::class,
-    ],
 ];

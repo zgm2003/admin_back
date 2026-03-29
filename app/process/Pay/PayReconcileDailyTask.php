@@ -70,14 +70,17 @@ class PayReconcileDailyTask extends BaseCronTask
                 ->first();
         }
 
+        $localCount = (int) ($stat->cnt ?? 0);
+        $localAmount = (int) ($stat->total ?? 0);
+
         (new PayReconcileTaskDep())->add([
             'reconcile_date' => $date,
             'channel'       => $channel,
             'channel_id'    => 0,
             'bill_type'    => $billType,
             'status'       => PayEnum::RECONCILE_PENDING,
-            'local_count'   => $stat['cnt'] ?? 0,
-            'local_amount'  => $stat['total'] ?? 0,
+            'local_count'   => $localCount,
+            'local_amount'  => $localAmount,
             'platform_count' => 0,
             'platform_amount' => 0,
         ]);
@@ -86,8 +89,8 @@ class PayReconcileDailyTask extends BaseCronTask
             'date'         => $date,
             'channel'     => $channel,
             'bill_type'   => $billType,
-            'local_count'  => $stat['cnt'] ?? 0,
-            'local_amount' => $stat['total'] ?? 0,
+            'local_count'  => $localCount,
+            'local_amount' => $localAmount,
         ]);
 
         return 1;

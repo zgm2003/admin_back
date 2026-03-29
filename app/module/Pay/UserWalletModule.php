@@ -40,7 +40,7 @@ class UserWalletModule extends BaseModule
                 'user_id'         => $item->user_id,
                 'balance'         => $item->balance,
                 'frozen'          => $item->frozen,
-                'available'       => $item->balance - $item->frozen,
+                'available'       => $item->balance,
                 'total_recharge'  => $item->total_recharge,
                 'total_consume'   => $item->total_consume,
                 'total_refund'    => $item->total_refund,
@@ -95,7 +95,7 @@ class UserWalletModule extends BaseModule
     public function adjust($request): array
     {
         $param = $this->validate($request, UserWalletValidate::adjust());
-        $operatorId = (int) ($request->user_id ?? 0);
+        $operatorId = (int) ($request->userId ?? 0);
 
         $walletSvc = new WalletService();
         $wallet = $walletSvc->getOrCreateWallet((int) $param['user_id']);
@@ -123,6 +123,8 @@ class UserWalletModule extends BaseModule
             'frozen_delta'     => 0,
             'balance_before'   => $wallet['balance'],
             'balance_after'    => $wallet['balance'] + $delta,
+            'frozen_before'    => $wallet['frozen'],
+            'frozen_after'     => $wallet['frozen'],
             'order_id'         => 0,
             'order_no'         => '',
             'source_type'      => PayEnum::WALLET_SOURCE_MANUAL,

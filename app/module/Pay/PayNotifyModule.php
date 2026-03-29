@@ -208,18 +208,28 @@ class PayNotifyModule extends BaseModule
                 $order = $orderDep->find($txn->order_id);
 
                 if ($order) {
-                    $extra = ['pay_time' => date('Y-m-d H:i:s')];
-                    if ($channel === PayEnum::CHANNEL_WECHAT) {
-                        $extra['pay_method'] = 'wechat';
-                    } elseif ($channel === PayEnum::CHANNEL_ALIPAY) {
-                        $extra['pay_method'] = 'alipay';
+                    if (
+                        (int) $order->pay_status !== PayEnum::PAY_STATUS_PAID
+                        && PayEnum::canTransitPayStatus((int) $order->pay_status, PayEnum::PAY_STATUS_PAID)
+                    ) {
+                        $orderDep->updatePayStatus($order->id, (int) $order->pay_status, PayEnum::PAY_STATUS_PAID, [
+                            'pay_time' => date('Y-m-d H:i:s'),
+                            'pay_method' => (string) $txn->pay_method,
+                            'channel_id' => (int) $txn->channel_id,
+                            'success_transaction_id' => (int) $txn->id,
+                        ]);
+                        $order->pay_status = PayEnum::PAY_STATUS_PAID;
+                    } elseif ((int) $order->success_transaction_id === 0) {
+                        $orderDep->update($order->id, [
+                            'success_transaction_id' => (int) $txn->id,
+                            'channel_id' => (int) $txn->channel_id,
+                            'pay_method' => (string) $txn->pay_method,
+                        ]);
                     }
-                    $extra['channel_id'] = $txn->channel_id;
 
-                    $orderDep->updatePayStatus($order->id, $order->pay_status, PayEnum::PAY_STATUS_PAID, $extra);
-                    $orderDep->updateBizStatus($order->id, $order->biz_status, PayEnum::BIZ_STATUS_PENDING, [
-                        'success_transaction_id' => $txn->id,
-                    ]);
+                    if (PayEnum::canTransitBizStatus((int) $order->biz_status, PayEnum::BIZ_STATUS_PENDING)) {
+                        $orderDep->updateBizStatus($order->id, (int) $order->biz_status, PayEnum::BIZ_STATUS_PENDING);
+                    }
 
                     // 创建履约记录并投递队列
                     $payModule = new PayModule();
@@ -229,7 +239,11 @@ class PayNotifyModule extends BaseModule
                         PayEnum::TYPE_GOODS    => PayEnum::FULFILL_ACTION_GOODS,
                         default => PayEnum::FULFILL_ACTION_RECHARGE,
                     };
-                    $payModule->createFulfillmentAndDispatch($order->toArray(), $actionType);
+                    $payModule->createFulfillmentAndDispatch(array_merge($order->toArray(), [
+                        'success_transaction_id' => (int) $txn->id,
+                        'channel_id' => (int) $txn->channel_id,
+                        'pay_method' => (string) $txn->pay_method,
+                    ]), $actionType);
                 }
 
                 return self::success();

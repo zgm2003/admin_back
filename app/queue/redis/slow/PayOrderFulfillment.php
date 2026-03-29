@@ -62,26 +62,11 @@ class PayOrderFulfillment implements Consumer
                 ]);
                 $this->log("履约最终失败，转人工 fulfill_id={$fulfillId} error={$e->getMessage()}");
             }
-            throw $e; // 抛出让 Redis Queue 重试
+
+            // 失败由 order_fulfillments.retry_count/next_retry_at 驱动，
+            // 不再叠加 redis-queue 的即时自动重试，避免双重重试。
+            return;
         }
-    }
-
-    public function onConsumeFailure(\Throwable $e, $package): void
-    {
-        $data = $package['data'] ?? [];
-        $fulfillId = $data['fulfill_id'] ?? 0;
-
-        if ($fulfillId) {
-            (new OrderFulfillmentDep())->update($fulfillId, [
-                'status'     => PayEnum::FULFILL_MANUAL,
-                'last_error' => '队列重试耗尽: ' . mb_substr($e->getMessage(), 0, 400),
-            ]);
-            (new OrderDep())->update($data['order_id'] ?? 0, [
-                'biz_status' => PayEnum::BIZ_STATUS_MANUAL,
-            ]);
-        }
-
-        $this->log("履约最终失败，转人工处理 fulfill_id={$fulfillId}");
     }
 
     private function log(string $msg, array $context = []): void

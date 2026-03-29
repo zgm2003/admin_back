@@ -13,6 +13,7 @@ use app\enum\CommonEnum;
 use app\enum\PayEnum;
 use app\lib\Pay\PaySdk;
 use app\module\BaseModule;
+use app\module\Pay\PayModule;
 use app\service\Common\DictService;
 use app\service\Common\RedisLock;
 use app\service\Pay\OrderNoGenerator;
@@ -171,16 +172,15 @@ class OrderModule extends BaseModule
             '该订单状态不允许关闭'
         );
 
-        $lockKey = "pay_create_txn_{$order->order_no}";
-        $lockVal = RedisLock::lock($lockKey, 10);
-        self::throwIf(!$lockVal, '操作过于频繁，请稍后重试');
+        $result = (new PayModule())->syncPaidOrCloseOrder(
+            (string) $order->order_no,
+            $param['reason'] ?? '管理员关闭',
+            'admin_close'
+        );
 
-        try {
-            $this->dep(OrderDep::class)->closeOrder($order->id, $order->pay_status, $param['reason'] ?? '管理员关闭');
-            return self::success();
-        } finally {
-            RedisLock::unlock($lockKey, $lockVal);
-        }
+        self::throwIf($result === 'deferred', '第三方状态确认失败，请稍后重试');
+
+        return self::success();
     }
 
     /** 备注 */
@@ -313,27 +313,37 @@ class OrderModule extends BaseModule
         self::throwIf(!$lockVal, '请勿重复提交');
 
         try {
-            return $this->withTransaction(function () use ($userId, $amount, $payMethod, $channel, $ip) {
-                $ongoingOrder = $this->dep(OrderDep::class)->findLatestOngoingRechargeByUser($userId);
-                if ($ongoingOrder) {
-                    $isExpired = !empty($ongoingOrder->expire_time) && strtotime((string) $ongoingOrder->expire_time) <= time();
-                    if ($isExpired) {
-                        $this->dep(OrderDep::class)->closeOrder(
-                            (int) $ongoingOrder->id,
-                            (int) $ongoingOrder->pay_status,
-                            '订单超时自动关闭'
-                        );
+            $ongoingOrder = $this->dep(OrderDep::class)->findLatestOngoingRechargeByUser($userId);
+            if ($ongoingOrder) {
+                $isExpired = !empty($ongoingOrder->expire_time) && strtotime((string) $ongoingOrder->expire_time) <= time();
+                if ($isExpired) {
+                    $result = (new PayModule())->syncPaidOrCloseOrder(
+                        (string) $ongoingOrder->order_no,
+                        '订单超时自动关闭',
+                        'inline_expire_check'
+                    );
 
-                        $ongoingTxn = $this->dep(PayTransactionDep::class)->findLastActive((int) $ongoingOrder->id);
-                        if ($ongoingTxn) {
-                            $this->dep(PayTransactionDep::class)->update((int) $ongoingTxn->id, [
-                                'status' => PayEnum::TXN_CLOSED,
-                                'closed_at' => date('Y-m-d H:i:s'),
-                            ]);
-                        }
-                    } else {
-                        throw new RuntimeException('请先完成或取消当前未支付的充值订单');
+                    if ($result === 'deferred') {
+                        throw new RuntimeException('上一笔订单状态确认中，请稍后再试');
                     }
+
+                    $ongoingOrder = $this->dep(OrderDep::class)->find((int) $ongoingOrder->id);
+                    if ($ongoingOrder && (int) $ongoingOrder->pay_status !== PayEnum::PAY_STATUS_CLOSED) {
+                        if ((int) $ongoingOrder->pay_status === PayEnum::PAY_STATUS_PAID) {
+                            throw new RuntimeException('上一笔充值订单已支付，请刷新查看结果');
+                        }
+
+                        throw new RuntimeException('请稍后再试，上一笔充值订单仍在处理中');
+                    }
+                } else {
+                    throw new RuntimeException('请先完成或取消当前未支付的充值订单');
+                }
+            }
+
+            return $this->withTransaction(function () use ($userId, $amount, $payMethod, $channel, $ip) {
+                $blockingOrder = $this->dep(OrderDep::class)->findLatestOngoingRechargeByUser($userId);
+                if ($blockingOrder) {
+                    throw new RuntimeException('请先完成或取消当前未支付的充值订单');
                 }
 
                 $orderNo = OrderNoGenerator::recharge();
@@ -455,6 +465,11 @@ class OrderModule extends BaseModule
                         'status' => PayEnum::TXN_CLOSED,
                         'closed_at' => date('Y-m-d H:i:s'),
                     ]);
+                    (new PayModule())->closeThirdPartyPaymentSafely(
+                        (int) $lastTxn->channel_id,
+                        (int) $lastTxn->channel,
+                        (string) $lastTxn->transaction_no
+                    );
                 }
 
                 $attemptNo = $lastTxn ? $lastTxn->attempt_no + 1 : 1;
@@ -527,37 +542,15 @@ class OrderModule extends BaseModule
             '该订单状态不允许取消'
         );
 
-        $lockKey = "pay_create_txn_{$order->order_no}";
-        $lockVal = RedisLock::lock($lockKey, 30);
-        self::throwIf(!$lockVal, '正在处理中，请稍后');
+        $result = (new PayModule())->syncPaidOrCloseOrder(
+            (string) $order->order_no,
+            $param['reason'] ?? '用户取消订单',
+            'user_cancel'
+        );
 
-        try {
-            $txn = $this->dep(PayTransactionDep::class)->findLastActive($order->id);
-            $channel = $order->channel_id ? $this->dep(PayChannelDep::class)->findActive((int) $order->channel_id) : null;
+        self::throwIf($result === 'deferred', '第三方状态确认失败，请稍后重试');
 
-            $this->withTransaction(function () use ($order, $txn, $param) {
-                $this->dep(OrderDep::class)->closeOrder(
-                    $order->id,
-                    $order->pay_status,
-                    $param['reason'] ?? '用户取消订单'
-                );
-
-                if ($txn) {
-                    $this->dep(PayTransactionDep::class)->update($txn->id, [
-                        'status' => PayEnum::TXN_CLOSED,
-                        'closed_at' => date('Y-m-d H:i:s'),
-                    ]);
-                }
-            });
-
-            if ($txn && $channel) {
-                $this->closeThirdPartyPayment((int) $channel->id, (int) $channel->channel, (string) $txn->transaction_no);
-            }
-
-            return self::success();
-        } finally {
-            RedisLock::unlock($lockKey, $lockVal);
-        }
+        return self::success();
     }
 
     private function buildPayPayload(
@@ -729,29 +722,6 @@ class OrderModule extends BaseModule
         return (string) $stream;
     }
 
-    private function closeThirdPartyPayment(int $channelId, int $channel, string $transactionNo): void
-    {
-        if ($channelId <= 0 || $channel <= 0 || $transactionNo === '') {
-            return;
-        }
-
-        $sdk = new PaySdk();
-        $payload = ['out_trade_no' => $transactionNo];
-
-        try {
-            if ($channel === PayEnum::CHANNEL_WECHAT) {
-                $sdk->wechatClose($channelId, $payload);
-                return;
-            }
-
-            if ($channel === PayEnum::CHANNEL_ALIPAY) {
-                $sdk->alipayClose($channelId, $payload);
-            }
-        } catch (\Throwable $e) {
-            // 第三方关闭失败不阻断本地订单关闭，后续仍可依赖查单/回调修正状态。
-        }
-    }
-
     /** 支付查询（用户侧） */
     public function queryResult(Request $request): array
     {
@@ -764,6 +734,9 @@ class OrderModule extends BaseModule
         self::throwUnless($order->user_id === $userId, '无权查看该订单');
 
         $txn = $this->dep(PayTransactionDep::class)->findLastActive($order->id);
+        if (!$txn && $order->success_transaction_id) {
+            $txn = $this->dep(PayTransactionDep::class)->find((int) $order->success_transaction_id);
+        }
 
         return self::success([
             'order_no'   => $order->order_no,

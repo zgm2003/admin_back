@@ -3,19 +3,18 @@
 namespace app\module\Pay;
 
 use app\dep\Pay\OrderDep;
-use app\dep\Pay\OrderItemDep;
 use app\dep\Pay\OrderFulfillmentDep;
-use app\dep\Pay\PayChannelDep;
 use app\dep\Pay\PayTransactionDep;
-use app\enum\CommonEnum;
 use app\enum\PayEnum;
+use app\lib\Pay\PaySdk;
 use app\module\BaseModule;
-use app\service\Common\DictService;
 use app\service\Common\RedisLock;
 use app\service\Pay\OrderNoGenerator;
 use app\service\Pay\WalletService;
-use app\validate\Pay\PayTransactionValidate;
+use RuntimeException;
+use support\Log;
 use Webman\RedisQueue\Client as RedisQueue;
+use Yansongda\Supports\Collection;
 
 /**
  * 支付核心模块
@@ -124,7 +123,7 @@ class PayModule extends BaseModule
         }
 
         $existFulfill = $this->dep(OrderFulfillmentDep::class)->findByIdempotencyKey($idempotencyKey);
-        if ($existFulfill && $existFulfill->status !== PayEnum::FULFILL_PENDING) {
+        if ($existFulfill) {
             return;
         }
 
@@ -176,40 +175,190 @@ class PayModule extends BaseModule
         return is_array($decoded) ? $decoded : [];
     }
 
-    /** 订单关闭（内部用，含第三方查单） */
-    public function closeWithCheck(string $orderNo, string $reason): void
+    /**
+     * 先查第三方，再决定补单或关单。
+     * 返回：paid / closed / deferred / skipped / missing
+     */
+    public function syncPaidOrCloseOrder(string $orderNo, string $closeReason, string $source = 'system_sync'): string
     {
-        $order = $this->dep(OrderDep::class)->findByOrderNo($orderNo);
-        if (!$order) {
-            return;
-        }
-
-        $currentStatus = $order->pay_status;
-        if (!in_array($currentStatus, [PayEnum::PAY_STATUS_PENDING, PayEnum::PAY_STATUS_PAYING])) {
-            return;
-        }
-
         $lockKey = "pay_create_txn_{$orderNo}";
         $lockVal = RedisLock::lock($lockKey, 30);
         if (!$lockVal) {
-            return;
+            return 'deferred';
         }
 
         try {
-            $closed = $this->dep(OrderDep::class)->closeOrder($order->id, $currentStatus, $reason);
-            if (!$closed) {
-                return;
+            $order = $this->dep(OrderDep::class)->findByOrderNo($orderNo);
+            if (!$order) {
+                return 'missing';
+            }
+
+            if (!in_array((int) $order->pay_status, [PayEnum::PAY_STATUS_PENDING, PayEnum::PAY_STATUS_PAYING], true)) {
+                return 'skipped';
             }
 
             $txn = $this->dep(PayTransactionDep::class)->findLastActive((int) $order->id);
-            if ($txn) {
-                $this->dep(PayTransactionDep::class)->update($txn->id, [
-                    'status' => PayEnum::TXN_CLOSED,
-                    'closed_at' => date('Y-m-d H:i:s'),
-                ]);
+            if (!$txn) {
+                return $this->closeOrderWithinLock($orderNo, $closeReason) ? 'closed' : 'skipped';
             }
+
+            try {
+                $queryResult = $this->queryThirdPartyOrder(
+                    (int) $txn->channel,
+                    (int) $txn->channel_id,
+                    (string) $txn->transaction_no,
+                    (string) ($txn->trade_no ?? '')
+                );
+            } catch (\Throwable $e) {
+                Log::warning("[PayModule] 第三方查单异常 order_no={$orderNo}", [
+                    'error' => $e->getMessage(),
+                ]);
+                return 'deferred';
+            }
+
+            if ($this->isThirdPartyPaid($queryResult)) {
+                $tradeNo = $this->extractTradeNo($queryResult);
+                (new PayNotifyModule())->handlePaySuccess((string) $txn->transaction_no, $tradeNo, (int) $txn->channel, [
+                    'out_trade_no' => (string) $txn->transaction_no,
+                    'trade_no' => $tradeNo,
+                    'paid_time' => date('Y-m-d H:i:s'),
+                    'source' => $source,
+                ]);
+                return 'paid';
+            }
+
+            if (!$this->closeOrderWithinLock($orderNo, $closeReason)) {
+                return 'skipped';
+            }
+
+            $this->closeThirdPartyPaymentSafely((int) $txn->channel_id, (int) $txn->channel, (string) $txn->transaction_no);
+
+            return 'closed';
         } finally {
             RedisLock::unlock($lockKey, $lockVal);
         }
+    }
+
+    private function closeOrderWithinLock(string $orderNo, string $reason): bool
+    {
+        $order = $this->dep(OrderDep::class)->findByOrderNo($orderNo);
+        if (!$order) {
+            return false;
+        }
+
+        $currentStatus = (int) $order->pay_status;
+        if (!in_array($currentStatus, [PayEnum::PAY_STATUS_PENDING, PayEnum::PAY_STATUS_PAYING], true)) {
+            return false;
+        }
+
+        $closed = $this->dep(OrderDep::class)->closeOrder((int) $order->id, $currentStatus, $reason);
+        if (!$closed) {
+            return false;
+        }
+
+        $txn = $this->dep(PayTransactionDep::class)->findLastActive((int) $order->id);
+        if ($txn) {
+            $this->dep(PayTransactionDep::class)->update((int) $txn->id, [
+                'status' => PayEnum::TXN_CLOSED,
+                'closed_at' => date('Y-m-d H:i:s'),
+            ]);
+        }
+
+        return true;
+    }
+
+    private function queryThirdPartyOrder(int $channel, int $channelId, string $outTradeNo, string $tradeNo): mixed
+    {
+        if ($channel === PayEnum::CHANNEL_WECHAT) {
+            return $this->queryWechatOrder($channelId, $outTradeNo, $tradeNo);
+        }
+
+        if ($channel === PayEnum::CHANNEL_ALIPAY) {
+            return $this->queryAlipayOrder($channelId, $outTradeNo, $tradeNo);
+        }
+
+        throw new RuntimeException('不支持的支付渠道');
+    }
+
+    private function queryWechatOrder(int $channelId, string $outTradeNo, string $tradeNo): mixed
+    {
+        PaySdk::initWechat($channelId);
+
+        $params = ['out_trade_no' => $outTradeNo];
+        if ($tradeNo !== '') {
+            $params['transaction_id'] = $tradeNo;
+        }
+
+        return \Yansongda\Pay\Pay::wechat()->query($params);
+    }
+
+    private function queryAlipayOrder(int $channelId, string $outTradeNo, string $tradeNo): mixed
+    {
+        PaySdk::initAlipay($channelId);
+
+        $params = ['out_trade_no' => $outTradeNo];
+        if ($tradeNo !== '') {
+            $params['trade_no'] = $tradeNo;
+        }
+
+        return \Yansongda\Pay\Pay::alipay()->query($params);
+    }
+
+    public function closeThirdPartyPaymentSafely(int $channelId, int $channel, string $transactionNo): void
+    {
+        if ($channelId <= 0 || $channel <= 0 || $transactionNo === '') {
+            return;
+        }
+
+        $sdk = new PaySdk();
+        $payload = ['out_trade_no' => $transactionNo];
+
+        try {
+            if ($channel === PayEnum::CHANNEL_WECHAT) {
+                $sdk->wechatClose($channelId, $payload);
+                return;
+            }
+
+            if ($channel === PayEnum::CHANNEL_ALIPAY) {
+                $sdk->alipayClose($channelId, $payload);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[PayModule] 第三方关单失败', [
+                'channel_id' => $channelId,
+                'channel' => $channel,
+                'transaction_no' => $transactionNo,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function isThirdPartyPaid(mixed $result): bool
+    {
+        if ($result instanceof Collection) {
+            $result = $result->toArray();
+        }
+
+        if (!is_array($result)) {
+            return false;
+        }
+
+        if (($result['trade_state'] ?? '') === 'SUCCESS') {
+            return true;
+        }
+
+        return in_array($result['trade_status'] ?? '', ['TRADE_SUCCESS', 'TRADE_FINISHED'], true);
+    }
+
+    private function extractTradeNo(mixed $result): string
+    {
+        if ($result instanceof Collection) {
+            $result = $result->toArray();
+        }
+
+        if (!is_array($result)) {
+            return '';
+        }
+
+        return (string) ($result['transaction_id'] ?? $result['trade_no'] ?? '');
     }
 }
