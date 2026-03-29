@@ -122,8 +122,14 @@ class PaySdk
     /** 支付宝手机网站支付 */
     public function alipayWap(int $channelId, array $order): mixed
     {
+        return $this->alipayH5($channelId, $order);
+    }
+
+    /** 支付宝 H5 支付 */
+    public function alipayH5(int $channelId, array $order): mixed
+    {
         $this->initAlipay($channelId);
-        return Pay::alipay()->wap($order);
+        return Pay::alipay()->h5($order);
     }
 
     /** 支付宝 APP 支付 */
