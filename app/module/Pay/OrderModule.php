@@ -423,7 +423,9 @@ class OrderModule extends BaseModule
     {
         $userId = (int) $request->userId;
         $body = $request->all();
-        $orderNo = $body['order_no'] ?? '';
+        $param = $this->validate($request, OrderValidate::createPay());
+        $orderNo = (string) ($param['order_no'] ?? '');
+        $returnUrl = trim((string) ($param['return_url'] ?? ''));
         $ip = $request->getRealIp();
 
         $order = $this->dep(OrderDep::class)->findByOrderNo($orderNo);
@@ -431,7 +433,7 @@ class OrderModule extends BaseModule
         self::throwUnless($order->user_id === $userId, '无权操作该订单');
         self::throwUnless(in_array($order->pay_status, [PayEnum::PAY_STATUS_PENDING, PayEnum::PAY_STATUS_PAYING]), '订单状态不允许发起支付');
 
-        $payMethod = $body['pay_method'] ?? ($order->pay_method ?: '');
+        $payMethod = $param['pay_method'] ?? ($order->pay_method ?: '');
         self::throwUnless(in_array($payMethod, array_keys(PayEnum::$methodArr), true), '不支持的支付方式');
 
         $lockKey = "pay_create_txn_{$orderNo}";
@@ -439,7 +441,7 @@ class OrderModule extends BaseModule
         self::throwIf(!$lockVal, '正在处理中，请稍后');
 
         try {
-            return $this->withTransaction(function () use ($request, $order, $payMethod, $ip) {
+            return $this->withTransaction(function () use ($request, $order, $payMethod, $ip, $returnUrl) {
                 $channelId = $order->channel_id ?: 0;
                 self::throwIf(!$channelId, '未指定支付渠道');
 
@@ -476,7 +478,8 @@ class OrderModule extends BaseModule
                     $transactionNo,
                     $order,
                     $request,
-                    $ip
+                    $ip,
+                    $returnUrl
                 );
                 $payResponse = $this->dispatchPayRequest((int) $channel->channel, (int) $channel->id, $payMethod, $payPayload);
                 $payData = $this->normalizePayResponse($payResponse);
@@ -501,6 +504,7 @@ class OrderModule extends BaseModule
                     'channel'        => $channel->channel,
                     'pay_method'     => $payMethod,
                     'notify_url'     => $channel->notify_url,
+                    'return_url'     => $returnUrl,
                     'pay_data'       => $payData,
                 ]);
             });
@@ -562,7 +566,8 @@ class OrderModule extends BaseModule
         string $transactionNo,
         object $order,
         Request $request,
-        string $ip
+        string $ip,
+        string $returnUrl = ''
     ): array {
         $title = trim((string) ($order->title ?? '')) ?: "订单支付 {$order->order_no}";
         $title = mb_substr($title, 0, 64);
@@ -601,6 +606,10 @@ class OrderModule extends BaseModule
             'total_amount' => number_format(((int) $order->pay_amount) / 100, 2, '.', ''),
             'subject'      => mb_substr($title, 0, 128),
         ];
+
+        if ($returnUrl !== '') {
+            $payload['_return_url'] = $returnUrl;
+        }
 
         return $payload;
     }

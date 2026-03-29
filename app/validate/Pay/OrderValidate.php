@@ -44,6 +44,15 @@ class OrderValidate
         ];
     }
 
+    public static function createPay(): array
+    {
+        return [
+            'order_no'   => v::stringType()->length(1, 64)->setName('订单号'),
+            'pay_method' => v::optional(v::stringType()->in(array_keys(\app\enum\PayEnum::$methodArr)))->setName('支付方式'),
+            'return_url' => v::optional(v::stringType()->length(1, 1024))->setName('回跳地址'),
+        ];
+    }
+
     public static function remark(): array
     {
         return [
