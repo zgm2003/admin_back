@@ -3,18 +3,13 @@
 namespace app\module\Pay;
 
 use app\dep\Pay\PayTransactionDep;
-use app\dep\Pay\PayRefundDep;
 use app\dep\Pay\OrderDep;
 use app\dep\Pay\OrderFulfillmentDep;
 use app\dep\Pay\PayChannelDep;
-use app\dep\Pay\PayNotifyLogDep;
-use app\dep\Pay\WalletTransactionDep;
 use app\enum\PayEnum;
 use app\lib\Pay\PaySdk;
 use app\module\BaseModule;
 use app\service\Common\RedisLock;
-use app\service\Pay\OrderNoGenerator;
-use app\service\Pay\WalletService;
 use RuntimeException;
 use support\Log;
 use support\Request;
@@ -24,7 +19,7 @@ use Webman\RedisQueue\Client as RedisQueue;
 
 /**
  * 支付回调模块
- * 负责：微信/支付宝支付回调、退款回调的幂等处理、状态推进
+ * 负责：微信/支付宝支付回调的幂等处理和状态推进
  */
 class PayNotifyModule extends BaseModule
 {
@@ -260,7 +255,6 @@ class PayNotifyModule extends BaseModule
             'channel'        => $channel,
             'notify_type'    => $notifyType,
             'transaction_no'  => $data['out_trade_no'] ?? $data['transaction_no'] ?? '',
-            'refund_no'      => $data['refund_no'] ?? '',
             'trade_no'       => $data['trade_no'] ?? $data['transaction_id'] ?? '',
             'headers'        => [],
             'raw_data'       => $data,

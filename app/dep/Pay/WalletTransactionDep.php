@@ -26,7 +26,7 @@ class WalletTransactionDep extends BaseDep
     {
         return $this->model
             ->select([
-                'id', 'biz_action_no', 'type', 'available_delta', 'frozen_delta',
+                'id', 'user_id', 'biz_action_no', 'type', 'available_delta', 'frozen_delta',
                 'balance_before', 'balance_after', 'order_no', 'title', 'remark', 'created_at',
             ])
             ->where('is_del', CommonEnum::NO)
@@ -42,7 +42,7 @@ class WalletTransactionDep extends BaseDep
     {
         return $this->model
             ->select([
-                'id', 'biz_action_no', 'type', 'available_delta', 'frozen_delta',
+                'id', 'user_id', 'biz_action_no', 'type', 'available_delta', 'frozen_delta',
                 'balance_before', 'balance_after', 'order_no', 'title', 'remark', 'created_at',
             ])
             ->where('user_id', $userId)

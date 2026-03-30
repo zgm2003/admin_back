@@ -18,19 +18,22 @@ class PayTransactionDep extends BaseDep
     public function list(array $param)
     {
         return $this->model
+            ->from('pay_transactions as pt')
+            ->leftJoin('orders as o', 'o.id', '=', 'pt.order_id')
             ->select([
-                'id', 'transaction_no', 'order_id', 'order_no', 'attempt_no',
-                'channel_id', 'channel', 'pay_method', 'amount',
-                'trade_no', 'trade_status', 'status', 'paid_at', 'closed_at', 'created_at',
+                'pt.id', 'pt.transaction_no', 'pt.order_id', 'pt.order_no', 'o.user_id', 'pt.attempt_no',
+                'pt.channel_id', 'pt.channel', 'pt.pay_method', 'pt.amount',
+                'pt.trade_no', 'pt.trade_status', 'pt.status', 'pt.paid_at', 'pt.closed_at', 'pt.created_at',
             ])
-            ->where('is_del', CommonEnum::NO)
-            ->when(!empty($param['order_no']), fn($q) => $q->where('order_no', $param['order_no']))
-            ->when(!empty($param['transaction_no']), fn($q) => $q->where('transaction_no', $param['transaction_no']))
-            ->when(isset($param['channel']) && $param['channel'] !== '', fn($q) => $q->where('channel', (int) $param['channel']))
-            ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('status', (int) $param['status']))
-            ->when(!empty($param['start_date']), fn($q) => $q->where('created_at', '>=', $param['start_date']))
-            ->when(!empty($param['end_date']), fn($q) => $q->where('created_at', '<=', $param['end_date'] . ' 23:59:59'))
-            ->orderBy('id', 'desc')
+            ->where('pt.is_del', CommonEnum::NO)
+            ->when(!empty($param['order_no']), fn($q) => $q->where('pt.order_no', $param['order_no']))
+            ->when(!empty($param['transaction_no']), fn($q) => $q->where('pt.transaction_no', $param['transaction_no']))
+            ->when(!empty($param['user_id']), fn($q) => $q->where('o.user_id', (int) $param['user_id']))
+            ->when(isset($param['channel']) && $param['channel'] !== '', fn($q) => $q->where('pt.channel', (int) $param['channel']))
+            ->when(isset($param['status']) && $param['status'] !== '', fn($q) => $q->where('pt.status', (int) $param['status']))
+            ->when(!empty($param['start_date']), fn($q) => $q->where('pt.created_at', '>=', $param['start_date']))
+            ->when(!empty($param['end_date']), fn($q) => $q->where('pt.created_at', '<=', $param['end_date'] . ' 23:59:59'))
+            ->orderBy('pt.id', 'desc')
             ->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['page'] ?? 1);
     }
 

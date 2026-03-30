@@ -3,7 +3,6 @@
 namespace app\process\Pay;
 
 use app\dep\Pay\PayTransactionDep;
-use app\dep\Pay\PayRefundDep;
 use app\dep\Pay\PayReconcileTaskDep;
 use app\enum\PayEnum;
 use app\process\BaseCronTask;
@@ -29,14 +28,8 @@ class PayReconcileDailyTask extends BaseCronTask
 
         $created = 0;
 
-        // 微信支付对账
         $created += $this->createReconcileTask($yesterday, PayEnum::CHANNEL_WECHAT, 1, $startDate, $endDate);
-        // 支付宝对账
         $created += $this->createReconcileTask($yesterday, PayEnum::CHANNEL_ALIPAY, 1, $startDate, $endDate);
-        // 微信退款对账
-        $created += $this->createReconcileTask($yesterday, PayEnum::CHANNEL_WECHAT, 2, $startDate, $endDate);
-        // 支付宝退款对账
-        $created += $this->createReconcileTask($yesterday, PayEnum::CHANNEL_ALIPAY, 2, $startDate, $endDate);
 
         return $created > 0 ? "生成了 {$created} 条对账任务" : null;
     }
@@ -49,26 +42,13 @@ class PayReconcileDailyTask extends BaseCronTask
             return 0;
         }
 
-        // 统计本地成功笔数和金额
-        if ($billType === 1) {
-            // 支付
-            $stat = Db::table('pay_transactions')
-                ->where('status', PayEnum::TXN_SUCCESS)
-                ->where('channel', $channel)
-                ->where('is_del', 2)
-                ->whereBetween('paid_at', [$startDate, $endDate])
-                ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total')
-                ->first();
-        } else {
-            // 退款
-            $stat = Db::table('pay_refunds')
-                ->where('status', PayEnum::REFUND_SUCCESS)
-                ->where('channel', $channel)
-                ->where('is_del', 2)
-                ->whereBetween('refunded_at', [$startDate, $endDate])
-                ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(refund_amount), 0) as total')
-                ->first();
-        }
+        $stat = Db::table('pay_transactions')
+            ->where('status', PayEnum::TXN_SUCCESS)
+            ->where('channel', $channel)
+            ->where('is_del', 2)
+            ->whereBetween('paid_at', [$startDate, $endDate])
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total')
+            ->first();
 
         $localCount = (int) ($stat->cnt ?? 0);
         $localAmount = (int) ($stat->total ?? 0);

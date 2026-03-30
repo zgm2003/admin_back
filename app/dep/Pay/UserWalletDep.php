@@ -51,51 +51,6 @@ class UserWalletDep extends BaseDep
             ]);
     }
 
-    /** 退款冻结：balance -=, frozen +=, version += 1 */
-    public function freezeForRefund(int $walletId, int $version, int $amount): int
-    {
-        return $this->query()
-            ->where('id', $walletId)
-            ->where('version', $version)
-            ->where('is_del', CommonEnum::NO)
-            ->whereRaw("balance >= {$amount}")
-            ->update([
-                'balance' => Db::raw("balance - {$amount}"),
-                'frozen'  => Db::raw("frozen + {$amount}"),
-                'version' => Db::raw('version + 1'),
-            ]);
-    }
-
-    /** 退款完成：frozen -=, total_refund +=, version += 1 */
-    public function finalizeRefund(int $walletId, int $version, int $amount): int
-    {
-        return $this->query()
-            ->where('id', $walletId)
-            ->where('version', $version)
-            ->where('is_del', CommonEnum::NO)
-            ->whereRaw("frozen >= {$amount}")
-            ->update([
-                'frozen'       => Db::raw("frozen - {$amount}"),
-                'total_refund'  => Db::raw("total_refund + {$amount}"),
-                'version'       => Db::raw('version + 1'),
-            ]);
-    }
-
-    /** 退款解冻：frozen -=, balance +=, version += 1 */
-    public function unfreezeRefund(int $walletId, int $version, int $amount): int
-    {
-        return $this->query()
-            ->where('id', $walletId)
-            ->where('version', $version)
-            ->where('is_del', CommonEnum::NO)
-            ->whereRaw("frozen >= {$amount}")
-            ->update([
-                'frozen'  => Db::raw("frozen - {$amount}"),
-                'balance' => Db::raw("balance + {$amount}"),
-                'version' => Db::raw('version + 1'),
-            ]);
-    }
-
     /** 管理员调账 */
     public function adjustBalance(int $walletId, int $version, int $delta): int
     {
@@ -122,7 +77,7 @@ class UserWalletDep extends BaseDep
         return $this->model
             ->select([
                 'id', 'user_id', 'balance', 'frozen',
-                'total_recharge', 'total_consume', 'total_refund', 'created_at',
+                'total_recharge', 'total_consume', 'created_at',
             ])
             ->where('is_del', CommonEnum::NO)
             ->when(!empty($param['user_id']), fn($q) => $q->where('user_id', (int) $param['user_id']))

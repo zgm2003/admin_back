@@ -20,8 +20,8 @@ class OrderDep extends BaseDep
         $query = $this->model
             ->select([
                 'id', 'order_no', 'user_id', 'order_type', 'title',
-                'total_amount', 'discount_amount', 'pay_amount', 'refunded_amount',
-                'pay_status', 'biz_status', 'refund_status',
+                'total_amount', 'discount_amount', 'pay_amount',
+                'pay_status', 'biz_status',
                 'channel_id', 'pay_method', 'expire_time',
                 'pay_time', 'created_at',
             ])
@@ -88,18 +88,6 @@ class OrderDep extends BaseDep
             ->where('is_del', CommonEnum::NO)
             ->update($data);
     }
-
-    /** 累计退款金额 */
-    public function updateRefundAmount(int $id, int $refundAmount): int
-    {
-        return $this->query()
-            ->where('id', $id)
-            ->where('is_del', CommonEnum::NO)
-            ->update([
-                'refunded_amount' => \support\Db::raw("refunded_amount + {$refundAmount}"),
-            ]);
-    }
-
     /** 关闭订单 */
     public function closeOrder(int $id, int $currentStatus, string $reason): int
     {

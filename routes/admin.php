@@ -321,12 +321,6 @@ Route::group('/api/admin', function () {
     Route::post('/PayTransaction/list', [controller\Pay\PayTransactionController::class, 'list']);
     Route::post('/PayTransaction/detail', [controller\Pay\PayTransactionController::class, 'detail']);
 
-    // 退款管理
-    Route::post('/PayRefund/init', [controller\Pay\PayRefundController::class, 'init']);
-    Route::post('/PayRefund/list', [controller\Pay\PayRefundController::class, 'list']);
-    Route::post('/PayRefund/detail', [controller\Pay\PayRefundController::class, 'detail']);
-    Route::post('/PayRefund/apply', [controller\Pay\PayRefundController::class, 'apply']);
-
     // 钱包管理
     Route::post('/UserWallet/init', [controller\Pay\UserWalletController::class, 'init']);
     Route::post('/UserWallet/list', [controller\Pay\UserWalletController::class, 'list']);

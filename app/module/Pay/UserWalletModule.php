@@ -4,6 +4,7 @@ namespace app\module\Pay;
 
 use app\dep\Pay\UserWalletDep;
 use app\dep\Pay\WalletTransactionDep;
+use app\dep\User\UsersDep;
 use app\enum\PayEnum;
 use app\module\BaseModule;
 use app\service\Common\DictService;
@@ -33,17 +34,21 @@ class UserWalletModule extends BaseModule
     {
         $param = $this->validate($request, UserWalletValidate::list());
         $res = $this->dep(UserWalletDep::class)->list($param);
+        $userMap = $this->dep(UsersDep::class)->getMap($res->pluck('user_id')->all(), ['id', 'username', 'email']);
 
-        $list = $res->map(function ($item) {
+        $list = $res->map(function ($item) use ($userMap) {
+            $user = $userMap->get($item->user_id);
+
             return [
                 'id'              => $item->id,
                 'user_id'         => $item->user_id,
+                'user_name'       => $user?->username ?? '',
+                'user_email'      => $user?->email ?? '',
                 'balance'         => $item->balance,
                 'frozen'          => $item->frozen,
                 'available'       => $item->balance,
                 'total_recharge'  => $item->total_recharge,
                 'total_consume'   => $item->total_consume,
-                'total_refund'    => $item->total_refund,
                 'created_at'      => $item->created_at,
             ];
         });
@@ -63,10 +68,16 @@ class UserWalletModule extends BaseModule
     {
         $param = $this->validate($request, UserWalletValidate::transactions());
         $res = $this->dep(WalletTransactionDep::class)->list($param);
+        $userMap = $this->dep(UsersDep::class)->getMap($res->pluck('user_id')->all(), ['id', 'username', 'email']);
 
-        $list = $res->map(function ($item) {
+        $list = $res->map(function ($item) use ($userMap) {
+            $user = $userMap->get($item->user_id);
+
             return [
                 'id'               => $item->id,
+                'user_id'          => $item->user_id,
+                'user_name'        => $user?->username ?? '',
+                'user_email'       => $user?->email ?? '',
                 'biz_action_no'    => $item->biz_action_no,
                 'type'             => $item->type,
                 'type_text'        => PayEnum::$walletTypeArr[$item->type] ?? '',

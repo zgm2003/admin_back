@@ -14,7 +14,6 @@ class OrderNoGenerator
     private const PREFIX_RECHARGE = 'R';
     private const PREFIX_CONSUME  = 'C';
     private const PREFIX_GOODS    = 'G';
-    private const PREFIX_REFUND    = 'F';
     private const PREFIX_FULFILL  = 'D';
     private const PREFIX_TXN      = 'T';
 
@@ -42,14 +41,6 @@ class OrderNoGenerator
     public static function goods(): string
     {
         return self::generate(self::PREFIX_GOODS);
-    }
-
-    /**
-     * 生成退款单号
-     */
-    public static function refund(): string
-    {
-        return self::generate(self::PREFIX_REFUND);
     }
 
     /**

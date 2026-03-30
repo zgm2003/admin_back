@@ -9,6 +9,7 @@ use app\dep\Pay\OrderFulfillmentDep;
 use app\dep\Pay\UserWalletDep;
 use app\dep\Pay\WalletTransactionDep;
 use app\dep\Pay\PayChannelDep;
+use app\dep\User\UsersDep;
 use app\enum\CommonEnum;
 use app\enum\PayEnum;
 use app\lib\Pay\PaySdk;
@@ -48,8 +49,6 @@ class OrderModule extends BaseModule
         $dict['recharge_preset_arr'] = PayEnum::$rechargePresetArr;
         $dict['pay_status_arr'] = DictService::enumToDict(PayEnum::$payStatusArr);
         $dict['biz_status_arr'] = DictService::enumToDict(PayEnum::$bizStatusArr);
-        $dict['refund_status_arr'] = DictService::enumToDict(PayEnum::$refundStatusArr);
-
         return self::success(['dict' => $dict]);
     }
 
@@ -58,25 +57,27 @@ class OrderModule extends BaseModule
     {
         $param = $this->validate($request, OrderValidate::list());
         $res = $this->dep(OrderDep::class)->list($param);
+        $userMap = $this->dep(UsersDep::class)->getMap($res->pluck('user_id')->all(), ['id', 'username', 'email']);
 
-        $list = $res->map(function ($item) {
+        $list = $res->map(function ($item) use ($userMap) {
+            $user = $userMap->get($item->user_id);
+
             return [
                 'id'              => $item->id,
                 'order_no'        => $item->order_no,
                 'user_id'         => $item->user_id,
+                'user_name'       => $user?->username ?? '',
+                'user_email'      => $user?->email ?? '',
                 'order_type'      => $item->order_type,
                 'order_type_text' => PayEnum::$orderTypeArr[$item->order_type] ?? '',
                 'title'           => $item->title,
                 'total_amount'    => $item->total_amount,
                 'discount_amount' => $item->discount_amount,
                 'pay_amount'      => $item->pay_amount,
-                'refunded_amount' => $item->refunded_amount,
                 'pay_status'      => $item->pay_status,
                 'pay_status_text' => PayEnum::$payStatusArr[$item->pay_status] ?? '',
                 'biz_status'      => $item->biz_status,
                 'biz_status_text' => PayEnum::$bizStatusArr[$item->biz_status] ?? '',
-                'refund_status'   => $item->refund_status,
-                'refund_status_text' => PayEnum::$refundStatusArr[$item->refund_status] ?? '',
                 'pay_time'        => $item->pay_time,
                 'created_at'      => $item->created_at,
             ];
@@ -97,6 +98,7 @@ class OrderModule extends BaseModule
     {
         $param = $this->validate($request, OrderValidate::detail());
         $order = $this->dep(OrderDep::class)->getOrFail($param['id']);
+        $user = $this->dep(UsersDep::class)->find($order->user_id);
 
         $items = $this->dep(OrderItemDep::class)->getByOrderId($order->id);
         $itemsData = $items->map(fn($item) => [
@@ -120,6 +122,8 @@ class OrderModule extends BaseModule
                 'id'              => $order->id,
                 'order_no'        => $order->order_no,
                 'user_id'         => $order->user_id,
+                'user_name'       => $user?->username ?? '',
+                'user_email'      => $user?->email ?? '',
                 'order_type'      => $order->order_type,
                 'biz_type'        => $order->biz_type,
                 'biz_id'          => $order->biz_id,
@@ -127,13 +131,10 @@ class OrderModule extends BaseModule
                 'total_amount'    => $order->total_amount,
                 'discount_amount' => $order->discount_amount,
                 'pay_amount'      => $order->pay_amount,
-                'refunded_amount' => $order->refunded_amount,
                 'pay_status'      => $order->pay_status,
                 'pay_status_text' => PayEnum::$payStatusArr[$order->pay_status] ?? '',
                 'biz_status'      => $order->biz_status,
                 'biz_status_text' => PayEnum::$bizStatusArr[$order->biz_status] ?? '',
-                'refund_status'   => $order->refund_status,
-                'refund_status_text' => PayEnum::$refundStatusArr[$order->refund_status] ?? '',
                 'pay_time'        => $order->pay_time,
                 'expire_time'     => $order->expire_time,
                 'close_time'      => $order->close_time,
@@ -264,8 +265,6 @@ class OrderModule extends BaseModule
                 'pay_status_text'  => PayEnum::$payStatusArr[$item->pay_status] ?? '',
                 'biz_status'       => $item->biz_status,
                 'biz_status_text'  => PayEnum::$bizStatusArr[$item->biz_status] ?? '',
-                'refund_status'    => $item->refund_status,
-                'refund_status_text'=> PayEnum::$refundStatusArr[$item->refund_status] ?? '',
                 'pay_time'         => $item->pay_time,
                 'created_at'       => $item->created_at,
                 'expire_time'      => $item->expire_time,
@@ -361,7 +360,6 @@ class OrderModule extends BaseModule
                     'pay_amount'    => $amount,
                     'pay_status'    => PayEnum::PAY_STATUS_PENDING,
                     'biz_status'    => PayEnum::BIZ_STATUS_INIT,
-                    'refund_status' => PayEnum::REFUND_STATUS_NONE,
                     'channel_id'    => $channel->id,
                     'pay_method'   => $payMethod,
                     'expire_time'   => $expireTime,
@@ -739,10 +737,10 @@ class OrderModule extends BaseModule
         }
 
         return self::success([
-            'order_no'   => $order->order_no,
-            'pay_status' => $order->pay_status,
-            'biz_status' => $order->biz_status,
-            'pay_time'   => $order->pay_time,
+            'order_no'        => $order->order_no,
+            'pay_status'      => $order->pay_status,
+            'biz_status'      => $order->biz_status,
+            'pay_time'        => $order->pay_time,
             'transaction' => $txn ? [
                 'transaction_no' => $txn->transaction_no,
                 'status'         => $txn->status,
@@ -774,7 +772,6 @@ class OrderModule extends BaseModule
                 'pay_amount'      => $order->pay_amount,
                 'pay_status'      => $order->pay_status,
                 'biz_status'      => $order->biz_status,
-                'refund_status'   => $order->refund_status,
                 'pay_time'        => $order->pay_time,
                 'expire_time'     => $order->expire_time,
                 'created_at'      => $order->created_at,
@@ -805,7 +802,6 @@ class OrderModule extends BaseModule
             'frozen'         => $wallet->frozen,
             'total_recharge' => $wallet->total_recharge,
             'total_consume'  => $wallet->total_consume,
-            'total_refund'   => $wallet->total_refund,
             'created_at'     => $wallet->created_at,
         ]);
     }

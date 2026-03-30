@@ -7,6 +7,7 @@ use app\dep\Pay\PayChannelDep;
 use app\dep\Pay\OrderDep;
 use app\dep\Pay\OrderItemDep;
 use app\dep\Pay\OrderFulfillmentDep;
+use app\dep\User\UsersDep;
 use app\enum\PayEnum;
 use app\module\BaseModule;
 use app\service\Common\DictService;
@@ -34,12 +35,18 @@ class PayTransactionModule extends BaseModule
     {
         $param = $this->validate($request, PayTransactionValidate::list());
         $res = $this->dep(PayTransactionDep::class)->list($param);
+        $userMap = $this->dep(UsersDep::class)->getMap($res->pluck('user_id')->all(), ['id', 'username', 'email']);
 
-        $list = $res->map(function ($item) {
+        $list = $res->map(function ($item) use ($userMap) {
+            $user = $userMap->get($item->user_id);
+
             return [
                 'id'            => $item->id,
                 'transaction_no' => $item->transaction_no,
                 'order_no'      => $item->order_no,
+                'user_id'       => $item->user_id,
+                'user_name'     => $user?->username ?? '',
+                'user_email'    => $user?->email ?? '',
                 'attempt_no'    => $item->attempt_no,
                 'channel'       => $item->channel,
                 'channel_text'  => PayEnum::$channelArr[$item->channel] ?? '',
@@ -82,9 +89,13 @@ class PayTransactionModule extends BaseModule
         if ($txn->order_id) {
             $o = $this->dep(OrderDep::class)->find($txn->order_id);
             if ($o) {
+                $user = $this->dep(UsersDep::class)->find($o->user_id);
                 $order = [
                     'id'         => $o->id,
                     'order_no'   => $o->order_no,
+                    'user_id'    => $o->user_id,
+                    'user_name'  => $user?->username ?? '',
+                    'user_email' => $user?->email ?? '',
                     'title'      => $o->title,
                     'pay_amount' => $o->pay_amount,
                     'pay_status' => $o->pay_status,

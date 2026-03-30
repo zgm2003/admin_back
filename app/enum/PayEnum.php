@@ -136,21 +136,6 @@ class PayEnum
         return in_array($to, self::$bizStatusTransitions[$from] ?? [], true);
     }
 
-    // ==================== 订单退款状态 refund_status ====================
-    const REFUND_STATUS_NONE      = 1;
-    const REFUND_STATUS_ING       = 2;
-    const REFUND_STATUS_PARTIAL   = 3;
-    const REFUND_STATUS_FULL      = 4;
-    const REFUND_STATUS_EXCEPTION = 5;
-
-    public static $refundStatusArr = [
-        self::REFUND_STATUS_NONE      => '无退款',
-        self::REFUND_STATUS_ING       => '退款中',
-        self::REFUND_STATUS_PARTIAL   => '部分退款',
-        self::REFUND_STATUS_FULL      => '全额退款',
-        self::REFUND_STATUS_EXCEPTION => '退款异常',
-    ];
-
     // ==================== 支付流水状态 ====================
     const TXN_CREATED = 1;
     const TXN_WAITING  = 2;
@@ -192,60 +177,33 @@ class PayEnum
         self::FULFILL_ACTION_GOODS    => '商品回调',
     ];
 
-    // ==================== 退款记录状态 ====================
-    const REFUND_CREATED = 1;
-    const REFUND_ING     = 2;
-    const REFUND_SUCCESS = 3;
-    const REFUND_FAILED  = 4;
-    const REFUND_CLOSED  = 5;
-    const REFUND_MANUAL  = 6;
-
-    public static $refundRecordStatusArr = [
-        self::REFUND_CREATED => '已创建',
-        self::REFUND_ING     => '退款中',
-        self::REFUND_SUCCESS => '退款成功',
-        self::REFUND_FAILED  => '退款失败',
-        self::REFUND_CLOSED  => '已关闭',
-        self::REFUND_MANUAL  => '人工处理',
-    ];
-
     // ==================== 钱包流水类型 ====================
     const WALLET_RECHARGE = 1;
     const WALLET_CONSUME  = 2;
-    const WALLET_REFUND   = 3;
-    const WALLET_ADJUST   = 4;
-    const WALLET_FREEZE   = 5;
-    const WALLET_UNFREEZE = 6;
+    const WALLET_ADJUST   = 3;
 
     public static $walletTypeArr = [
         self::WALLET_RECHARGE => '充值入账',
         self::WALLET_CONSUME  => '消费扣款',
-        self::WALLET_REFUND   => '退款完成',
         self::WALLET_ADJUST   => '系统调账',
-        self::WALLET_FREEZE   => '冻结',
-        self::WALLET_UNFREEZE => '解冻',
     ];
 
     // ==================== 钱包流水来源类型 ====================
     const WALLET_SOURCE_NONE    = 0;
     const WALLET_SOURCE_FULFILL = 1;
-    const WALLET_SOURCE_REFUND  = 2;
-    const WALLET_SOURCE_MANUAL  = 3;
+    const WALLET_SOURCE_MANUAL  = 2;
 
     public static $walletSourceArr = [
         self::WALLET_SOURCE_NONE    => '未关联',
         self::WALLET_SOURCE_FULFILL => '履约',
-        self::WALLET_SOURCE_REFUND  => '退款',
         self::WALLET_SOURCE_MANUAL  => '人工',
     ];
 
     // ==================== 回调通知类型 ====================
-    const NOTIFY_PAY    = 1;
-    const NOTIFY_REFUND = 2;
+    const NOTIFY_PAY = 1;
 
     public static $notifyTypeArr = [
-        self::NOTIFY_PAY    => '支付回调',
-        self::NOTIFY_REFUND => '退款回调',
+        self::NOTIFY_PAY => '支付回调',
     ];
 
     // ==================== 对账任务状态 ====================

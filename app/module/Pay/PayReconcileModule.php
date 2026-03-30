@@ -15,7 +15,6 @@ class PayReconcileModule extends BaseModule
 {
     private const BILL_TYPE_LABELS = [
         1 => '支付',
-        2 => '退款',
     ];
 
     /** 初始化 */

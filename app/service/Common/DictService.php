@@ -381,13 +381,6 @@ class DictService
         return $this;
     }
 
-    /** 退款状态 */
-    public function setRefundStatusArr(): static
-    {
-        $this->dict['refund_status_arr'] = self::enumToDict(\app\enum\PayEnum::$refundStatusArr);
-        return $this;
-    }
-
     /** 支付流水状态 */
     public function setTxnStatusArr(): static
     {
@@ -399,13 +392,6 @@ class DictService
     public function setFulfillStatusArr(): static
     {
         $this->dict['fulfill_status_arr'] = self::enumToDict(\app\enum\PayEnum::$fulfillStatusArr);
-        return $this;
-    }
-
-    /** 退款记录状态 */
-    public function setRefundRecordStatusArr(): static
-    {
-        $this->dict['refund_record_status_arr'] = self::enumToDict(\app\enum\PayEnum::$refundRecordStatusArr);
         return $this;
     }
 

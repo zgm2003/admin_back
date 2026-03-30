@@ -16,7 +16,6 @@ class PayNotifyLog implements Consumer
             'channel'        => $data['channel'] ?? 0,
             'notify_type'    => $data['notify_type'] ?? 1,
             'transaction_no' => $data['transaction_no'] ?? '',
-            'refund_no'      => $data['refund_no'] ?? '',
             'trade_no'       => $data['trade_no'] ?? '',
             'headers'        => json_encode($data['headers'] ?? [], JSON_UNESCAPED_UNICODE),
             'raw_data'       => json_encode($data['raw_data'] ?? [], JSON_UNESCAPED_UNICODE),

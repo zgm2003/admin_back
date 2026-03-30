@@ -14,6 +14,7 @@ class PayTransactionValidate
             'page_size'  => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'order_no'   => v::optional(v::stringType()),
             'transaction_no' => v::optional(v::stringType()),
+            'user_id'    => v::optional(v::intVal()->positive()),
             'status'     => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$txnStatusArr))),
             'channel'    => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$channelArr))),
             'start_date' => v::optional(v::stringType()->length(0, 20)),

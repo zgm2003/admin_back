@@ -83,20 +83,6 @@ class PaySdk
         return Pay::wechat()->close($order);
     }
 
-    /** 微信退款 */
-    public function wechatRefund(int $channelId, array $order): mixed
-    {
-        $this->initWechat($channelId);
-        return Pay::wechat()->refund($order);
-    }
-
-    /** 微信退款查询 */
-    public function wechatRefundQuery(int $channelId, array $order): mixed
-    {
-        $this->initWechat($channelId);
-        return Pay::wechat()->refundQuery($order);
-    }
-
     /** 微信支付回调验签（自动解密） */
     public function wechatCallback(int $channelId, array|object|null $contents = null): mixed
     {
@@ -165,20 +151,6 @@ class PaySdk
     {
         $this->initAlipay($channelId);
         return Pay::alipay()->close($order);
-    }
-
-    /** 支付宝退款 */
-    public function alipayRefund(int $channelId, array $order): mixed
-    {
-        $this->initAlipay($channelId);
-        return Pay::alipay()->refund($order);
-    }
-
-    /** 支付宝退款查询 */
-    public function alipayRefundQuery(int $channelId, array $order): mixed
-    {
-        $this->initAlipay($channelId);
-        return Pay::alipay()->refundQuery($order);
     }
 
     /** 支付宝支付回调验签（自动解密） */
