@@ -116,14 +116,32 @@ class PayTransactionModule extends BaseModule
                 'trade_no'      => $txn->trade_no,
                 'trade_status'  => $txn->trade_status,
                 'status'        => $txn->status,
+                'status_text'   => PayEnum::$txnStatusArr[$txn->status] ?? '',
                 'paid_at'       => $txn->paid_at,
                 'closed_at'     => $txn->closed_at,
-                'channel_resp'  => $txn->channel_resp ? json_decode($txn->channel_resp, true) : [],
-                'raw_notify'    => $txn->raw_notify ? json_decode($txn->raw_notify, true) : [],
+                'channel_resp'  => $this->normalizeJsonField($txn->channel_resp),
+                'raw_notify'    => $this->normalizeJsonField($txn->raw_notify),
                 'created_at'    => $txn->created_at,
             ],
             'channel' => $channel,
             'order'   => $order,
         ]);
+    }
+
+    /**
+     * PayTransactionModel 已对 JSON 字段做 casts，这里兼容数组/字符串两种来源。
+     */
+    private function normalizeJsonField(mixed $value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        return [];
     }
 }
