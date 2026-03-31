@@ -96,9 +96,9 @@ class PayReconcileModule extends BaseModule
                 'local_amount'     => $task->local_amount,
                 'diff_count'       => $task->diff_count,
                 'diff_amount'      => $task->diff_amount,
-                'platform_file'    => $task->platform_file,
-                'local_file'      => $task->local_file,
-                'diff_file'        => $task->diff_file,
+                'platform_file_url' => $task->platform_file_url,
+                'local_file_url'    => $task->local_file_url,
+                'diff_file_url'     => $task->diff_file_url,
                 'started_at'       => $task->started_at,
                 'finished_at'      => $task->finished_at,
                 'error_msg'       => $task->error_msg,
@@ -123,9 +123,9 @@ class PayReconcileModule extends BaseModule
             'platform_amount'=> 0,
             'local_count'   => 0,
             'local_amount'  => 0,
-            'platform_file' => '',
-            'local_file'    => '',
-            'diff_file'     => '',
+            'platform_file_url' => '',
+            'local_file_url'    => '',
+            'diff_file_url'     => '',
             'diff_count'    => 0,
             'diff_amount'   => 0,
             'error_msg'     => '',
@@ -139,9 +139,9 @@ class PayReconcileModule extends BaseModule
         $param = $this->validate($request, PayReconcileValidate::download());
         $task = $this->dep(PayReconcileTaskDep::class)->getOrFail((int) $param['id']);
         $field = match ((string) $param['type']) {
-            'platform' => 'platform_file',
-            'local' => 'local_file',
-            'diff' => 'diff_file',
+            'platform' => 'platform_file_url',
+            'local' => 'local_file_url',
+            'diff' => 'diff_file_url',
             default => throw new \RuntimeException('不支持的文件类型'),
         };
         $url = (string) ($task->{$field} ?? '');

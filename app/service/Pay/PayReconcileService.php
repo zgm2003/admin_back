@@ -57,7 +57,7 @@ class PayReconcileService
                 'status' => PayEnum::RECONCILE_COMPARING,
                 'local_count' => $localSummary['count'],
                 'local_amount' => $localSummary['amount'],
-                'local_file' => $localUpload['url'],
+                'local_file_url' => $localUpload['url'],
             ]);
 
             $platformBill = $this->payChannelService->downloadTradeBill($channel, (string) $task->reconcile_date);
@@ -75,7 +75,7 @@ class PayReconcileService
                 ? PayEnum::RECONCILE_SUCCESS
                 : PayEnum::RECONCILE_DIFF;
 
-            $diffFilePath = '';
+            $diffFileUrl = '';
             if ($status === PayEnum::RECONCILE_DIFF) {
                 $diffFilename = "diff_bill_{$task->id}.json";
                 $diffContent = json_encode([
@@ -98,7 +98,7 @@ class PayReconcileService
                     (string) $task->reconcile_date
                 );
 
-                $diffFilePath = $diffUpload['url'];
+                $diffFileUrl = $diffUpload['url'];
             }
 
             $this->payReconcileTaskDep->update((int) $task->id, [
@@ -107,8 +107,8 @@ class PayReconcileService
                 'platform_amount' => $platformSummary['amount'],
                 'diff_count' => $diffCount,
                 'diff_amount' => $diffAmount,
-                'platform_file' => $platformUpload['url'],
-                'diff_file' => $diffFilePath,
+                'platform_file_url' => $platformUpload['url'],
+                'diff_file_url' => $diffFileUrl,
                 'finished_at' => date('Y-m-d H:i:s'),
                 'error_msg' => '',
             ]);
