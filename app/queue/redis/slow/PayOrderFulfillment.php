@@ -5,7 +5,7 @@ namespace app\queue\redis\slow;
 use app\dep\Pay\OrderFulfillmentDep;
 use app\dep\Pay\OrderDep;
 use app\enum\PayEnum;
-use app\module\Pay\PayModule;
+use app\service\Pay\PayDomainService;
 use Webman\RedisQueue\Consumer;
 
 class PayOrderFulfillment implements Consumer
@@ -31,11 +31,11 @@ class PayOrderFulfillment implements Consumer
         $dep->update($fulfillId, ['status' => PayEnum::FULFILL_RUNNING]);
 
         try {
-            // 调用 Module 层处理，由 Module 统一管理事务边界
+            $payDomainService = new PayDomainService();
             match ((int) $fulfill->action_type) {
-                PayEnum::FULFILL_ACTION_RECHARGE => (new PayModule())->fulfillRecharge($fulfill->toArray()),
-                PayEnum::FULFILL_ACTION_CONSUME  => (new PayModule())->fulfillConsume($fulfill->toArray()),
-                PayEnum::FULFILL_ACTION_GOODS    => (new PayModule())->fulfillGoods($fulfill->toArray()),
+                PayEnum::FULFILL_ACTION_RECHARGE => $payDomainService->fulfillRecharge($fulfill->toArray()),
+                PayEnum::FULFILL_ACTION_CONSUME  => $payDomainService->fulfillConsume($fulfill->toArray()),
+                PayEnum::FULFILL_ACTION_GOODS    => $payDomainService->fulfillGoods($fulfill->toArray()),
                 default => throw new \RuntimeException("未知动作类型: {$fulfill->action_type}"),
             };
 

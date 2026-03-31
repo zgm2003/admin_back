@@ -108,4 +108,7 @@ return [
     'pay_fulfillment_retry' => [
         'handler' => app\process\Pay\PayFulfillmentRetryTask::class,
     ],
+    'pay_reconcile_execute' => [
+        'handler' => app\process\Pay\PayReconcileExecuteTask::class,
+    ],
 ];

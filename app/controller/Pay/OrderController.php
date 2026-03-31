@@ -3,7 +3,9 @@
 namespace app\controller\Pay;
 
 use app\controller\Controller;
-use app\module\Pay\OrderModule;
+use app\module\Pay\OrderAdminModule;
+use app\module\Pay\RechargeModule;
+use app\module\Pay\WalletQueryModule;
 use support\Request;
 
 /**
@@ -11,53 +13,53 @@ use support\Request;
  */
 class OrderController extends Controller
 {
-    public function init(Request $request) { return $this->run([OrderModule::class, 'init'], $request); }
-    public function list(Request $request) { return $this->run([OrderModule::class, 'list'], $request); }
-    public function detail(Request $request) { return $this->run([OrderModule::class, 'detail'], $request); }
-    public function statusCount(Request $request) { return $this->run([OrderModule::class, 'statusCount'], $request); }
+    public function init(Request $request) { return $this->run([OrderAdminModule::class, 'init'], $request); }
+    public function list(Request $request) { return $this->run([OrderAdminModule::class, 'list'], $request); }
+    public function detail(Request $request) { return $this->run([OrderAdminModule::class, 'detail'], $request); }
+    public function statusCount(Request $request) { return $this->run([OrderAdminModule::class, 'statusCount'], $request); }
     /** @OperationLog("关闭订单") @Permission("pay_order_edit") */
-    public function close(Request $request) { return $this->run([OrderModule::class, 'close'], $request); }
+    public function close(Request $request) { return $this->run([OrderAdminModule::class, 'close'], $request); }
     /** @OperationLog("备注订单") @Permission("pay_order_edit") */
-    public function remark(Request $request) { return $this->run([OrderModule::class, 'remark'], $request); }
+    public function remark(Request $request) { return $this->run([OrderAdminModule::class, 'remark'], $request); }
 
     // ==================== 用户侧接口 ====================
     public function recharge(Request $request)
     {
-        return $this->run([OrderModule::class, 'recharge'], $request);
+        return $this->run([RechargeModule::class, 'recharge'], $request);
     }
 
     public function createPay(Request $request)
     {
-        return $this->run([OrderModule::class, 'createPay'], $request);
+        return $this->run([RechargeModule::class, 'createPay'], $request);
     }
 
     public function cancelOrder(Request $request)
     {
-        return $this->run([OrderModule::class, 'cancelOrder'], $request);
+        return $this->run([RechargeModule::class, 'cancelOrder'], $request);
     }
 
     public function queryResult(Request $request)
     {
-        return $this->run([OrderModule::class, 'queryResult'], $request);
+        return $this->run([RechargeModule::class, 'queryResult'], $request);
     }
 
     public function myOrders(Request $request)
     {
-        return $this->run([OrderModule::class, 'myOrders'], $request);
+        return $this->run([RechargeModule::class, 'myOrders'], $request);
     }
 
     public function orderDetail(Request $request)
     {
-        return $this->run([OrderModule::class, 'orderDetail'], $request);
+        return $this->run([RechargeModule::class, 'orderDetail'], $request);
     }
 
     public function walletInfo(Request $request)
     {
-        return $this->run([OrderModule::class, 'walletInfo'], $request);
+        return $this->run([WalletQueryModule::class, 'walletInfo'], $request);
     }
 
     public function walletBills(Request $request)
     {
-        return $this->run([OrderModule::class, 'walletBills'], $request);
+        return $this->run([WalletQueryModule::class, 'walletBills'], $request);
     }
 }

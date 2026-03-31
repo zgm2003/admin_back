@@ -8,6 +8,7 @@ use app\enum\PayEnum;
 use app\lib\Crypto\KeyVault;
 use app\module\BaseModule;
 use app\service\Common\DictService;
+use app\service\Pay\PayChannelService;
 use app\validate\Pay\PayChannelValidate;
 
 /**
@@ -42,10 +43,10 @@ class PayChannelModule extends BaseModule
             'mch_id'       => $item->mch_id,
             'app_id'       => $item->app_id,
             'notify_url'   => $item->notify_url,
-            'supported_methods' => $this->getSupportedMethods($item),
+            'supported_methods' => $this->svc(PayChannelService::class)->getSupportedMethods($item),
             'supported_methods_text' => implode(' / ', array_map(
                 fn($method) => PayEnum::$methodArr[$method] ?? $method,
-                $this->getSupportedMethods($item)
+                $this->svc(PayChannelService::class)->getSupportedMethods($item)
             )),
             'app_private_key_hint' => $item->app_private_key_hint ?? '',
             'public_cert_path'     => $item->public_cert_path ?? '',
@@ -201,19 +202,5 @@ class PayChannelModule extends BaseModule
         }
 
         return $result;
-    }
-
-    private function getSupportedMethods(object $channel): array
-    {
-        $extraConfig = is_array($channel->extra_config ?? null)
-            ? $channel->extra_config
-            : (empty($channel->extra_config) ? [] : (json_decode((string) $channel->extra_config, true) ?: []));
-
-        $methods = is_array($extraConfig['supported_methods'] ?? null)
-            ? $extraConfig['supported_methods']
-            : [];
-
-        $normalized = PayEnum::normalizeSupportedMethods((int) $channel->channel, $methods);
-        return $normalized !== [] ? $normalized : PayEnum::getDefaultSupportedMethods((int) $channel->channel);
     }
 }

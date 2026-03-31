@@ -33,4 +33,12 @@ class PayReconcileValidate
             'id' => v::intVal()->positive()->setName('对账任务ID'),
         ];
     }
+
+    public static function download(): array
+    {
+        return [
+            'id' => v::intVal()->positive()->setName('对账任务ID'),
+            'type' => v::stringType()->in(['platform', 'local', 'diff'])->setName('文件类型'),
+        ];
+    }
 }

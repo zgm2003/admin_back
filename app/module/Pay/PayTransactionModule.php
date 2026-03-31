@@ -2,11 +2,9 @@
 
 namespace app\module\Pay;
 
-use app\dep\Pay\PayTransactionDep;
-use app\dep\Pay\PayChannelDep;
 use app\dep\Pay\OrderDep;
-use app\dep\Pay\OrderItemDep;
-use app\dep\Pay\OrderFulfillmentDep;
+use app\dep\Pay\PayChannelDep;
+use app\dep\Pay\PayTransactionDep;
 use app\dep\User\UsersDep;
 use app\enum\PayEnum;
 use app\module\BaseModule;
@@ -107,7 +105,6 @@ class PayTransactionModule extends BaseModule
             'transaction' => [
                 'id'            => $txn->id,
                 'transaction_no' => $txn->transaction_no,
-                'client_request_no' => $txn->client_request_no,
                 'order_no'      => $txn->order_no,
                 'attempt_no'    => $txn->attempt_no,
                 'channel'       => $txn->channel,

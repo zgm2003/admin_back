@@ -8,7 +8,7 @@ use app\enum\PayEnum;
 /**
  * 钱包服务（贫血服务，无状态）
  * 所有余额变动方法均为幂等的，供 Module 层调用
- * 事务边界由调用方（PayModule 等）控制
+ * 事务边界由调用方（PayDomainService 等）控制
  */
 class WalletService
 {

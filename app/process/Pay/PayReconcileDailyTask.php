@@ -2,11 +2,11 @@
 
 namespace app\process\Pay;
 
-use app\dep\Pay\PayTransactionDep;
+use app\dep\Pay\PayChannelDep;
 use app\dep\Pay\PayReconcileTaskDep;
+use app\dep\Pay\PayTransactionDep;
 use app\enum\PayEnum;
 use app\process\BaseCronTask;
-use support\Db;
 use support\Log;
 
 /**
@@ -27,50 +27,49 @@ class PayReconcileDailyTask extends BaseCronTask
         $endDate = $yesterday . ' 23:59:59';
 
         $created = 0;
-
-        $created += $this->createReconcileTask($yesterday, PayEnum::CHANNEL_WECHAT, 1, $startDate, $endDate);
-        $created += $this->createReconcileTask($yesterday, PayEnum::CHANNEL_ALIPAY, 1, $startDate, $endDate);
+        $channels = (new PayChannelDep())->getAllActive();
+        foreach ($channels as $channel) {
+            $created += $this->createReconcileTask(
+                $yesterday,
+                (int) $channel['channel'],
+                (int) $channel['id'],
+                1,
+                $startDate,
+                $endDate
+            );
+        }
 
         return $created > 0 ? "生成了 {$created} 条对账任务" : null;
     }
 
-    private function createReconcileTask(string $date, int $channel, int $billType, string $startDate, string $endDate): int
+    private function createReconcileTask(string $date, int $channel, int $channelId, int $billType, string $startDate, string $endDate): int
     {
-        // 检查是否已存在
-        $exist = (new PayReconcileTaskDep())->findByDateChannelBillType($date, $channel, 0, $billType);
+        $exist = (new PayReconcileTaskDep())->findByDateChannelBillType($date, $channel, $channelId, $billType);
         if ($exist) {
             return 0;
         }
 
-        $stat = Db::table('pay_transactions')
-            ->where('status', PayEnum::TXN_SUCCESS)
-            ->where('channel', $channel)
-            ->where('is_del', 2)
-            ->whereBetween('paid_at', [$startDate, $endDate])
-            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total')
-            ->first();
-
-        $localCount = (int) ($stat->cnt ?? 0);
-        $localAmount = (int) ($stat->total ?? 0);
+        $stat = (new PayTransactionDep())->statSuccessfulByChannelId($channelId, $startDate, $endDate);
 
         (new PayReconcileTaskDep())->add([
             'reconcile_date' => $date,
-            'channel'       => $channel,
-            'channel_id'    => 0,
-            'bill_type'    => $billType,
-            'status'       => PayEnum::RECONCILE_PENDING,
-            'local_count'   => $localCount,
-            'local_amount'  => $localAmount,
+            'channel' => $channel,
+            'channel_id' => $channelId,
+            'bill_type' => $billType,
+            'status' => PayEnum::RECONCILE_PENDING,
+            'local_count' => $stat['count'],
+            'local_amount' => $stat['amount'],
             'platform_count' => 0,
             'platform_amount' => 0,
         ]);
 
         Log::info('[PayReconcileDaily] 生成对账任务', [
-            'date'         => $date,
-            'channel'     => $channel,
-            'bill_type'   => $billType,
-            'local_count'  => $localCount,
-            'local_amount' => $localAmount,
+            'date' => $date,
+            'channel' => $channel,
+            'channel_id' => $channelId,
+            'bill_type' => $billType,
+            'local_count' => $stat['count'],
+            'local_amount' => $stat['amount'],
         ]);
 
         return 1;

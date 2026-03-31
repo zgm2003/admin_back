@@ -46,7 +46,6 @@ class UserWalletModule extends BaseModule
                 'user_email'      => $user?->email ?? '',
                 'balance'         => $item->balance,
                 'frozen'          => $item->frozen,
-                'available'       => max((int)$item->balance - (int)$item->frozen, 0),
                 'total_recharge'  => $item->total_recharge,
                 'total_consume'   => $item->total_consume,
                 'created_at'      => $item->created_at,

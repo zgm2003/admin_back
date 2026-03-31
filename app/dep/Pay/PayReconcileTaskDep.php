@@ -43,4 +43,16 @@ class PayReconcileTaskDep extends BaseDep
             ->orderBy('id', 'desc')
             ->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['page'] ?? 1);
     }
+
+    public function getExecutableTasks(int $limit = 20): array
+    {
+        return $this->model
+            ->where('status', \app\enum\PayEnum::RECONCILE_PENDING)
+            ->where('is_del', CommonEnum::NO)
+            ->orderBy('reconcile_date', 'asc')
+            ->orderBy('id', 'asc')
+            ->limit($limit)
+            ->get()
+            ->toArray();
+    }
 }

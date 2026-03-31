@@ -95,6 +95,76 @@ class PayTransactionDep extends BaseDep
             ->toArray();
     }
 
+    public function getLatestSummaryMapByOrderIds(array $orderIds): array
+    {
+        $orderIds = array_values(array_unique(array_filter(array_map('intval', $orderIds))));
+        if ($orderIds === []) {
+            return [];
+        }
+
+        $rows = $this->model
+            ->select(['id', 'order_id', 'transaction_no', 'status'])
+            ->whereIn('order_id', $orderIds)
+            ->where('is_del', CommonEnum::NO)
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row) {
+            $orderId = (int) $row->order_id;
+            if ($orderId <= 0 || isset($map[$orderId])) {
+                continue;
+            }
+
+            $map[$orderId] = [
+                'transaction_no' => (string) ($row->transaction_no ?? ''),
+                'transaction_status' => (int) ($row->status ?? 0),
+            ];
+        }
+
+        return $map;
+    }
+
+    public function statSuccessfulByChannelId(int $channelId, string $startDate, string $endDate): array
+    {
+        $stat = $this->model
+            ->where('status', PayEnum::TXN_SUCCESS)
+            ->where('channel_id', $channelId)
+            ->where('is_del', CommonEnum::NO)
+            ->whereBetween('paid_at', [$startDate, $endDate])
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(amount), 0) as total')
+            ->first();
+
+        return [
+            'count' => (int) ($stat->cnt ?? 0),
+            'amount' => (int) ($stat->total ?? 0),
+        ];
+    }
+
+    public function getSuccessfulBillRows(int $channelId, string $date): array
+    {
+        $rows = $this->model
+            ->select(['transaction_no', 'order_no', 'trade_no', 'amount', 'paid_at'])
+            ->where('channel_id', $channelId)
+            ->where('status', PayEnum::TXN_SUCCESS)
+            ->where('is_del', CommonEnum::NO)
+            ->whereBetween('paid_at', [$date . ' 00:00:00', $date . ' 23:59:59'])
+            ->orderBy('paid_at', 'asc')
+            ->get()
+            ->toArray();
+
+        $amount = 0;
+        foreach ($rows as $row) {
+            $amount += (int) ($row['amount'] ?? 0);
+        }
+
+        return [
+            'rows' => $rows,
+            'count' => count($rows),
+            'amount' => $amount,
+        ];
+    }
+
     /** 统计某状态的交易 */
     public function countByStatus(int $status, ?string $startDate = null, ?string $endDate = null): int
     {

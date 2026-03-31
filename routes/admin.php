@@ -332,6 +332,12 @@ Route::group('/api/admin', function () {
     Route::post('/PayReconcile/list', [controller\Pay\PayReconcileController::class, 'list']);
     Route::post('/PayReconcile/detail', [controller\Pay\PayReconcileController::class, 'detail']);
     Route::post('/PayReconcile/retry', [controller\Pay\PayReconcileController::class, 'retry']);
+    Route::post('/PayReconcile/download', [controller\Pay\PayReconcileController::class, 'download']);
+
+    // 支付回调日志
+    Route::post('/PayNotifyLog/init', [controller\Pay\PayNotifyLogController::class, 'init']);
+    Route::post('/PayNotifyLog/list', [controller\Pay\PayNotifyLogController::class, 'list']);
+    Route::post('/PayNotifyLog/detail', [controller\Pay\PayNotifyLogController::class, 'detail']);
 
     // 支付回调（无需 CheckPermission / OperationLog）
 })->middleware([

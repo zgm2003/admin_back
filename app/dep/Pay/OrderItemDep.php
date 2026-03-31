@@ -17,6 +17,7 @@ class OrderItemDep extends BaseDep
     public function getByOrderId(int $orderId)
     {
         return $this->model
+            ->select(['id', 'order_id', 'item_type', 'title', 'price', 'quantity', 'amount'])
             ->where('order_id', $orderId)
             ->where('is_del', CommonEnum::NO)
             ->orderBy('id', 'asc')

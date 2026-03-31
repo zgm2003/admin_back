@@ -5,8 +5,8 @@ namespace app\process\Pay;
 use app\dep\Pay\PayTransactionDep;
 use app\enum\PayEnum;
 use app\lib\Pay\PaySdk;
-use app\module\Pay\PayNotifyModule;
 use app\process\BaseCronTask;
+use app\service\Pay\PayDomainService;
 use RuntimeException;
 use support\Log;
 use Yansongda\Supports\Collection;
@@ -65,8 +65,7 @@ class PaySyncPendingTransactionTask extends BaseCronTask
                 'trade_no' => $tradeNo,
             ]);
 
-            $notifyModule = new PayNotifyModule();
-            $notifyModule->handlePaySuccess($txn['transaction_no'], $tradeNo, $channel, [
+            (new PayDomainService())->handlePaySuccess($txn['transaction_no'], $tradeNo, $channel, [
                 'out_trade_no' => $txn['transaction_no'],
                 'trade_no'     => $tradeNo,
                 'paid_time'    => date('Y-m-d H:i:s'),

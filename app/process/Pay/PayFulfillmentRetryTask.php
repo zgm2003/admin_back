@@ -4,7 +4,6 @@ namespace app\process\Pay;
 
 use app\dep\Pay\OrderFulfillmentDep;
 use app\enum\PayEnum;
-use app\module\Pay\PayModule;
 use app\process\BaseCronTask;
 use support\Log;
 use Webman\RedisQueue\Client as RedisQueue;

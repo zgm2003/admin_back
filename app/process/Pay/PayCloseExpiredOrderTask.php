@@ -4,8 +4,8 @@ namespace app\process\Pay;
 
 use app\dep\Pay\OrderDep;
 use app\enum\PayEnum;
-use app\module\Pay\PayModule;
 use app\process\BaseCronTask;
+use app\service\Pay\PayDomainService;
 use support\Log;
 
 /**
@@ -42,7 +42,7 @@ class PayCloseExpiredOrderTask extends BaseCronTask
 
     private function processOrder(array $order): bool
     {
-        $result = (new PayModule())->syncPaidOrCloseOrder(
+        $result = (new PayDomainService())->syncPaidOrCloseOrder(
             (string) $order['order_no'],
             '支付超时自动关闭',
             'cron_repair'

@@ -138,4 +138,17 @@ class PayChannelDep extends BaseDep
             ->where('is_del', CommonEnum::NO)
             ->first();
     }
+
+    public function getAllActive(): array
+    {
+        return $this->model
+            ->select(['id', 'name', 'channel', 'status', 'sort', 'is_sandbox'])
+            ->where('status', CommonEnum::YES)
+            ->where('is_del', CommonEnum::NO)
+            ->orderBy('channel', 'asc')
+            ->orderBy('sort', 'asc')
+            ->orderBy('id', 'asc')
+            ->get()
+            ->toArray();
+    }
 }

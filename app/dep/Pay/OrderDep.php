@@ -22,7 +22,7 @@ class OrderDep extends BaseDep
                 'id', 'order_no', 'user_id', 'order_type', 'title',
                 'total_amount', 'discount_amount', 'pay_amount',
                 'pay_status', 'biz_status',
-                'channel_id', 'pay_method', 'expire_time',
+                'channel_id', 'pay_method', 'expire_time', 'admin_remark',
                 'pay_time', 'created_at',
             ])
             ->where('is_del', CommonEnum::NO)

@@ -206,6 +206,19 @@ class PayEnum
         self::NOTIFY_PAY => '支付回调',
     ];
 
+    // ==================== 回调日志处理状态 ====================
+    const NOTIFY_PROCESS_PENDING = 1;
+    const NOTIFY_PROCESS_SUCCESS = 2;
+    const NOTIFY_PROCESS_FAILED  = 3;
+    const NOTIFY_PROCESS_IGNORED = 4;
+
+    public static $notifyProcessStatusArr = [
+        self::NOTIFY_PROCESS_PENDING => '待处理',
+        self::NOTIFY_PROCESS_SUCCESS => '处理成功',
+        self::NOTIFY_PROCESS_FAILED  => '处理失败',
+        self::NOTIFY_PROCESS_IGNORED => '已忽略',
+    ];
+
     // ==================== 对账任务状态 ====================
     const RECONCILE_PENDING   = 1;
     const RECONCILE_DOWNLOAD  = 2;

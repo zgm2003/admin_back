@@ -6,6 +6,7 @@ use app\dep\Pay\PayReconcileTaskDep;
 use app\enum\PayEnum;
 use app\module\BaseModule;
 use app\service\Common\DictService;
+use app\service\Pay\PayReconcileService;
 use app\validate\Pay\PayReconcileValidate;
 
 /**
@@ -118,6 +119,10 @@ class PayReconcileModule extends BaseModule
             'status'        => PayEnum::RECONCILE_PENDING,
             'started_at'    => null,
             'finished_at'   => null,
+            'platform_count'=> 0,
+            'platform_amount'=> 0,
+            'local_count'   => 0,
+            'local_amount'  => 0,
             'platform_file' => '',
             'local_file'    => '',
             'diff_file'     => '',
@@ -127,5 +132,13 @@ class PayReconcileModule extends BaseModule
         ]);
 
         return self::success();
+    }
+
+    public function download($request): array
+    {
+        $param = $this->validate($request, PayReconcileValidate::download());
+        $file = $this->svc(PayReconcileService::class)->getDownloadFile((int) $param['id'], (string) $param['type']);
+
+        return self::success($file);
     }
 }
