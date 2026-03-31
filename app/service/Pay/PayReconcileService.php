@@ -45,15 +45,11 @@ class PayReconcileService
             ]);
 
             $localSummary = $this->payTransactionDep->getSuccessfulBillRows((int) $channel->id, (string) $task->reconcile_date);
-            $localFile = $this->writeBillFile(
-                (string) $task->reconcile_date,
-                "local_bill_{$task->id}.csv",
-                $this->buildLocalBillCsv($localSummary['rows'])
-            );
-            $localUpload = $this->uploadService->uploadLocalFile(
-                $localFile['absolute_path'],
+            $localFilename = "local_bill_{$task->id}.csv";
+            $localUpload = $this->uploadService->uploadContent(
+                $this->buildLocalBillCsv($localSummary['rows']),
                 UploadConfigEnum::FOLDER_RECONCILE_REPORTS,
-                basename($localFile['absolute_path']),
+                $localFilename,
                 (string) $task->reconcile_date
             );
 
@@ -65,11 +61,10 @@ class PayReconcileService
             ]);
 
             $platformBill = $this->payChannelService->downloadTradeBill($channel, (string) $task->reconcile_date);
-            $platformFile = $this->writeBillFile((string) $task->reconcile_date, $platformBill['filename'], $platformBill['content']);
-            $platformUpload = $this->uploadService->uploadLocalFile(
-                $platformFile['absolute_path'],
+            $platformUpload = $this->uploadService->uploadContent(
+                (string) $platformBill['content'],
                 UploadConfigEnum::FOLDER_RECONCILE_REPORTS,
-                basename($platformFile['absolute_path']),
+                (string) $platformBill['filename'],
                 (string) $task->reconcile_date
             );
             $platformSummary = $this->parsePlatformBill((int) $channel->channel, $platformBill['content']);
@@ -82,27 +77,24 @@ class PayReconcileService
 
             $diffFilePath = '';
             if ($status === PayEnum::RECONCILE_DIFF) {
-                $diffFile = $this->writeBillFile(
-                    (string) $task->reconcile_date,
-                    "diff_bill_{$task->id}.json",
-                    json_encode([
-                        'reconcile_date' => (string) $task->reconcile_date,
-                        'channel' => (int) $channel->channel,
-                        'channel_id' => (int) $channel->id,
-                        'platform_count' => $platformSummary['count'],
-                        'platform_amount' => $platformSummary['amount'],
-                        'local_count' => $localSummary['count'],
-                        'local_amount' => $localSummary['amount'],
-                        'diff_count' => $diffCount,
-                        'diff_amount' => $diffAmount,
-                        'details' => $comparison['details'],
-                    ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
-                );
+                $diffFilename = "diff_bill_{$task->id}.json";
+                $diffContent = json_encode([
+                    'reconcile_date' => (string) $task->reconcile_date,
+                    'channel' => (int) $channel->channel,
+                    'channel_id' => (int) $channel->id,
+                    'platform_count' => $platformSummary['count'],
+                    'platform_amount' => $platformSummary['amount'],
+                    'local_count' => $localSummary['count'],
+                    'local_amount' => $localSummary['amount'],
+                    'diff_count' => $diffCount,
+                    'diff_amount' => $diffAmount,
+                    'details' => $comparison['details'],
+                ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
-                $diffUpload = $this->uploadService->uploadLocalFile(
-                    $diffFile['absolute_path'],
+                $diffUpload = $this->uploadService->uploadContent(
+                    $diffContent ?: '{}',
                     UploadConfigEnum::FOLDER_RECONCILE_REPORTS,
-                    basename($diffFile['absolute_path']),
+                    $diffFilename,
                     (string) $task->reconcile_date
                 );
 
@@ -418,22 +410,6 @@ class PayReconcileService
 
         $converted = @mb_convert_encoding($content, 'UTF-8', 'GBK,GB2312,BIG5,UTF-8');
         return is_string($converted) && $converted !== '' ? $converted : $content;
-    }
-
-    private function writeBillFile(string $date, string $filename, string $content): array
-    {
-        $dir = runtime_path() . DIRECTORY_SEPARATOR . 'pay_reconcile' . DIRECTORY_SEPARATOR . $date;
-        if (!is_dir($dir) && !mkdir($dir, 0777, true) && !is_dir($dir)) {
-            throw new RuntimeException('创建对账目录失败');
-        }
-
-        $path = $dir . DIRECTORY_SEPARATOR . $filename;
-        file_put_contents($path, $content);
-
-        return [
-            'absolute_path' => $path,
-            'relative_path' => 'pay_reconcile/' . $date . '/' . $filename,
-        ];
     }
 
     private function escapeCsvCell(string $value): string
