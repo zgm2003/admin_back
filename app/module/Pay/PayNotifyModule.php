@@ -38,17 +38,25 @@ class PayNotifyModule extends BaseModule
                 $rawData = $decodedBody;
             }
         }
-        $logId = $this->dep(PayNotifyLogDep::class)->add([
-            'channel' => $channelType,
-            'notify_type' => PayEnum::NOTIFY_PAY,
-            'transaction_no' => $rawData['out_trade_no'] ?? $rawData['transaction_no'] ?? '',
-            'trade_no' => $rawData['trade_no'] ?? $rawData['transaction_id'] ?? '',
-            'headers' => $headers,
-            'raw_data' => $rawData,
-            'process_status' => PayEnum::NOTIFY_PROCESS_PENDING,
-            'process_msg' => '待处理',
-            'ip' => $ip,
-        ]);
+        $logId = 0;
+        try {
+            $logId = $this->dep(PayNotifyLogDep::class)->add([
+                'channel' => $channelType,
+                'notify_type' => PayEnum::NOTIFY_PAY,
+                'transaction_no' => $rawData['out_trade_no'] ?? $rawData['transaction_no'] ?? '',
+                'trade_no' => $rawData['trade_no'] ?? $rawData['transaction_id'] ?? '',
+                'headers' => $headers,
+                'raw_data' => $rawData,
+                'process_status' => PayEnum::NOTIFY_PROCESS_PENDING,
+                'process_msg' => '待处理',
+                'ip' => $ip,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[PayNotify] 回调日志写入失败', [
+                'channel' => $channelType,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         try {
             $data = $channelType === PayEnum::CHANNEL_WECHAT
@@ -61,16 +69,20 @@ class PayNotifyModule extends BaseModule
                 throw new RuntimeException('回调缺少订单号');
             }
 
-            $this->dep(PayNotifyLogDep::class)->update($logId, [
-                'transaction_no' => $transactionNo,
-                'trade_no' => $tradeNo,
-            ]);
+            if ($logId > 0) {
+                $this->dep(PayNotifyLogDep::class)->update($logId, [
+                    'transaction_no' => $transactionNo,
+                    'trade_no' => $tradeNo,
+                ]);
+            }
 
             $result = $this->svc(PayDomainService::class)->handlePaySuccess($transactionNo, $tradeNo, $channelType, $data);
             $processStatus = $result['status'] === 'success'
                 ? PayEnum::NOTIFY_PROCESS_SUCCESS
                 : PayEnum::NOTIFY_PROCESS_IGNORED;
-            $this->dep(PayNotifyLogDep::class)->updateProcess($logId, $processStatus, (string) ($result['message'] ?? '处理完成'));
+            if ($logId > 0) {
+                $this->dep(PayNotifyLogDep::class)->updateProcess($logId, $processStatus, (string) ($result['message'] ?? '处理完成'));
+            }
 
             Log::info('[PayNotify] 支付回调处理成功', [
                 'channel' => $channelType,
@@ -83,7 +95,9 @@ class PayNotifyModule extends BaseModule
                 ? $this->wechatResponse(true, 'OK')
                 : $this->alipayResponse(true, 'SUCCESS');
         } catch (\Throwable $e) {
-            $this->dep(PayNotifyLogDep::class)->updateProcess($logId, PayEnum::NOTIFY_PROCESS_FAILED, $e->getMessage());
+            if ($logId > 0) {
+                $this->dep(PayNotifyLogDep::class)->updateProcess($logId, PayEnum::NOTIFY_PROCESS_FAILED, $e->getMessage());
+            }
             Log::error('[PayNotify] 支付回调处理异常', [
                 'channel' => $channelType,
                 'error' => $e->getMessage(),
@@ -102,7 +116,7 @@ class PayNotifyModule extends BaseModule
             ? $this->findChannelByTransactionNo($transactionNo, PayEnum::CHANNEL_WECHAT)
             : null;
 
-        $channel ??= $this->dep(PayChannelDep::class)->getActiveByChannel(PayEnum::CHANNEL_WECHAT);
+        $channel ??= $this->dep(PayChannelDep::class)->getPreferredActiveByChannel(PayEnum::CHANNEL_WECHAT);
         if (!$channel) {
             throw new RuntimeException('未配置微信支付渠道');
         }
@@ -127,7 +141,7 @@ class PayNotifyModule extends BaseModule
             ? $this->findChannelByTransactionNo($transactionNo, PayEnum::CHANNEL_ALIPAY)
             : null;
 
-        $channel ??= $this->dep(PayChannelDep::class)->getActiveByChannel(PayEnum::CHANNEL_ALIPAY);
+        $channel ??= $this->dep(PayChannelDep::class)->getPreferredActiveByChannel(PayEnum::CHANNEL_ALIPAY);
         if (!$channel) {
             throw new RuntimeException('未配置支付宝渠道');
         }

@@ -17,6 +17,8 @@ class PayNotifyLogDep extends BaseDep
     public function add(array $data): int
     {
         $data['is_del'] = CommonEnum::NO;
+        $data['headers'] = $this->normalizeJsonPayload($data['headers'] ?? []);
+        $data['raw_data'] = $this->normalizeJsonPayload($data['raw_data'] ?? []);
         return parent::add($data);
     }
 
@@ -49,5 +51,14 @@ class PayNotifyLogDep extends BaseDep
             ->where('id', $id)
             ->where('is_del', CommonEnum::NO)
             ->first();
+    }
+
+    private function normalizeJsonPayload(mixed $value): string
+    {
+        if (is_string($value)) {
+            return $value;
+        }
+
+        return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '[]';
     }
 }
