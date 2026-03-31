@@ -6,6 +6,8 @@ use app\dep\Pay\PayChannelDep;
 use app\dep\Pay\PayReconcileTaskDep;
 use app\dep\Pay\PayTransactionDep;
 use app\enum\PayEnum;
+use app\enum\UploadConfigEnum;
+use app\service\System\UploadService;
 use RuntimeException;
 
 class PayReconcileService
@@ -14,6 +16,7 @@ class PayReconcileService
     private PayChannelService $payChannelService;
     private PayReconcileTaskDep $payReconcileTaskDep;
     private PayTransactionDep $payTransactionDep;
+    private UploadService $uploadService;
 
     public function __construct()
     {
@@ -21,6 +24,7 @@ class PayReconcileService
         $this->payChannelService = new PayChannelService();
         $this->payReconcileTaskDep = new PayReconcileTaskDep();
         $this->payTransactionDep = new PayTransactionDep();
+        $this->uploadService = new UploadService();
     }
 
     public function execute(int $taskId): void
@@ -46,16 +50,28 @@ class PayReconcileService
                 "local_bill_{$task->id}.csv",
                 $this->buildLocalBillCsv($localSummary['rows'])
             );
+            $localUpload = $this->uploadService->uploadLocalFile(
+                $localFile['absolute_path'],
+                UploadConfigEnum::FOLDER_RECONCILE_REPORTS,
+                basename($localFile['absolute_path']),
+                (string) $task->reconcile_date
+            );
 
             $this->payReconcileTaskDep->update((int) $task->id, [
                 'status' => PayEnum::RECONCILE_COMPARING,
                 'local_count' => $localSummary['count'],
                 'local_amount' => $localSummary['amount'],
-                'local_file' => $localFile['relative_path'],
+                'local_file' => $localUpload['url'],
             ]);
 
             $platformBill = $this->payChannelService->downloadTradeBill($channel, (string) $task->reconcile_date);
             $platformFile = $this->writeBillFile((string) $task->reconcile_date, $platformBill['filename'], $platformBill['content']);
+            $platformUpload = $this->uploadService->uploadLocalFile(
+                $platformFile['absolute_path'],
+                UploadConfigEnum::FOLDER_RECONCILE_REPORTS,
+                basename($platformFile['absolute_path']),
+                (string) $task->reconcile_date
+            );
             $platformSummary = $this->parsePlatformBill((int) $channel->channel, $platformBill['content']);
             $comparison = $this->compareBills($localSummary['rows'], $platformSummary['rows'], $localSummary['count'], $platformSummary['count']);
             $diffCount = $comparison['diff_count'];
@@ -83,7 +99,14 @@ class PayReconcileService
                     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
                 );
 
-                $diffFilePath = $diffFile['relative_path'];
+                $diffUpload = $this->uploadService->uploadLocalFile(
+                    $diffFile['absolute_path'],
+                    UploadConfigEnum::FOLDER_RECONCILE_REPORTS,
+                    basename($diffFile['absolute_path']),
+                    (string) $task->reconcile_date
+                );
+
+                $diffFilePath = $diffUpload['url'];
             }
 
             $this->payReconcileTaskDep->update((int) $task->id, [
@@ -92,7 +115,7 @@ class PayReconcileService
                 'platform_amount' => $platformSummary['amount'],
                 'diff_count' => $diffCount,
                 'diff_amount' => $diffAmount,
-                'platform_file' => $platformFile['relative_path'],
+                'platform_file' => $platformUpload['url'],
                 'diff_file' => $diffFilePath,
                 'finished_at' => date('Y-m-d H:i:s'),
                 'error_msg' => '',
@@ -106,32 +129,6 @@ class PayReconcileService
 
             throw $e;
         }
-    }
-
-    public function getDownloadFile(int $taskId, string $type): array
-    {
-        $task = $this->payReconcileTaskDep->getOrFail($taskId);
-        $field = match ($type) {
-            'platform' => 'platform_file',
-            'local' => 'local_file',
-            'diff' => 'diff_file',
-            default => throw new RuntimeException('不支持的文件类型'),
-        };
-
-        $relativePath = (string) ($task->{$field} ?? '');
-        if ($relativePath === '') {
-            throw new RuntimeException('当前文件不存在');
-        }
-
-        $absolutePath = $this->resolveStoragePath($relativePath);
-        if (!is_file($absolutePath)) {
-            throw new RuntimeException('文件不存在或已被清理');
-        }
-
-        return [
-            'path' => $absolutePath,
-            'filename' => basename($absolutePath),
-        ];
     }
 
     public function getPendingTasks(int $limit = 20): array
@@ -437,11 +434,6 @@ class PayReconcileService
             'absolute_path' => $path,
             'relative_path' => 'pay_reconcile/' . $date . '/' . $filename,
         ];
-    }
-
-    private function resolveStoragePath(string $relativePath): string
-    {
-        return runtime_path() . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
     }
 
     private function escapeCsvCell(string $value): string

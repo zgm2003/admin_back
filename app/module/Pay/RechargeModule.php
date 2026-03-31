@@ -182,7 +182,7 @@ class RechargeModule extends BaseModule
         $userId = (int) $request->userId;
         $param = $this->validate($request, OrderValidate::createPay());
         $orderNo = (string) ($param['order_no'] ?? '');
-        $returnUrl = trim((string) ($param['return_url'] ?? ''));
+        $returnUrl = $this->normalizeReturnUrl($request, (string) ($param['return_url'] ?? ''));
         $ip = $request->getRealIp();
 
         $order = $this->dep(OrderDep::class)->findByOrderNo($orderNo);
@@ -418,5 +418,46 @@ class RechargeModule extends BaseModule
         }
 
         return $payload;
+    }
+
+    private function normalizeReturnUrl(Request $request, string $returnUrl): string
+    {
+        $returnUrl = trim($returnUrl);
+        if ($returnUrl === '') {
+            return '';
+        }
+
+        $parts = parse_url($returnUrl);
+        self::throwUnless(is_array($parts), '非法回跳地址');
+
+        $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host = strtolower((string) ($parts['host'] ?? ''));
+
+        self::throwUnless(in_array($scheme, ['http', 'https'], true), '非法回跳地址');
+        self::throwUnless($host !== '', '非法回跳地址');
+
+        $allowedHosts = [];
+        foreach ([
+            $request->host(true),
+            parse_url((string) $request->header('origin', ''), PHP_URL_HOST),
+            parse_url((string) $request->header('referer', ''), PHP_URL_HOST),
+        ] as $candidate) {
+            $candidate = strtolower(trim((string) $candidate));
+            if ($candidate === '') {
+                continue;
+            }
+
+            $allowedHosts[$candidate] = true;
+            $trimmed = preg_replace('/^www\./', '', $candidate) ?: $candidate;
+            $allowedHosts[$trimmed] = true;
+
+            if (str_contains($trimmed, '.')) {
+                $allowedHosts['www.' . $trimmed] = true;
+            }
+        }
+
+        self::throwUnless(isset($allowedHosts[$host]), '非法回跳地址');
+
+        return $returnUrl;
     }
 }

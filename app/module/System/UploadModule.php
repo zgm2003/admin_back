@@ -2,10 +2,10 @@
 
 namespace app\module\System;
 
-use app\dep\System\UploadSettingDep;
 use app\enum\UploadConfigEnum;
 use app\lib\Crypto\KeyVault;
 use app\module\BaseModule;
+use app\service\System\UploadService;
 use AlibabaCloud\Client\AlibabaCloud;
 use TencentCloud\Common\Credential;
 use TencentCloud\Common\Profile\ClientProfile;
@@ -37,10 +37,7 @@ class UploadModule extends BaseModule
             'folderName 非法'
         );
 
-        $settingModel = $this->dep(UploadSettingDep::class)->getActive();
-        self::throwUnless($settingModel, '未配置有效的上传设置');
-
-        $setting = $settingModel->toArray();
+        $setting = $this->svc(UploadService::class)->getActiveSettingOrFail();
 
         $data = match ($setting['driver']) {
             'cos' => $this->getCosToken($setting, $folder),

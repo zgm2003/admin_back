@@ -137,8 +137,19 @@ class PayReconcileModule extends BaseModule
     public function download($request): array
     {
         $param = $this->validate($request, PayReconcileValidate::download());
-        $file = $this->svc(PayReconcileService::class)->getDownloadFile((int) $param['id'], (string) $param['type']);
+        $task = $this->dep(PayReconcileTaskDep::class)->getOrFail((int) $param['id']);
+        $field = match ((string) $param['type']) {
+            'platform' => 'platform_file',
+            'local' => 'local_file',
+            'diff' => 'diff_file',
+            default => throw new \RuntimeException('不支持的文件类型'),
+        };
+        $url = (string) ($task->{$field} ?? '');
+        self::throwUnless($url !== '', '当前文件不存在');
 
-        return self::success($file);
+        return self::success([
+            'url' => $url,
+            'filename' => basename((string) parse_url($url, PHP_URL_PATH)),
+        ]);
     }
 }

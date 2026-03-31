@@ -61,7 +61,7 @@ class PayTransactionDep extends BaseDep
     {
         return $this->model
             ->where('order_id', $orderId)
-            ->whereIn('status', [1, 2])
+            ->whereIn('status', [PayEnum::TXN_CREATED, PayEnum::TXN_WAITING])
             ->where('is_del', CommonEnum::NO)
             ->orderBy('attempt_no', 'desc')
             ->first();
