@@ -77,10 +77,6 @@ return [
             ]
         ]
     ],
-    //定时清理导出文件
-    'clean_export' => [
-        'handler' => app\process\CleanExportTask::class,
-    ],
     // 定时清理TTS音频文件
     'clean_tts_audio' => [
         'handler' => app\process\CleanTtsAudioTask::class,

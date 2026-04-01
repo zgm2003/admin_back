@@ -2,13 +2,14 @@
 
 namespace app\service\System;
 
+use app\enum\UploadConfigEnum;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * Excel 导出服务
- * 负责：通用数据导出为 .xlsx 文件，保存到 public/export/{日期}/ 目录
+ * 负责：通用数据导出为 .xlsx 文件，并上传到当前启用的对象存储
  */
 class ExportService
 {
@@ -18,7 +19,7 @@ class ExportService
      * @param array  $headers ['字段名' => '列标题']
      * @param array  $data    数据数组
      * @param string $prefix  文件名前缀
-     * @return array{url: string, file_name: string, file_size: int, row_count: int, file_path: string}
+     * @return array{url: string, file_name: string, file_size: int, row_count: int}
      */
     public function export(array $headers, array $data, string $prefix = 'export'): array
     {
@@ -43,26 +44,29 @@ class ExportService
             $rowNum++;
         }
 
-        // 按日期分目录存储
-        $dateDir   = date('Ymd');
-        $exportDir = public_path() . "/export/{$dateDir}";
-        if (!is_dir($exportDir)) {
-            mkdir($exportDir, 0777, true);
-        }
-
         $fileName = "{$prefix}_" . date('Ymd_His') . '_' . uniqid() . '.xlsx';
-        $filePath = "{$exportDir}/{$fileName}";
-
-        (new Xlsx($spreadsheet))->save($filePath);
-
-        $appUrl = rtrim(getenv('APP_URL') ?: '', '/');
+        $writer = new Xlsx($spreadsheet);
+        ob_start();
+        $writer->save('php://output');
+        $content = ob_get_clean();
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet, $writer);
+        if (!is_string($content) || $content === '') {
+            throw new \RuntimeException('导出文件生成失败');
+        }
+        $dateDir = date('Ymd');
+        $upload = (new UploadService())->uploadContent(
+            $content,
+            UploadConfigEnum::FOLDER_EXPORTS,
+            $fileName,
+            $dateDir
+        );
 
         return [
-            'url'       => "{$appUrl}/export/{$dateDir}/{$fileName}",
+            'url'       => $upload['url'],
             'file_name' => $fileName,
-            'file_size' => filesize($filePath),
+            'file_size' => $upload['size'],
             'row_count' => \count($data),
-            'file_path' => $filePath,
         ];
     }
 }

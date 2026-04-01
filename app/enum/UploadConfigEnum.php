@@ -84,6 +84,7 @@ class UploadConfigEnum
     const FOLDER_COVER_IMAGES = 'cover_images';
     const FOLDER_AI_CHAT_IMAGES = 'ai_chat_images';
     const FOLDER_RELEASES = 'releases';
+    const FOLDER_EXPORTS = 'exports';
     const FOLDER_CHAT_IMAGES = 'chat_images';
     const FOLDER_CHAT_FILES = 'chat_files';
     const FOLDER_RECONCILE_REPORTS = 'reconcile_reports';
@@ -95,6 +96,7 @@ class UploadConfigEnum
         self::FOLDER_COVER_IMAGES => 'cover_images',
         self::FOLDER_AI_CHAT_IMAGES => 'ai_chat_images',
         self::FOLDER_RELEASES => 'releases',
+        self::FOLDER_EXPORTS => 'exports',
         self::FOLDER_CHAT_IMAGES => 'chat_images',
         self::FOLDER_CHAT_FILES => 'chat_files',
         self::FOLDER_RECONCILE_REPORTS => 'reconcile_reports',
