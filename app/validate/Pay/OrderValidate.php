@@ -2,6 +2,7 @@
 
 namespace app\validate\Pay;
 
+use app\enum\PayEnum;
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 
@@ -12,8 +13,8 @@ class OrderValidate
         return [
             'page'        => v::optional(v::intVal()->positive()),
             'page_size'  => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
-            'order_type' => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$orderTypeArr))),
-            'pay_status' => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$payStatusArr))),
+            'order_type' => v::optional(v::intVal()->in(array_keys(PayEnum::$orderTypeArr))),
+            'pay_status' => v::optional(v::intVal()->in(array_keys(PayEnum::$payStatusArr))),
             'order_no'   => v::optional(v::stringType()),
             'user_id'    => v::optional(v::intVal()->positive()),
             'start_date' => v::optional(v::stringType()->length(0, 20)),
@@ -48,7 +49,7 @@ class OrderValidate
     {
         return [
             'order_no'   => v::stringType()->length(1, 64)->setName('订单号'),
-            'pay_method' => v::optional(v::stringType()->in(array_keys(\app\enum\PayEnum::$methodArr)))->setName('支付方式'),
+            'pay_method' => v::optional(v::stringType()->in(array_keys(PayEnum::$methodArr)))->setName('支付方式'),
             'return_url' => v::optional(v::stringType()->length(1, 1024))->setName('回跳地址'),
         ];
     }

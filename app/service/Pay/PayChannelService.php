@@ -174,7 +174,7 @@ class PayChannelService
             WechatAddRadarPlugin::class,
             WechatVerifySignaturePlugin::class,
             WechatResponsePlugin::class,
-        ], Collection::wrap(['download_url' => $downloadUrl]));
+        ], ['download_url' => $downloadUrl]);
 
         $content = $downloadResponse instanceof ResponseInterface
             ? (string) $downloadResponse->getBody()

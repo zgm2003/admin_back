@@ -2,6 +2,7 @@
 
 namespace app\validate\Pay;
 
+use app\enum\PayEnum;
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 
@@ -12,8 +13,8 @@ class PayReconcileValidate
         return [
             'page'       => v::optional(v::intVal()->positive()),
             'page_size'  => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
-            'channel'    => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$channelArr))),
-            'status'     => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$reconcileStatusArr))),
+            'channel'    => v::optional(v::intVal()->in(array_keys(PayEnum::$channelArr))),
+            'status'     => v::optional(v::intVal()->in(array_keys(PayEnum::$reconcileStatusArr))),
             'bill_type'  => v::optional(v::intVal()->in([1])),
             'start_date' => v::optional(v::stringType()->length(0, 20)),
             'end_date'   => v::optional(v::stringType()->length(0, 20)),

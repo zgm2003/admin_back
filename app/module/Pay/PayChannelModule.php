@@ -24,7 +24,6 @@ class PayChannelModule extends BaseModule
             ->setPayChannelArr()
             ->setPayMethodArr()
             ->getDict();
-        $data['dict']['channel_method_arr'] = $this->buildChannelMethodDict();
 
         return self::success($data);
     }
@@ -76,6 +75,7 @@ class PayChannelModule extends BaseModule
     {
         $param = $this->validate($request, PayChannelValidate::add());
         $dep = $this->dep(PayChannelDep::class);
+        $supportedMethods = $this->normalizeSubmittedSupportedMethods((int) $param['channel'], $param['supported_methods'] ?? []);
 
         self::throwIf(
             $dep->existsByChannelMchApp($param['channel'], $param['mch_id'], $param['app_id'] ?? ''),
@@ -89,10 +89,7 @@ class PayChannelModule extends BaseModule
             'app_id'              => $param['app_id'] ?? '',
             'notify_url'          => $param['notify_url'] ?? '',
             'extra_config'        => [
-                'supported_methods' => PayEnum::normalizeSupportedMethods(
-                    (int) $param['channel'],
-                    $param['supported_methods'] ?? []
-                ),
+                'supported_methods' => $supportedMethods,
             ],
             'public_cert_path'    => $param['public_cert_path'] ?? '',
             'platform_cert_path'  => $param['platform_cert_path'] ?? '',
@@ -131,6 +128,15 @@ class PayChannelModule extends BaseModule
             self::throw('该渠道+商户号+应用ID 组合已存在');
         }
 
+        $targetChannel = isset($param['channel']) ? (int) $param['channel'] : (int) $record->channel;
+        if (
+            isset($param['channel'])
+            && (int) $param['channel'] !== (int) $record->channel
+            && !array_key_exists('supported_methods', $param)
+        ) {
+            self::throw('切换渠道后请重新选择支付方式');
+        }
+
         $data = [
             'name'                => $param['name'] ?? null,
             'channel'             => isset($param['channel']) ? (int) $param['channel'] : null,
@@ -153,7 +159,6 @@ class PayChannelModule extends BaseModule
         }
 
         if (array_key_exists('supported_methods', $param) || array_key_exists('channel', $param)) {
-            $channel = isset($param['channel']) ? (int) $param['channel'] : (int) $record->channel;
             $existingExtraConfig = is_array($record->extra_config)
                 ? $record->extra_config
                 : (empty($record->extra_config) ? [] : (json_decode((string) $record->extra_config, true) ?: []));
@@ -161,10 +166,9 @@ class PayChannelModule extends BaseModule
                 ? $existingExtraConfig['supported_methods']
                 : [];
 
-            $existingExtraConfig['supported_methods'] = PayEnum::normalizeSupportedMethods(
-                $channel,
-                $param['supported_methods'] ?? $existingMethods
-            );
+            $existingExtraConfig['supported_methods'] = array_key_exists('supported_methods', $param)
+                ? $this->normalizeSubmittedSupportedMethods($targetChannel, $param['supported_methods'] ?? [])
+                : PayEnum::normalizeSupportedMethods($targetChannel, $existingMethods);
             $data['extra_config'] = $existingExtraConfig;
         }
 
@@ -191,16 +195,17 @@ class PayChannelModule extends BaseModule
         return self::success(['affected' => $affected]);
     }
 
-    private function buildChannelMethodDict(): array
+    private function normalizeSubmittedSupportedMethods(int $channel, array $methods): array
     {
-        $result = [];
-        foreach (PayEnum::$channelMethodArr as $channel => $methods) {
-            $result[$channel] = array_map(fn($method) => [
-                'label' => PayEnum::$methodArr[$method] ?? $method,
-                'value' => $method,
-            ], $methods);
-        }
+        $submittedMethods = array_values(array_unique(array_map('strval', $methods)));
+        $normalizedMethods = PayEnum::normalizeSupportedMethods($channel, $submittedMethods);
 
-        return $result;
+        self::throwUnless($normalizedMethods !== [], '请至少选择一种支付方式');
+        self::throwUnless(
+            count($submittedMethods) === count($normalizedMethods),
+            '所选支付方式包含当前渠道不支持的选项'
+        );
+
+        return $normalizedMethods;
     }
 }

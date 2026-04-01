@@ -2,6 +2,7 @@
 
 namespace app\validate\Pay;
 
+use app\enum\PayEnum;
 use Respect\Validation\Validator as v;
 use app\enum\CommonEnum;
 
@@ -11,9 +12,9 @@ class PayChannelValidate
     {
         return [
             'name'              => v::stringType()->length(1, 50)->setName('渠道名称'),
-            'channel'           => v::intVal()->in(array_keys(\app\enum\PayEnum::$channelArr))->setName('渠道类型'),
+            'channel'           => v::intVal()->in(array_keys(PayEnum::$channelArr))->setName('渠道类型'),
             'supported_methods' => v::arrayType()->notEmpty()->each(
-                v::stringType()->in(array_keys(\app\enum\PayEnum::$methodArr))
+                v::stringType()->in(array_keys(PayEnum::$methodArr))
             )->setName('支付方式'),
             'mch_id'            => v::stringType()->length(1, 64)->setName('商户号'),
             'app_id'            => v::optional(v::stringType()->length(0, 64))->setName('应用ID'),
@@ -35,9 +36,9 @@ class PayChannelValidate
         return [
             'id'                => v::intVal()->positive()->setName('ID'),
             'name'              => v::optional(v::stringType()->length(1, 50))->setName('渠道名称'),
-            'channel'           => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$channelArr)))->setName('渠道类型'),
+            'channel'           => v::optional(v::intVal()->in(array_keys(PayEnum::$channelArr)))->setName('渠道类型'),
             'supported_methods' => v::optional(v::arrayType()->notEmpty()->each(
-                v::stringType()->in(array_keys(\app\enum\PayEnum::$methodArr))
+                v::stringType()->in(array_keys(PayEnum::$methodArr))
             ))->setName('支付方式'),
             'mch_id'            => v::optional(v::stringType()->length(1, 64))->setName('商户号'),
             'app_id'            => v::optional(v::stringType()->length(0, 64))->setName('应用ID'),
@@ -66,7 +67,7 @@ class PayChannelValidate
         return [
             'page'       => v::optional(v::intVal()->positive()),
             'page_size'  => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
-            'channel'    => v::optional(v::intVal()->in(array_keys(\app\enum\PayEnum::$channelArr))),
+            'channel'    => v::optional(v::intVal()->in(array_keys(PayEnum::$channelArr))),
             'status'     => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr))),
             'name'       => v::optional(v::stringType()),
         ];

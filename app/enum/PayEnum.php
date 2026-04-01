@@ -49,7 +49,7 @@ class PayEnum
 
     public static function getDefaultSupportedMethods(int $channel): array
     {
-        return self::$channelMethodArr[$channel] ?? array_keys(self::$methodArr);
+        return self::$channelMethodArr[$channel] ?? [];
     }
 
     public static function normalizeSupportedMethods(int $channel, array $methods): array
