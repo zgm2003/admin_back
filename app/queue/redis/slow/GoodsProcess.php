@@ -10,8 +10,10 @@ use app\dep\Ai\GoodsDep;
 use app\enum\AiEnum;
 use app\enum\CommonEnum;
 use app\enum\GoodsEnum;
+use app\enum\UploadConfigEnum;
 use app\lib\OcrSdk;
 use app\service\Ai\AiChatService;
+use app\service\System\UploadService;
 use Webman\RedisQueue\Consumer;
 
 /**
@@ -197,70 +199,70 @@ class GoodsProcess implements Consumer
         $voice = $data['voice'] ?? GoodsEnum::VOICE_XIAOXIAO;
         $emotion = $data['emotion'] ?? GoodsEnum::EMOTION_DEFAULT;
         $emotionParams = GoodsEnum::$emotionParamsMap[$emotion] ?? GoodsEnum::$emotionParamsMap[GoodsEnum::EMOTION_DEFAULT];
-
-        // 生成文件路径：public/audio/tts/{date}/{id}_{timestamp}.mp3
-        $dateDir  = date('Ymd');
-        $audioDir = public_path() . '/audio/tts/' . $dateDir;
-        if (!is_dir($audioDir)) {
-            mkdir($audioDir, 0755, true);
-        }
-        $filename = $goods->id . '_' . time() . '.mp3';
-        $filePath = $audioDir . '/' . $filename;
-
-        // 写入临时文本文件（避免命令行转义问题）
-        $tmpFile = runtime_path() . '/tts_' . $goods->id . '.txt';
-        file_put_contents($tmpFile, $scriptText);
-
-        // VTT 字幕输出路径（edge-tts --write-subtitles 生成）
-        $vttFilename = $goods->id . '_' . time() . '.vtt';
-        $vttPath     = $audioDir . '/' . $vttFilename;
-
-        // 调用 edge-tts（含情绪预设的 rate/pitch/volume + 字幕输出）
-        // 注意：rate/pitch/volume 来自枚举常量，不用 escapeshellarg（Windows 下 % 会被 cmd 吞掉）
-        $cmd = sprintf(
-            'edge-tts --voice %s --rate=%s --pitch=%s --volume=%s --file %s --write-media %s --write-subtitles %s 2>&1',
-            escapeshellarg($voice),
-            $emotionParams['rate'],
-            $emotionParams['pitch'],
-            $emotionParams['volume'],
-            escapeshellarg($tmpFile),
-            escapeshellarg($filePath),
-            escapeshellarg($vttPath)
-        );
-
-        $this->log('执行TTS命令', ['cmd' => $cmd]);
-        exec($cmd, $output, $exitCode);
-
-        // 清理临时文件
-        @unlink($tmpFile);
-
-        if ($exitCode !== 0 || !file_exists($filePath)) {
-            throw new \RuntimeException('edge-tts执行失败: ' . implode("\n", $output));
+        $dateDir = date('Ymd');
+        $tempDir = runtime_path() . '/tts/' . $dateDir;
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0775, true);
         }
 
-        // VTT → SRT 转换
-        $srtUrl = null;
-        if (file_exists($vttPath)) {
-            $srtFilename = str_replace('.vtt', '.srt', $vttFilename);
-            $srtPath     = $audioDir . '/' . $srtFilename;
-            $srtContent  = $this->vttToSrt(file_get_contents($vttPath));
-            file_put_contents($srtPath, $srtContent);
-            @unlink($vttPath); // VTT 已转换，删除
+        $basename = $goods->id . '_' . time();
+        $audioFilename = $basename . '.mp3';
+        $audioPath = $tempDir . '/' . $audioFilename;
+        $tmpFile = $tempDir . '/' . $basename . '.txt';
+        $vttFilename = $basename . '.vtt';
+        $vttPath = $tempDir . '/' . $vttFilename;
+        $output = [];
+        $exitCode = 0;
 
-            $appUrl = rtrim(getenv('APP_URL') ?: '', '/');
-            $srtUrl = $appUrl . '/audio/tts/' . $dateDir . '/' . $srtFilename;
+        try {
+            file_put_contents($tmpFile, $scriptText);
+
+            $cmd = sprintf(
+                'edge-tts --voice %s --rate=%s --pitch=%s --volume=%s --file %s --write-media %s --write-subtitles %s 2>&1',
+                escapeshellarg($voice),
+                $emotionParams['rate'],
+                $emotionParams['pitch'],
+                $emotionParams['volume'],
+                escapeshellarg($tmpFile),
+                escapeshellarg($audioPath),
+                escapeshellarg($vttPath)
+            );
+
+            $this->log('执行TTS命令', ['cmd' => $cmd]);
+            exec($cmd, $output, $exitCode);
+
+            if ($exitCode !== 0 || !file_exists($audioPath)) {
+                throw new \RuntimeException('edge-tts执行失败: ' . implode("\n", $output));
+            }
+
+            $uploadService = new UploadService();
+            $audioUpload = $uploadService->uploadLocalFile(
+                $audioPath,
+                UploadConfigEnum::FOLDER_GOODS_TTS,
+                $audioFilename,
+                $dateDir
+            );
+
+            $extra = ['audio_url' => $audioUpload['url']];
+
+            if (file_exists($vttPath)) {
+                $srtFilename = str_replace('.vtt', '.srt', $vttFilename);
+                $srtContent = $this->vttToSrt(file_get_contents($vttPath));
+                $srtUpload = $uploadService->uploadContent(
+                    $srtContent,
+                    UploadConfigEnum::FOLDER_GOODS_TTS,
+                    $srtFilename,
+                    $dateDir
+                );
+                $extra['srt_url'] = $srtUpload['url'];
+            }
+
+            $dep->transitStatus($goods->id, GoodsEnum::STATUS_TTS, GoodsEnum::STATUS_COMPLETED, $extra);
+        } finally {
+            @unlink($tmpFile);
+            @unlink($audioPath);
+            @unlink($vttPath);
         }
-
-        // 生成完整访问URL（与导出任务一致，使用 APP_URL 拼接）
-        $appUrl   = rtrim(getenv('APP_URL') ?: '', '/');
-        $audioUrl = $appUrl . '/audio/tts/' . $dateDir . '/' . $filename;
-
-        $extra = ['audio_url' => $audioUrl];
-        if ($srtUrl) {
-            $extra['srt_url'] = $srtUrl;
-        }
-
-        $dep->transitStatus($goods->id, GoodsEnum::STATUS_TTS, GoodsEnum::STATUS_COMPLETED, $extra);
     }
 
     // ==================== 工具方法 ====================

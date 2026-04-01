@@ -77,7 +77,10 @@ class GoodsDep extends BaseDep
     {
         return $this->model
             ->whereIn('id', $ids)
-            ->where(fn($q) => $q->whereNotNull('audio_url')->orWhereNotNull('srt_url'))
+            ->where(function ($q) {
+                $q->where('audio_url', 'like', '%/audio/tts/%')
+                    ->orWhere('srt_url', 'like', '%/audio/tts/%');
+            })
             ->update(['audio_url' => null, 'srt_url' => null]);
     }
 }

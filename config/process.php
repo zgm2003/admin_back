@@ -77,10 +77,6 @@ return [
             ]
         ]
     ],
-    // 定时清理TTS音频文件
-    'clean_tts_audio' => [
-        'handler' => app\process\CleanTtsAudioTask::class,
-    ],
     // AI Run 超时检测
     'ai_run_timeout' => [
         'handler' => app\process\AiRunTimeoutTask::class,
