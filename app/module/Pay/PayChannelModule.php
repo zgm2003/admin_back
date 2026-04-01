@@ -118,17 +118,19 @@ class PayChannelModule extends BaseModule
         $dep = $this->dep(PayChannelDep::class);
 
         $record = $dep->getOrFail($id);
+        $targetChannel = isset($param['channel']) ? (int) $param['channel'] : (int) $record->channel;
+        $targetMchId = array_key_exists('mch_id', $param) ? (string) $param['mch_id'] : (string) $record->mch_id;
+        $targetAppId = array_key_exists('app_id', $param) ? (string) $param['app_id'] : (string) $record->app_id;
 
         if ($dep->existsByChannelMchApp(
-            $param['channel'] ?? 0,
-            $param['mch_id'] ?? '',
-            $param['app_id'] ?? '',
+            $targetChannel,
+            $targetMchId,
+            $targetAppId,
             $id
         )) {
             self::throw('该渠道+商户号+应用ID 组合已存在');
         }
 
-        $targetChannel = isset($param['channel']) ? (int) $param['channel'] : (int) $record->channel;
         if (
             isset($param['channel'])
             && (int) $param['channel'] !== (int) $record->channel
@@ -156,6 +158,8 @@ class PayChannelModule extends BaseModule
         if (!empty($param['app_private_key'])) {
             $data['app_private_key_enc'] = KeyVault::encrypt($param['app_private_key']);
             $data['app_private_key_hint'] = $param['app_private_key_hint'] ?? '';
+        } elseif (array_key_exists('app_private_key_hint', $param)) {
+            $data['app_private_key_hint'] = $param['app_private_key_hint'];
         }
 
         if (array_key_exists('supported_methods', $param) || array_key_exists('channel', $param)) {
