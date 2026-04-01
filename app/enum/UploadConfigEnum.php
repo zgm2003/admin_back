@@ -84,6 +84,7 @@ class UploadConfigEnum
     const FOLDER_COVER_IMAGES = 'cover_images';
     const FOLDER_AI_CHAT_IMAGES = 'ai_chat_images';
     const FOLDER_RELEASES = 'releases';
+    const FOLDER_TAURI_UPDATER = 'tauri_updater';
     const FOLDER_EXPORTS = 'exports';
     const FOLDER_GOODS_TTS = 'goods_tts';
     const FOLDER_CHAT_IMAGES = 'chat_images';
@@ -97,6 +98,7 @@ class UploadConfigEnum
         self::FOLDER_COVER_IMAGES => 'cover_images',
         self::FOLDER_AI_CHAT_IMAGES => 'ai_chat_images',
         self::FOLDER_RELEASES => 'releases',
+        self::FOLDER_TAURI_UPDATER => 'tauri_updater',
         self::FOLDER_EXPORTS => 'exports',
         self::FOLDER_GOODS_TTS => 'goods_tts',
         self::FOLDER_CHAT_IMAGES => 'chat_images',

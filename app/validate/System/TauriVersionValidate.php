@@ -69,7 +69,14 @@ class TauriVersionValidate
     {
         return [
             'version' => v::notEmpty()->setName('版本号'),
-            'platform' => v::optional(v::stringType())->setName('平台'),
+            'platform' => v::optional(v::in(array_keys(UploadConfigEnum::$tauriPlatformArr)))->setName('平台'),
+        ];
+    }
+
+    public static function updateJson(): array
+    {
+        return [
+            'platform' => v::optional(v::in(array_keys(UploadConfigEnum::$tauriPlatformArr)))->setName('平台'),
         ];
     }
 }

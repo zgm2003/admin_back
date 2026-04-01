@@ -4,8 +4,10 @@ namespace app\module\System;
 
 use app\dep\System\TauriVersionDep;
 use app\enum\CommonEnum;
+use app\enum\UploadConfigEnum;
 use app\module\BaseModule;
 use app\service\Common\DictService;
+use app\service\System\TauriUpdaterService;
 use app\validate\System\TauriVersionValidate;
 
 /**
@@ -98,14 +100,26 @@ class TauriVersionModule extends BaseModule
         // 只提取允许更新的字段
         $allowFields = ['version', 'notes', 'file_url', 'signature', 'file_size', 'force_update'];
         $updateData = array_intersect_key($param, array_flip($allowFields));
+        if ($updateData === []) {
+            return self::success();
+        }
+
+        if ((int) $version->is_latest === CommonEnum::YES) {
+            $this->withTransaction(function () use ($dep, $param, $updateData, $version) {
+                $dep->update($param['id'], $updateData);
+                $this->uploadUpdateJson((string) $version->platform);
+            });
+
+            return self::success();
+        }
+
         $dep->update($param['id'], $updateData);
 
         return self::success();
     }
 
     /**
-     * 设为最新版本（事务内先清除同平台旧 latest 再设置新的）
-     * TODO: 待实现自动上传 update.json 到 COS
+     * 设为最新版本（事务内先清除同平台旧 latest 再设置新的，并发布平台清单）
      */
     public function setLatest($request): array
     {
@@ -116,7 +130,7 @@ class TauriVersionModule extends BaseModule
 
         $this->withTransaction(function () use ($dep, $param, $version) {
             $dep->setLatest($param['id'], $version->platform);
-            $this->uploadUpdateJson($version);
+            $this->uploadUpdateJson((string) $version->platform);
         });
 
         return self::success();
@@ -157,7 +171,7 @@ class TauriVersionModule extends BaseModule
     public function clientInit($request): array
     {
         $param = $this->validate($request, TauriVersionValidate::clientInit());
-        $platform = $param['platform'] ?? 'windows-x86_64';
+        $platform = $param['platform'] ?? UploadConfigEnum::PLATFORM_WINDOWS;
 
         $record = $this->dep(TauriVersionDep::class)->getByCondition([
             'version'  => $param['version'],
@@ -179,35 +193,20 @@ class TauriVersionModule extends BaseModule
      */
     public function updateJson($request): array
     {
-        $platform = $request->input('platform', 'windows-x86_64');
-        $latest = $this->dep(TauriVersionDep::class)->getLatest($platform);
+        $param = $this->validate($request, TauriVersionValidate::updateJson());
+        $platform = $param['platform'] ?? UploadConfigEnum::PLATFORM_WINDOWS;
 
-        if (!$latest) {
-            return self::success([]);
-        }
-
-        return self::success([
-            'version'   => $latest->version,
-            'notes'     => $latest->notes,
-            'pub_date'  => date('c', strtotime($latest->created_at)),
-            'platforms' => [
-                $latest->platform => [
-                    'url'       => $latest->file_url,
-                    'signature' => $latest->signature,
-                ],
-            ],
-        ]);
+        return self::success($this->svc(TauriUpdaterService::class)->buildManifestPayload($platform));
     }
 
     // ==================== 私有方法 ====================
 
     /**
-     * 上传 update.json 到 COS
-     * TODO: 待实现 COS 上传，目前通过 updateJson 接口手动获取
+     * 上传指定平台的 update.json 到对象存储静态地址
      */
-    private function uploadUpdateJson($version): void
+    private function uploadUpdateJson(string $platform): void
     {
-        // 暂不自动上传，可通过 updateJson 接口获取 JSON 内容后手动上传
+        $this->svc(TauriUpdaterService::class)->uploadManifest($platform);
     }
 
     /**
