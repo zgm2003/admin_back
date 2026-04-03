@@ -2,7 +2,6 @@
 
 namespace app\service\Pay;
 
-use app\dep\Pay\PayChannelDep;
 use app\enum\PayEnum;
 use app\lib\Pay\PaySdk;
 use Psr\Http\Message\ResponseInterface;
@@ -29,45 +28,6 @@ use Yansongda\Supports\Collection;
 
 class PayChannelService
 {
-    private PayChannelDep $payChannelDep;
-
-    public function __construct()
-    {
-        $this->payChannelDep = new PayChannelDep();
-    }
-
-    public function resolveRechargeChannel(int $channelId, int $channelType = 0): ?object
-    {
-        $channelById = $channelId > 0 ? $this->payChannelDep->findActive($channelId) : null;
-        $legacyChannelEnum = $channelId > 0 && isset(PayEnum::$channelArr[$channelId]);
-        $channelByLegacyType = $legacyChannelEnum ? $this->payChannelDep->getPreferredActiveByChannel($channelId) : null;
-
-        if ($channelType > 0) {
-            if ($channelById && (int) $channelById->channel === $channelType) {
-                return $channelById;
-            }
-
-            $channelByType = $this->payChannelDep->getPreferredActiveByChannel($channelType);
-            if ($channelByType) {
-                return $channelByType;
-            }
-
-            return $channelById;
-        }
-
-        if ($legacyChannelEnum) {
-            if ($channelById && (int) $channelById->channel === $channelId) {
-                return $channelById;
-            }
-
-            if ($channelByLegacyType) {
-                return $channelByLegacyType;
-            }
-        }
-
-        return $channelById;
-    }
-
     public function getSupportedMethods(object $channel): array
     {
         $extraConfig = is_array($channel->extra_config ?? null)

@@ -45,6 +45,15 @@ class OrderValidate
         ];
     }
 
+    public static function recharge(): array
+    {
+        return [
+            'amount' => v::intVal()->min(1)->setName('充值金额'),
+            'pay_method' => v::stringType()->in(array_keys(PayEnum::$methodArr))->setName('支付方式'),
+            'channel_id' => v::intVal()->positive()->setName('支付渠道ID'),
+        ];
+    }
+
     public static function createPay(): array
     {
         return [

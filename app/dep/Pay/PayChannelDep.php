@@ -5,7 +5,6 @@ namespace app\dep\Pay;
 use app\dep\BaseDep;
 use app\model\Pay\PayChannelModel;
 use app\enum\CommonEnum;
-use app\enum\PayEnum;
 use support\Model;
 
 class PayChannelDep extends BaseDep
@@ -70,29 +69,6 @@ class PayChannelDep extends BaseDep
     public function getPreferredActiveByChannel(int $channel): ?Model
     {
         return $this->getActiveByChannel($channel) ?: $this->getActiveSandboxByChannel($channel);
-    }
-
-    /**
-     * 兼容解析渠道输入：
-     * - 优先按 pay_channel.id 查
-     * - 查不到时，若入参本身是渠道类型枚举，则按渠道类型兜底
-     */
-    public function resolveActiveInput(int $input): ?Model
-    {
-        if ($input <= 0) {
-            return null;
-        }
-
-        $channel = $this->findActive($input);
-        if ($channel) {
-            return $channel;
-        }
-
-        if (!isset(PayEnum::$channelArr[$input])) {
-            return null;
-        }
-
-        return $this->getPreferredActiveByChannel($input);
     }
 
     public function existsByChannelMchApp(int $channel, string $mchId, string $appId, ?int $excludeId = null): bool
