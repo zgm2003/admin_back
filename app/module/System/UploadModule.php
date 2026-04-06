@@ -6,7 +6,6 @@ use app\enum\UploadConfigEnum;
 use app\lib\Crypto\KeyVault;
 use app\module\BaseModule;
 use app\service\System\UploadService;
-use AlibabaCloud\Client\AlibabaCloud;
 use TencentCloud\Common\Credential;
 use TencentCloud\Common\Profile\ClientProfile;
 use TencentCloud\Common\Profile\HttpProfile;
@@ -114,6 +113,10 @@ class UploadModule extends BaseModule
      */
     private function getOssToken(array $setting, string $folder): array
     {
+        if (!\class_exists('AlibabaCloud\\Client\\AlibabaCloud') || !\class_exists('AlibabaCloud\\Sts\\Sts')) {
+            self::throw('当前环境未安装阿里云 OSS 依赖，请执行 composer require alibabacloud/sdk');
+        }
+
         $region  = $setting['region'];
         $bucket  = $setting['bucket'];
         $roleArn = $setting['role_arn'];
@@ -122,7 +125,10 @@ class UploadModule extends BaseModule
 
         self::throwIf(!$region || !$bucket || !$roleArn || !$ak || !$sk, 'OSS 配置缺失');
 
-        AlibabaCloud::accessKeyClient($ak, $sk)
+        $aliCloudClientClass = 'AlibabaCloud\\Client\\AlibabaCloud';
+        $stsClass = 'AlibabaCloud\\Sts\\Sts';
+
+        $aliCloudClientClass::accessKeyClient($ak, $sk)
             ->regionId($region)
             ->asDefaultClient();
 
@@ -135,7 +141,7 @@ class UploadModule extends BaseModule
             ]],
         ];
 
-        $res = \AlibabaCloud\Sts\Sts::v20150401()
+        $res = $stsClass::v20150401()
             ->assumeRole()
             ->withRoleArn($roleArn)
             ->withRoleSessionName('oss-upload-' . \date('YmdHis'))
