@@ -11,7 +11,7 @@ class PayTransactionValidate
     public static function list(): array
     {
         return [
-            'page'       => v::optional(v::intVal()->positive()),
+            'current_page' => v::optional(v::intVal()->positive()),
             'page_size'  => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'order_no'   => v::optional(v::stringType()),
             'transaction_no' => v::optional(v::stringType()),

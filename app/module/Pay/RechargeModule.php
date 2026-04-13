@@ -25,7 +25,7 @@ class RechargeModule extends BaseModule
         $param = $this->validate($request, OrderValidate::list());
         $param['user_id'] = $userId;
         $param['order_type'] = PayEnum::TYPE_RECHARGE;
-        $param['page'] = (int) ($param['page'] ?? 1);
+        $param['current_page'] = (int) ($param['current_page'] ?? 1);
         $param['page_size'] = (int) ($param['page_size'] ?? 10);
 
         $res = $this->dep(OrderDep::class)->list($param);

@@ -40,7 +40,7 @@ class OrderDep extends BaseDep
             $query->orderBy('id', 'desc');
         }
 
-        return $query->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['page'] ?? 1);
+        return $query->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['current_page'] ?? 1);
     }
 
     public function findByOrderNo(string $orderNo): ?Model

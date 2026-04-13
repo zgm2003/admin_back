@@ -12,6 +12,14 @@ use GatewayWorker\Lib\Gateway;
  */
 class WebSocketModule extends BaseModule
 {
+    public static function buildEventPayload(string $type, array $data = []): array
+    {
+        return [
+            'type' => $type,
+            'data' => $data,
+        ];
+    }
+
     public function __construct()
     {
         Gateway::$registerAddress = '127.0.0.1:1236';
@@ -29,10 +37,13 @@ class WebSocketModule extends BaseModule
         // 加入平台组（用于平台隔离推送）
         Gateway::joinGroup($param['client_id'], "platform_{$platform}_{$userId}");
         
-        Gateway::sendToClient($param['client_id'], json_encode([
-            'type' => 'bind_success',
-            'data' => ['uid' => $userId, 'platform' => $platform]
-        ]));
+        Gateway::sendToClient(
+            $param['client_id'],
+            json_encode(
+                self::buildEventPayload('bind_success', ['uid' => $userId, 'platform' => $platform]),
+                JSON_UNESCAPED_UNICODE
+            )
+        );
 
 //        \support\Log::info("[WebSocket] 用户上线: uid={$userId}, platform={$platform}, client_id={$param['client_id']}");
 
@@ -59,10 +70,13 @@ class WebSocketModule extends BaseModule
     {
         $param = $this->validate($request, WebSocketValidate::pushToUser());
 
-        Gateway::sendToUid($param['uid'], json_encode([
-            'type' => $param['type'] ?? 'notification',
-            'data' => $param['data'] ?? []
-        ]));
+        Gateway::sendToUid(
+            $param['uid'],
+            json_encode(
+                self::buildEventPayload($param['type'] ?? 'notification', $param['data'] ?? []),
+                JSON_UNESCAPED_UNICODE
+            )
+        );
 
         return self::success(['sent' => true]);
     }
@@ -71,10 +85,12 @@ class WebSocketModule extends BaseModule
     {
         $param = $this->validate($request, WebSocketValidate::broadcast());
 
-        Gateway::sendToAll(json_encode([
-            'type' => $param['type'] ?? 'broadcast',
-            'data' => $param['data'] ?? []
-        ]));
+        Gateway::sendToAll(
+            json_encode(
+                self::buildEventPayload($param['type'] ?? 'broadcast', $param['data'] ?? []),
+                JSON_UNESCAPED_UNICODE
+            )
+        );
 
         return self::success(['sent' => true]);
     }

@@ -89,12 +89,7 @@ class PermissionService
 
             // 路由数据（仅页面类型）
             if ($p['type'] == PermissionEnum::TYPE_PAGE && !empty($p['path']) && !empty($p['component'])) {
-                $routerData[] = [
-                    'name'      => "menu_{$p['id']}",
-                    'path'      => $p['path'],
-                    'component' => $p['component'],
-                    'meta'      => ['menuId' => (string)$p['id']],
-                ];
+                $routerData[] = self::buildRouteRecord($p);
             }
 
             // 菜单数据（目录 + 页面，前端需要全量数据处理面包屑和 Tab 显隐）
@@ -111,6 +106,25 @@ class PermissionService
             'permissions' => self::buildPermissionTree($menusData),
             'router'      => $routerData,
             'buttonCodes' => array_values(array_unique($buttonCodes)),
+        ];
+    }
+
+    public static function buildRouteViewKey(string $component): string
+    {
+        return ltrim($component, '/');
+    }
+
+    /**
+     * @param array{id:int|string,path:string,component:string} $permission
+     * @return array{name:string,path:string,view_key:string,meta:array{menuId:string}}
+     */
+    public static function buildRouteRecord(array $permission): array
+    {
+        return [
+            'name' => "menu_{$permission['id']}",
+            'path' => $permission['path'],
+            'view_key' => self::buildRouteViewKey((string) $permission['component']),
+            'meta' => ['menuId' => (string) $permission['id']],
         ];
     }
 

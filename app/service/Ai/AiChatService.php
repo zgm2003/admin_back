@@ -87,7 +87,41 @@ class AiChatService
             $messages[] = ['role' => $roleStr, 'content' => $content];
         }
 
-        return $messages;
+        return self::normalizeHistoryMessages($messages);
+    }
+
+    /**
+     * 规范化历史消息，只保留完整的 user -> assistant 对。
+     * 这样在上一轮失败后遗留 user 消息时，不会把连续 user 再送给模型。
+     *
+     * @param array<int, array{role:string, content:mixed}> $messages
+     * @return array<int, array{role:string, content:mixed}>
+     */
+    public static function normalizeHistoryMessages(array $messages): array
+    {
+        $normalized = [];
+        $pendingUser = null;
+
+        foreach ($messages as $message) {
+            $role = $message['role'] ?? '';
+
+            if ($role === 'system') {
+                continue;
+            }
+
+            if ($role === 'user') {
+                $pendingUser = $message;
+                continue;
+            }
+
+            if ($role === 'assistant' && $pendingUser !== null) {
+                $normalized[] = $pendingUser;
+                $normalized[] = $message;
+                $pendingUser = null;
+            }
+        }
+
+        return $normalized;
     }
 
     /**

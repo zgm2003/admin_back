@@ -7,6 +7,7 @@ use app\dep\Pay\WalletTransactionDep;
 use app\enum\CommonEnum;
 use app\enum\PayEnum;
 use app\module\BaseModule;
+use app\validate\Pay\UserWalletValidate;
 use support\Request;
 
 class WalletQueryModule extends BaseModule
@@ -33,11 +34,11 @@ class WalletQueryModule extends BaseModule
     public function walletBills(Request $request): array
     {
         $userId = (int) $request->userId;
-        $body = $request->all();
-        $page = (int) ($body['page'] ?? 1);
-        $pageSize = (int) ($body['page_size'] ?? 20);
+        $param = $this->validate($request, UserWalletValidate::transactions());
+        $param['current_page'] = (int) ($param['current_page'] ?? 1);
+        $param['page_size'] = (int) ($param['page_size'] ?? 20);
 
-        $res = $this->dep(WalletTransactionDep::class)->listByUserId($userId, $page, $pageSize);
+        $res = $this->dep(WalletTransactionDep::class)->listByUserId($userId, $param['current_page'], $param['page_size']);
         $list = $res->map(fn($item) => [
             'id' => $item->id,
             'biz_action_no' => $item->biz_action_no,

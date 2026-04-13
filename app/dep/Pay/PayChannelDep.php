@@ -30,7 +30,7 @@ class PayChannelDep extends BaseDep
             ->orderBy('channel', 'asc')
             ->orderBy('sort', 'asc')
             ->orderBy('id', 'asc')
-            ->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['page'] ?? 1);
+            ->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['current_page'] ?? 1);
     }
 
     /**

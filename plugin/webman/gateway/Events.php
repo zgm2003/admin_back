@@ -10,16 +10,23 @@ use GatewayWorker\Lib\Gateway;
  */
 class Events
 {
+    public static function buildInitPayload(string $clientId): array
+    {
+        return [
+            'type' => 'init',
+            'data' => [
+                'client_id' => $clientId,
+            ],
+        ];
+    }
+
     public static function onWorkerStart($worker)
     {
     }
 
     public static function onConnect($client_id)
     {
-        Gateway::sendToClient($client_id, json_encode([
-            'type'      => 'init',
-            'client_id' => $client_id
-        ]));
+        Gateway::sendToClient($client_id, json_encode(self::buildInitPayload($client_id), JSON_UNESCAPED_UNICODE));
     }
 
     public static function onWebSocketConnect($client_id, $data)

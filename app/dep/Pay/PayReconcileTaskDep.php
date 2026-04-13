@@ -41,7 +41,7 @@ class PayReconcileTaskDep extends BaseDep
             ->when(!empty($param['end_date']), fn($q) => $q->where('reconcile_date', '<=', $param['end_date']))
             ->orderBy('reconcile_date', 'desc')
             ->orderBy('id', 'desc')
-            ->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['page'] ?? 1);
+            ->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['current_page'] ?? 1);
     }
 
     public function getExecutableTasks(int $limit = 20): array

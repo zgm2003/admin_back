@@ -35,7 +35,7 @@ class WalletTransactionDep extends BaseDep
             ->when(!empty($param['start_date']), fn($q) => $q->where('created_at', '>=', $param['start_date']))
             ->when(!empty($param['end_date']), fn($q) => $q->where('created_at', '<=', $param['end_date'] . ' 23:59:59'))
             ->orderBy('id', 'desc')
-            ->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['page'] ?? 1);
+            ->paginate($param['page_size'] ?? 20, ['*'], 'page', $param['current_page'] ?? 1);
     }
 
     public function listByUserId(int $userId, int $page, int $pageSize)

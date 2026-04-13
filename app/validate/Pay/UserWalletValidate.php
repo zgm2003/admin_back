@@ -11,7 +11,7 @@ class UserWalletValidate
     public static function list(): array
     {
         return [
-            'page'       => v::optional(v::intVal()->positive()),
+            'current_page' => v::optional(v::intVal()->positive()),
             'page_size'  => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'user_id'    => v::optional(v::intVal()->positive()),
             'start_date' => v::optional(v::stringType()->length(0, 20)),
@@ -22,7 +22,7 @@ class UserWalletValidate
     public static function transactions(): array
     {
         return [
-            'page'       => v::optional(v::intVal()->positive()),
+            'current_page' => v::optional(v::intVal()->positive()),
             'page_size'  => v::optional(v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)),
             'user_id'    => v::optional(v::intVal()->positive()),
             'type'       => v::optional(v::intVal()->in(array_keys(PayEnum::$walletTypeArr))),
