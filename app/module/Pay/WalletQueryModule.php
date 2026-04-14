@@ -17,17 +17,13 @@ class WalletQueryModule extends BaseModule
         $userId = (int) $request->userId;
         $wallet = $this->dep(UserWalletDep::class)->findByUserId($userId);
 
-        if (!$wallet) {
-            return self::success(['wallet_exists' => CommonEnum::NO]);
-        }
-
         return self::success([
             'wallet_exists' => CommonEnum::YES,
-            'balance' => $wallet->balance,
-            'frozen' => $wallet->frozen,
-            'total_recharge' => $wallet->total_recharge,
-            'total_consume' => $wallet->total_consume,
-            'created_at' => $wallet->created_at,
+            'balance' => $wallet?->balance ?? 0,
+            'frozen' => $wallet?->frozen ?? 0,
+            'total_recharge' => $wallet?->total_recharge ?? 0,
+            'total_consume' => $wallet?->total_consume ?? 0,
+            'created_at' => $wallet?->created_at ?? '',
         ]);
     }
 

@@ -8,53 +8,41 @@ use app\module\BaseModule;
 use app\validate\User\UsersQuickEntryValidate;
 
 /**
- * ????????
- * ????????????????
+ * 用户快捷入口模块
+ * 负责用户快捷入口的保存
  */
 class UsersQuickEntryModule extends BaseModule
 {
+    private const MAX_QUICK_ENTRY_COUNT = 6;
+
     /**
-     * ??????
+     * 标准化并校验权限ID列表
      */
-    public function add($request): array
+    private function normalizePermissionIds(array $permissionIds): array
     {
-        $param = $this->validate($request, UsersQuickEntryValidate::add());
+        $permissionIds = array_values(array_unique(array_map('intval', $permissionIds)));
+        self::throwIf(count($permissionIds) > self::MAX_QUICK_ENTRY_COUNT, '快捷入口最多保留6个');
 
-        $userId = $request->userId;
-        $permissionId = (int)$param['permission_id'];
+        $permissionDep = $this->dep(PermissionDep::class);
+        foreach ($permissionIds as $permissionId) {
+            self::throwIf(!$permissionDep->get($permissionId), '权限不存在');
+        }
 
-        self::throwIf(!$this->dep(PermissionDep::class)->get($permissionId), '?????');
-
-        $dep = $this->dep(UsersQuickEntryDep::class);
-        self::throwIf($dep->existsByUserAndPermission($userId, $permissionId), '??????');
-
-        $maxSort = $dep->getMaxSort($userId);
-        $id = $dep->add([
-            'user_id'       => $userId,
-            'permission_id' => $permissionId,
-            'sort'          => $maxSort + 1,
-        ]);
-
-        return self::success(['id' => $id]);
+        return $permissionIds;
     }
 
     /**
-     * ??????
+     * 原子保存快捷入口
      */
-    public function del($request): array
+    public function save($request): array
     {
-        $param = $this->validate($request, UsersQuickEntryValidate::del());
-        $this->dep(UsersQuickEntryDep::class)->delete($param['id']);
-        return self::success();
-    }
+        $param = $this->validate($request, UsersQuickEntryValidate::save());
+        $userId = (int)$request->userId;
+        $permissionIds = $this->normalizePermissionIds($param['permission_ids']);
 
-    /**
-     * ????
-     */
-    public function sort($request): array
-    {
-        $param = $this->validate($request, UsersQuickEntryValidate::sort());
-        $this->dep(UsersQuickEntryDep::class)->updateSort($param['items']);
-        return self::success();
+        return $this->withTransaction(function () use ($userId, $permissionIds) {
+            $quickEntry = $this->dep(UsersQuickEntryDep::class)->replaceByUserId($userId, $permissionIds);
+            return self::success(['quick_entry' => $quickEntry]);
+        });
     }
 }

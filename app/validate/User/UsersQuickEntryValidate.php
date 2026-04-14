@@ -6,24 +6,10 @@ use Respect\Validation\Validator as v;
 
 class UsersQuickEntryValidate
 {
-    public static function add(): array
+    public static function save(): array
     {
         return [
-            'permission_id' => v::intVal()->min(1)->setName('??ID'),
-        ];
-    }
-
-    public static function del(): array
-    {
-        return [
-            'id' => v::intVal()->setName('ID'),
-        ];
-    }
-
-    public static function sort(): array
-    {
-        return [
-            'items' => v::arrayType()->setName('???'),
+            'permission_ids' => v::arrayType()->each(v::intVal()->min(1))->setName('权限ID列表'),
         ];
     }
 }
