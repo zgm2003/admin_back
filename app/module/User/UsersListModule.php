@@ -2,6 +2,7 @@
 
 namespace app\module\User;
 
+use app\service\User\AuthPlatformService;
 use app\dep\Permission\RoleDep;
 use app\dep\System\ExportTaskDep;
 use app\dep\User\UserProfileDep;
@@ -70,23 +71,43 @@ class UsersListModule extends BaseModule
     {
         $param = $this->validate($request, UsersListValidate::edit());
 
-        $this->dep(UsersDep::class)->update($param['id'], [
-            'username' => $param['username'],
-            'role_id'  => $param['role_id'],
-        ]);
+        $roleChanged = false;
 
-        $this->dep(UserProfileDep::class)->updateByUserId($param['id'], [
-            'avatar'         => $param['avatar'] ?? null,
-            'sex'            => (int)$param['sex'],
-            'address_id'     => (int)$param['address'],
-            'detail_address' => $param['detail_address'] ?? '',
-            'bio'            => $param['bio'] ?? '',
-        ]);
+        $result = $this->withTransaction(function () use ($param, &$roleChanged) {
+            $currentUser = $this->dep(UsersDep::class)->get((int)$param['id']);
+            self::throwNotFound($currentUser, '用户不存在');
+            $roleChanged = (int)$currentUser->role_id !== (int)$param['role_id'];
 
-        // 清除权限缓存
-        Cache::delete('auth_perm_uid_' . $param['id']);
+            $this->dep(UsersDep::class)->update($param['id'], [
+                'username' => $param['username'],
+                'role_id'  => $param['role_id'],
+            ]);
 
-        return self::success();
+            $this->dep(UserProfileDep::class)->updateByUserId($param['id'], [
+                'avatar'         => $param['avatar'] ?? null,
+                'sex'            => (int)$param['sex'],
+                'address_id'     => (int)$param['address'],
+                'detail_address' => $param['detail_address'] ?? '',
+                'bio'            => $param['bio'] ?? '',
+            ]);
+
+            return self::success();
+        });
+
+        if ($roleChanged) {
+            try {
+                foreach (AuthPlatformService::getAllowedPlatforms() as $platform) {
+                    Cache::delete("auth_perm_uid_{$param['id']}_{$platform}");
+                }
+            } catch (\Throwable $e) {
+                \support\Log::warning('UsersListModule edit clear permission cache failed', [
+                    'user_id' => (int)$param['id'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $result;
     }
 
     /**

@@ -115,7 +115,10 @@ class UsersDep extends BaseDep
     {
         return $this->model
             ->from('users as u')
-            ->leftJoin('user_profiles as up', 'u.id', '=', 'up.user_id')
+            ->leftJoin('user_profiles as up', function ($join) {
+                $join->on('u.id', '=', 'up.user_id')
+                    ->where('up.is_del', CommonEnum::NO);
+            })
             ->where('u.is_del', CommonEnum::NO)
             // keyword 模糊搜索（用户名/邮箱/手机号）- 右模糊，保留索引
             ->when(isset($param['keyword']) && $param['keyword'] !== '', fn($q) => $q->where(function ($q) use ($param) {

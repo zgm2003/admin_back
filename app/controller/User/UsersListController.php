@@ -10,7 +10,9 @@ class UsersListController extends Controller
 {
     public function init(Request $request) { return $this->run([UsersListModule::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([UsersListModule::class, 'list'], $request); }
+    /** @OperationLog("用户批量编辑") @Permission("user_userManager_batchEdit") */
     public function batchEdit(Request $request) { return $this->run([UsersListModule::class, 'batchEdit'], $request); }
+    /** @OperationLog("用户导出") @Permission("user_userManager_export") */
     public function export(Request $request) { return $this->run([UsersListModule::class, 'export'], $request); }
 
     /** @OperationLog("用户编辑") @Permission("user_userManager_edit") */

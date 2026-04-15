@@ -23,7 +23,6 @@ Route::group('/api', function () {
 });
 
 Route::group('/api', function () {
-    Route::post('/Users/register', [controller\User\UsersController::class, 'register']);
     Route::post('/Users/login', [controller\User\UsersController::class, 'login']);
     Route::post('/Users/getLoginConfig', [controller\User\UsersController::class, 'getLoginConfig']);
     Route::post('/Users/refresh', [controller\User\UsersController::class, 'refresh']);

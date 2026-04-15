@@ -11,7 +11,6 @@ use Webman\RateLimiter\Annotation\RateLimiter;
 class UsersController extends Controller
 {
     // ==================== 认证相关（AuthModule）====================
-    public function register(Request $request) { return $this->run([AuthModule::class, 'register'], $request); }
     public function getLoginConfig(Request $request) { return $this->run([AuthModule::class, 'getLoginConfig'], $request); }
     public function refresh(Request $request) { return $this->run([AuthModule::class, 'refresh'], $request); }
     public function logout(Request $request) { return $this->run([AuthModule::class, 'logout'], $request); }
