@@ -208,6 +208,44 @@ class PermissionDep extends BaseDep
     }
 
     /**
+     * 获取指定权限及其所有未删除后代节点 ID。
+     */
+    public function getCascadeIds(array $ids): array
+    {
+        $ids = $this->normalizeIds($ids);
+        if (empty($ids)) {
+            return [];
+        }
+
+        $childrenByParent = [];
+        $rows = $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->get(['id', 'parent_id']);
+
+        foreach ($rows as $row) {
+            $parentId = (int)$row->parent_id;
+            $childrenByParent[$parentId][] = (int)$row->id;
+        }
+
+        $includedIdMap = [];
+        $stack = $ids;
+
+        while (!empty($stack)) {
+            $currentId = (int)array_pop($stack);
+            if ($currentId <= 0 || isset($includedIdMap[$currentId])) {
+                continue;
+            }
+
+            $includedIdMap[$currentId] = true;
+            foreach ($childrenByParent[$currentId] ?? [] as $childId) {
+                $stack[] = $childId;
+            }
+        }
+
+        return array_keys($includedIdMap);
+    }
+
+    /**
      * 获取所有权限（带缓存）
      */
     public function getAllPermissions(): array

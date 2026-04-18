@@ -133,7 +133,14 @@ class AuthPlatformModule extends BaseModule
     public function del($request): array
     {
         $param = $this->validate($request, AuthPlatformValidate::del());
-        $this->dep(AuthPlatformDep::class)->deleteByIds($param['id']);
+        $ids = \is_array($param['id']) ? array_map('intval', $param['id']) : [(int)$param['id']];
+        $rows = $this->dep(AuthPlatformDep::class)->getMapActive($ids, ['id', 'code']);
+
+        foreach ($rows as $row) {
+            self::throwIf(($row->code ?? '') === 'admin', '核心平台 [admin] 不允许删除');
+        }
+
+        $this->dep(AuthPlatformDep::class)->deleteByIds($ids);
         return self::success();
     }
 
@@ -143,6 +150,13 @@ class AuthPlatformModule extends BaseModule
     public function status($request): array
     {
         $param = $this->validate($request, AuthPlatformValidate::status());
+        $row = $this->dep(AuthPlatformDep::class)->get((int)$param['id']);
+        self::throwNotFound($row);
+        self::throwIf(
+            ($row->code ?? '') === 'admin' && (int)$param['status'] === CommonEnum::NO,
+            '核心平台 [admin] 不允许禁用'
+        );
+
         $affected = $this->dep(AuthPlatformDep::class)->setStatusById((int)$param['id'], (int)$param['status']);
         self::throwIf($affected === 0, '平台不存在');
         return self::success();

@@ -128,6 +128,54 @@ class PermissionService
         ];
     }
 
+    /**
+     * 根据命中过滤条件的节点，补齐祖先链后再组树。
+     *
+     * @param array<int, array{id:int|string,parent_id:int|string}> $items
+     * @param array<int, int|string> $matchedIds
+     * @return array<int, array<string, mixed>>
+     */
+    public static function buildTreeWithMatchedAncestors(array $items, array $matchedIds): array
+    {
+        $matchedIds = self::normalizeLeafIds($matchedIds);
+        if (empty($matchedIds) || empty($items)) {
+            return [];
+        }
+
+        $itemMap = [];
+        foreach ($items as $item) {
+            $itemMap[(int)$item['id']] = $item;
+        }
+
+        $includedIdMap = [];
+        foreach ($matchedIds as $matchedId) {
+            $currentId = $matchedId;
+            $visited = [];
+
+            while (isset($itemMap[$currentId])) {
+                if (isset($visited[$currentId])) {
+                    break;
+                }
+                $visited[$currentId] = true;
+                $includedIdMap[$currentId] = true;
+
+                $parentId = (int)$itemMap[$currentId]['parent_id'];
+                if ($parentId === PermissionEnum::ROOT_PARENT_ID) {
+                    break;
+                }
+
+                $currentId = $parentId;
+            }
+        }
+
+        $filteredItems = array_values(array_filter(
+            $items,
+            static fn(array $item): bool => isset($includedIdMap[(int)$item['id']])
+        ));
+
+        return self::buildRawTree($filteredItems);
+    }
+
     // ==================== 私有方法 ====================
 
     /**
@@ -220,6 +268,37 @@ class PermissionService
             if ($parentId === PermissionEnum::ROOT_PARENT_ID) {
                 $tree[] = &$node;
             } elseif (isset($map[$parentId])) {
+                $map[$parentId]['children'][] = &$node;
+            }
+        }
+
+        return $tree;
+    }
+
+    /**
+     * 为权限管理页保留原始字段结构的树构建。
+     *
+     * @param array<int, array<string, mixed>> $items
+     * @return array<int, array<string, mixed>>
+     */
+    private static function buildRawTree(array $items): array
+    {
+        $tree = [];
+        $map = [];
+
+        foreach ($items as $item) {
+            $item['children'] = [];
+            $map[(int)$item['id']] = $item;
+        }
+
+        foreach ($map as $id => &$node) {
+            $parentId = (int)$node['parent_id'];
+            if ($parentId === PermissionEnum::ROOT_PARENT_ID) {
+                $tree[] = &$node;
+                continue;
+            }
+
+            if (isset($map[$parentId])) {
                 $map[$parentId]['children'][] = &$node;
             }
         }

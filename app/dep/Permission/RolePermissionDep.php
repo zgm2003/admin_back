@@ -41,6 +41,23 @@ class RolePermissionDep extends BaseDep
         return $map;
     }
 
+    public function getRoleIdsByPermissionIds(array $permissionIds): array
+    {
+        $permissionIds = $this->normalizeIds($permissionIds);
+        if (empty($permissionIds)) {
+            return [];
+        }
+
+        return $this->model
+            ->whereIn('permission_id', $permissionIds)
+            ->where('is_del', CommonEnum::NO)
+            ->pluck('role_id')
+            ->map(static fn($id) => (int)$id)
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+
     public function syncPermissions(int $roleId, array $permissionIds): void
     {
         if ($roleId <= 0) {

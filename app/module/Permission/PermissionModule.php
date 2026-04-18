@@ -3,10 +3,13 @@
 namespace app\module\Permission;
 
 use app\dep\Permission\PermissionDep;
+use app\dep\Permission\RolePermissionDep;
+use app\dep\User\UsersDep;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\Common\DictService;
 use app\service\Permission\AuthPlatformService;
+use app\service\User\PermissionService;
 use app\validate\Permission\PermissionValidate;
 use support\Redis;
 
@@ -56,7 +59,7 @@ class PermissionModule extends BaseModule
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
             self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key']), '该平台下 i18n_key 已存在');
 
-            $dep->add([
+            $id = $dep->add([
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'icon'      => $param['icon'] ?? '',
@@ -70,7 +73,7 @@ class PermissionModule extends BaseModule
             self::throwIf($dep->existsByPlatformPath($platform, $param['path']), '该平台下路由 path 已存在');
             self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key']), '该平台下 i18n_key 已存在');
 
-            $dep->add([
+            $id = $dep->add([
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'path'      => $param['path'],
@@ -85,7 +88,7 @@ class PermissionModule extends BaseModule
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             self::throwIf($dep->existsByPlatformCode($platform, $param['code']), '该平台下权限标识已存在');
 
-            $dep->add([
+            $id = $dep->add([
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'code'      => $param['code'],
@@ -96,6 +99,7 @@ class PermissionModule extends BaseModule
         }
 
         $this->clearPermissionCache();
+        $this->clearUserPermissionCacheByPermissionIds([$id]);
 
         return self::success();
     }
@@ -162,6 +166,7 @@ class PermissionModule extends BaseModule
         }
 
         $this->clearPermissionCache();
+        $this->clearUserPermissionCacheByPermissionIds([$id]);
 
         return self::success();
     }
@@ -176,6 +181,7 @@ class PermissionModule extends BaseModule
 
         $dep = $this->permissionDep();
         self::throwIf($dep->hasChildrenOutsideIds($ids), '存在子节点未被勾选，不能删除');
+        $this->clearUserPermissionCacheByPermissionIds($ids);
 
         $dep->delete($ids);
 
@@ -227,7 +233,30 @@ class PermissionModule extends BaseModule
         $param = $this->validate($request, PermissionValidate::list());
         $resList = $this->dep(PermissionDep::class)->list($param);
 
-        $data['list'] = $resList->map(fn($item) => [
+        $data['list'] = $resList->map(fn($item) => $this->mapPermissionListItem($item));
+
+        $hasFilter = !empty($param['name']) || !empty($param['path']) || !empty($param['type']);
+        if ($hasFilter) {
+            $allList = $this->dep(PermissionDep::class)
+                ->list(['platform' => $param['platform']])
+                ->map(fn($item) => $this->mapPermissionListItem($item))
+                ->toArray();
+            $matchedIds = array_map(
+                static fn(array $item): int => (int)$item['id'],
+                $data['list']->toArray()
+            );
+
+            $data['menu_tree'] = PermissionService::buildTreeWithMatchedAncestors($allList, $matchedIds);
+        } else {
+            $data['menu_tree'] = listToTree($data['list']->toArray(), PermissionEnum::ROOT_PARENT_ID);
+        }
+
+        return self::success($data['menu_tree']);
+    }
+
+    protected function mapPermissionListItem($item): array
+    {
+        return [
             'id'        => $item->id,
             'name'      => $item->name,
             'path'      => $item->path,
@@ -241,11 +270,7 @@ class PermissionModule extends BaseModule
             'i18n_key'  => $item->i18n_key,
             'sort'      => $item->sort,
             'show_menu' => $item->show_menu,
-        ]);
-
-        $data['menu_tree'] = listToTree($data['list']->toArray(), PermissionEnum::ROOT_PARENT_ID);
-
-        return self::success($data['menu_tree']);
+        ];
     }
 
     /**
@@ -283,7 +308,7 @@ class PermissionModule extends BaseModule
         self::throwIf($platform === 'admin', '仅限非 PC 端平台操作');
         self::throwIf($dep->existsByPlatformCode($platform, $param['code']), '该平台下权限标识已存在');
 
-        $dep->add([
+        $id = $dep->add([
             'name'      => $param['name'],
             'parent_id' => PermissionEnum::ROOT_PARENT_ID,
             'code'      => $param['code'],
@@ -293,6 +318,7 @@ class PermissionModule extends BaseModule
         ]);
 
         $this->clearPermissionCache();
+        $this->clearUserPermissionCacheByPermissionIds([$id]);
 
         return self::success();
     }
@@ -320,6 +346,7 @@ class PermissionModule extends BaseModule
         ]);
 
         $this->clearPermissionCache();
+        $this->clearUserPermissionCacheByPermissionIds([$id]);
 
         return self::success();
     }
@@ -333,21 +360,45 @@ class PermissionModule extends BaseModule
         $this->dep(PermissionDep::class)->update($param['id'], ['status' => $param['status']]);
 
         $this->clearPermissionCache();
-        self::clearAllUserPermCache();
+        $this->clearUserPermissionCacheByPermissionIds([(int)$param['id']]);
 
         return self::success();
     }
 
     /**
-     * 清除所有用户权限缓存 auth_perm_uid_*
-     * 后台管理系统用户量有限，直接用 keys + del
+     * 根据受影响权限，定向清理角色绑定用户的按钮权限缓存。
      */
-    public static function clearAllUserPermCache(): void
+    protected function clearUserPermissionCacheByPermissionIds(array $permissionIds): void
     {
+        $permissionIds = $this->permissionDep()->getCascadeIds($permissionIds);
+        if (empty($permissionIds)) {
+            return;
+        }
+
+        $roleIds = $this->dep(RolePermissionDep::class)->getRoleIdsByPermissionIds($permissionIds);
+        if (empty($roleIds)) {
+            return;
+        }
+
+        $userIds = $this->dep(UsersDep::class)->getIdsByRoleIds($roleIds)->toArray();
+        if (empty($userIds)) {
+            return;
+        }
+
+        $keys = [];
+        foreach ($userIds as $uid) {
+            foreach (AuthPlatformService::getAllowedPlatforms() as $platform) {
+                $keys[] = "cache:auth_perm_uid_{$uid}_{$platform}";
+            }
+        }
+
+        if (empty($keys)) {
+            return;
+        }
+
         $redis = Redis::connection('cache');
-        $keys = $redis->keys('cache:auth_perm_uid_*');
-        if (!empty($keys)) {
-            $redis->del(...$keys);
+        foreach (array_chunk($keys, 500) as $chunk) {
+            $redis->del(...$chunk);
         }
     }
 }
