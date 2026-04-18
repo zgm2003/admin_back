@@ -2,7 +2,7 @@
 
 namespace app\module\User;
 
-use app\service\User\AuthPlatformService;
+use app\service\Permission\AuthPlatformService;
 use app\dep\Permission\RoleDep;
 use app\dep\System\ExportTaskDep;
 use app\dep\User\UserProfileDep;

@@ -24,7 +24,7 @@ class UsersListContractTest extends TestCase
         self::assertStringContainsString('$roleChanged = (int)$currentUser->role_id !== (int)$param[\'role_id\'];', $content);
         self::assertStringContainsString('if ($roleChanged)', $content);
         self::assertStringContainsString('AuthPlatformService::getAllowedPlatforms()', $content);
-        self::assertStringContainsString("auth_perm_uid_{$param['id']}_{$platform}", $content);
+        self::assertStringContainsString('auth_perm_uid_{$param[\'id\']}_{$platform}', $content);
     }
 
     public function testUsersListDepFiltersDeletedProfilesInJoin(): void
