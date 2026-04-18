@@ -48,4 +48,12 @@ class PermissionManagementContractTest extends TestCase
         self::assertStringContainsString('核心平台 [admin] 不允许删除', $content);
         self::assertStringContainsString('核心平台 [admin] 不允许禁用', $content);
     }
+
+    public function testRoleModuleListFiltersPermissionIdsToActiveLeafNodes(): void
+    {
+        $content = file_get_contents(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/module/Permission/RoleModule.php');
+
+        self::assertNotFalse($content);
+        self::assertStringContainsString('filterToActiveLeafPermissionIds', $content);
+    }
 }

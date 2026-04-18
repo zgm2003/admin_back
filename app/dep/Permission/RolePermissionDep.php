@@ -133,7 +133,7 @@ class RolePermissionDep extends BaseDep
         return new PermissionDep();
     }
 
-    protected function filterActiveLeafPermissionIds(array $permissionIds): array
+    public function filterToActiveLeafPermissionIds(array $permissionIds): array
     {
         $permissionIds = $this->normalizeIds($permissionIds);
         if (empty($permissionIds)) {
@@ -158,5 +158,10 @@ class RolePermissionDep extends BaseDep
             $permissionIds,
             static fn(int $permissionId): bool => isset($activeIdMap[$permissionId]) && !isset($parentIdMap[$permissionId])
         ));
+    }
+
+    protected function filterActiveLeafPermissionIds(array $permissionIds): array
+    {
+        return $this->filterToActiveLeafPermissionIds($permissionIds);
     }
 }

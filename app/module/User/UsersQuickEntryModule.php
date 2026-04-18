@@ -4,6 +4,7 @@ namespace app\module\User;
 
 use app\dep\Permission\PermissionDep;
 use app\dep\User\UsersQuickEntryDep;
+use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\validate\User\UsersQuickEntryValidate;
 
@@ -25,7 +26,9 @@ class UsersQuickEntryModule extends BaseModule
 
         $permissionDep = $this->dep(PermissionDep::class);
         foreach ($permissionIds as $permissionId) {
-            self::throwIf(!$permissionDep->get($permissionId), '权限不存在');
+            $permission = $permissionDep->get($permissionId);
+            self::throwIf(!$permission, '权限不存在');
+            self::throwIf((int)$permission->type !== PermissionEnum::TYPE_PAGE, '快捷入口仅支持页面权限');
         }
 
         return $permissionIds;

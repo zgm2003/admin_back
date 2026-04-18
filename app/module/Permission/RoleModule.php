@@ -106,12 +106,13 @@ class RoleModule extends BaseModule
     {
         $param = $this->validate($request, RoleValidate::list());
         $resList = $this->dep(RoleDep::class)->list($param);
-        $permissionMap = $this->dep(RolePermissionDep::class)->getPermissionIdsByRoleIds($resList->pluck('id')->all());
+        $rolePermissionDep = $this->dep(RolePermissionDep::class);
+        $permissionMap = $rolePermissionDep->getPermissionIdsByRoleIds($resList->pluck('id')->all());
 
         $data['list'] = $resList->map(fn($item) => [
             'id'            => $item['id'],
             'name'          => $item['name'],
-            'permission_id' => $permissionMap[(int)$item['id']] ?? [],
+            'permission_id' => $rolePermissionDep->filterToActiveLeafPermissionIds($permissionMap[(int)$item['id']] ?? []),
             'is_default'    => $item['is_default'] ?? CommonEnum::NO,
             'created_at'    => $item['created_at'],
             'updated_at'    => $item['updated_at'],

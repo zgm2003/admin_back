@@ -28,6 +28,7 @@ class UsersQuickEntryContractTest extends TestCase
         self::assertNotFalse($content);
         self::assertStringContainsString('public function save', $content);
         self::assertStringContainsString('withTransaction', $content);
+        self::assertStringContainsString('快捷入口仅支持页面权限', $content);
         self::assertStringNotContainsString('public function add', $content);
         self::assertStringNotContainsString('public function del', $content);
         self::assertStringNotContainsString('public function sort', $content);
