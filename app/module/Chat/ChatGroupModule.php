@@ -108,6 +108,11 @@ class ChatGroupModule extends BaseModule
         $newUserIds = \array_values(\array_diff($userIds, $existingUserIds));
         self::throwIf(empty($newUserIds), '所选用户已在群聊中');
 
+        $existingUsers = $this->dep(UsersDep::class)->getMapWithProfile($newUserIds);
+        $invalidIds = \array_diff($newUserIds, $existingUsers->keys()->toArray());
+        self::throwIf(!empty($invalidIds), '用户不存在: ' . \implode(', ', $invalidIds));
+        $this->ensureConfirmedContacts($currentUserId, $newUserIds, '仅可邀请已确认的好友加入群聊');
+
         // 区分：已有非活跃记录 vs 全新用户
         $inactiveUserIds = $partDep->getInactiveUserIds($conversationId, $newUserIds);
         $trulyNewUserIds = \array_values(\array_diff($newUserIds, $inactiveUserIds));
@@ -329,6 +334,22 @@ class ChatGroupModule extends BaseModule
             !$participant || !\in_array($participant->role, [ChatEnum::ROLE_OWNER, ChatEnum::ROLE_ADMIN]),
             '权限不足', self::CODE_FORBIDDEN
         );
+    }
+
+    /**
+     * 确保被邀请用户均为当前用户的已确认好友
+     *
+     * @param array<int> $targetUserIds
+     */
+    private function ensureConfirmedContacts(int $currentUserId, array $targetUserIds, string $message): void
+    {
+        if (empty($targetUserIds)) {
+            return;
+        }
+
+        $confirmedUserIds = $this->dep(\app\dep\Chat\ChatContactDep::class)->getConfirmedContactUserIds($currentUserId);
+        $invalidIds = \array_values(\array_diff($targetUserIds, $confirmedUserIds));
+        self::throwIf(!empty($invalidIds), $message);
     }
 
     /**

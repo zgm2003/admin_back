@@ -88,6 +88,7 @@ class ChatConversationModule extends BaseModule
         $existingUsers = $this->dep(UsersDep::class)->getMapWithProfile($memberIds);
         $invalidIds = \array_diff($memberIds, $existingUsers->keys()->toArray());
         self::throwIf(!empty($invalidIds), '用户不存在: ' . \implode(', ', $invalidIds));
+        $this->ensureConfirmedContacts($currentUserId, $memberIds, '群聊成员必须是已确认的好友');
 
         $convDep = $this->dep(ChatConversationDep::class);
         $partDep = $this->dep(ChatParticipantDep::class);
@@ -181,5 +182,21 @@ class ChatConversationModule extends BaseModule
         $partDep->togglePin($conversationId, $currentUserId);
 
         return self::success();
+    }
+
+    /**
+     * 确保目标用户全部都是当前用户的已确认好友
+     *
+     * @param array<int> $targetUserIds
+     */
+    private function ensureConfirmedContacts(int $currentUserId, array $targetUserIds, string $message): void
+    {
+        if (empty($targetUserIds)) {
+            return;
+        }
+
+        $confirmedUserIds = $this->dep(ChatContactDep::class)->getConfirmedContactUserIds($currentUserId);
+        $invalidIds = \array_values(\array_diff($targetUserIds, $confirmedUserIds));
+        self::throwIf(!empty($invalidIds), $message);
     }
 }

@@ -104,6 +104,22 @@ class ChatContactDep extends BaseDep
     }
 
     /**
+     * 获取用户已确认好友的 user_id 列表
+     *
+     * @return array<int>
+     */
+    public function getConfirmedContactUserIds(int $userId): array
+    {
+        return $this->query()
+            ->where('user_id', $userId)
+            ->where('status', ChatEnum::CONTACT_CONFIRMED)
+            ->where('is_del', CommonEnum::NO)
+            ->pluck('contact_user_id')
+            ->map(static fn($id) => (int) $id)
+            ->toArray();
+    }
+
+    /**
      * 查询用户的所有联系人（含待确认），关联用户表和资料表
      *
      * @return \Illuminate\Support\Collection
