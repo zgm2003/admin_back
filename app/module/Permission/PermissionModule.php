@@ -51,10 +51,7 @@ class PermissionModule extends BaseModule
         $parentId = $this->normalizeParentId($param['parent_id'] ?? null);
         $dep = $this->dep(PermissionDep::class);
 
-        if ($parentId !== PermissionEnum::ROOT_PARENT_ID) {
-            $parentPlatform = $dep->getPlatformById($parentId);
-            self::throwIf($parentPlatform !== $platform, '父节点与当前平台不一致');
-        }
+        $this->assertValidParentAssignment((int)$param['type'], $parentId, $platform);
 
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
             self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key']), '该平台下 i18n_key 已存在');
@@ -118,10 +115,8 @@ class PermissionModule extends BaseModule
         $id = $param['id'];
         $dep = $this->dep(PermissionDep::class);
 
-        if ($parentId !== PermissionEnum::ROOT_PARENT_ID) {
-            $parentPlatform = $dep->getPlatformById($parentId);
-            self::throwIf($parentPlatform !== $platform, '父节点与当前平台不一致');
-        }
+        $this->assertValidParentAssignment((int)$param['type'], $parentId, $platform, (int)$id);
+        $this->assertExistingChildrenCompatible((int)$param['type'], (int)$id);
 
         if ($param['type'] == PermissionEnum::TYPE_DIR) {
             self::throwIf($dep->existsByPlatformI18nKey($platform, $param['i18n_key'], $id), '该平台下 i18n_key 已存在');
@@ -194,6 +189,74 @@ class PermissionModule extends BaseModule
     {
         PermissionDep::clearCache();
         DictService::clearPermissionCache();
+    }
+
+    protected function assertValidParentAssignment(int $type, int $parentId, string $platform, ?int $currentId = null): void
+    {
+        $dep = $this->dep(PermissionDep::class);
+
+        if ($currentId !== null) {
+            self::throwIf($parentId === $currentId, '节点不能选择自己作为父级');
+
+            $descendantIds = array_values(array_diff($dep->getCascadeIds([$currentId]), [$currentId]));
+            self::throwIf(in_array($parentId, $descendantIds, true), '节点不能挂到自己的后代下面');
+        }
+
+        if ($parentId === PermissionEnum::ROOT_PARENT_ID) {
+            self::throwIf($type === PermissionEnum::TYPE_BUTTON, '按钮类型的父节点只能是页面');
+            return;
+        }
+
+        $parent = $dep->get($parentId);
+        self::throwNotFound($parent, '父节点不存在');
+        self::throwIf(($parent->platform ?? '') !== $platform, '父节点与当前平台不一致');
+
+        $parentType = (int)$parent->type;
+        if ($type === PermissionEnum::TYPE_DIR) {
+            self::throwIf(!in_array($parentType, [PermissionEnum::TYPE_DIR], true), '目录类型的父节点只能是目录或根节点');
+            return;
+        }
+
+        if ($type === PermissionEnum::TYPE_PAGE) {
+            self::throwIf($parentType !== PermissionEnum::TYPE_DIR, '页面类型的父节点只能是目录或根节点');
+            return;
+        }
+
+        if ($type === PermissionEnum::TYPE_BUTTON) {
+            self::throwIf($parentType !== PermissionEnum::TYPE_PAGE, '按钮类型的父节点只能是页面');
+        }
+    }
+
+    protected function assertExistingChildrenCompatible(int $type, int $id): void
+    {
+        if ($id <= 0) {
+            return;
+        }
+
+        $children = $this->dep(PermissionDep::class)->getActiveChildrenByParentId($id);
+        if ($children->isEmpty()) {
+            return;
+        }
+
+        if ($type === PermissionEnum::TYPE_BUTTON) {
+            self::throw('按钮类型不能包含子节点');
+        }
+
+        $childTypes = $children->pluck('type')->map(static fn($childType) => (int)$childType)->unique()->values()->toArray();
+        if ($type === PermissionEnum::TYPE_PAGE) {
+            self::throwIf(
+                count(array_diff($childTypes, [PermissionEnum::TYPE_BUTTON])) > 0,
+                '页面类型的子节点只能是按钮'
+            );
+            return;
+        }
+
+        if ($type === PermissionEnum::TYPE_DIR) {
+            self::throwIf(
+                in_array(PermissionEnum::TYPE_BUTTON, $childTypes, true),
+                '目录类型的子节点不能是按钮'
+            );
+        }
     }
 
     protected function normalizeParentId(mixed $parentId): int

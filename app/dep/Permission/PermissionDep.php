@@ -246,6 +246,17 @@ class PermissionDep extends BaseDep
     }
 
     /**
+     * 获取指定父节点的所有有效子节点。
+     */
+    public function getActiveChildrenByParentId(int $parentId)
+    {
+        return $this->model
+            ->where('parent_id', $parentId)
+            ->where('is_del', CommonEnum::NO)
+            ->get(['id', 'type', 'platform']);
+    }
+
+    /**
      * 获取所有权限（带缓存）
      */
     public function getAllPermissions(): array
