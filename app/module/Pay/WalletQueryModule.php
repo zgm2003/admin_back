@@ -18,7 +18,7 @@ class WalletQueryModule extends BaseModule
         $wallet = $this->dep(UserWalletDep::class)->findByUserId($userId);
 
         return self::success([
-            'wallet_exists' => CommonEnum::YES,
+            'wallet_exists' => $wallet ? CommonEnum::YES : CommonEnum::NO,
             'balance' => $wallet?->balance ?? 0,
             'frozen' => $wallet?->frozen ?? 0,
             'total_recharge' => $wallet?->total_recharge ?? 0,

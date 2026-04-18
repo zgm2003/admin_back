@@ -21,6 +21,7 @@ class ExportTaskModule extends BaseModule
     {
         $param = $request->all();
         $param['user_id'] = $request->userId;
+        $this->dep(ExportTaskDep::class)->cleanExpired();
 
         $counts = $this->dep(ExportTaskDep::class)->countByStatus($param);
 
@@ -40,6 +41,7 @@ class ExportTaskModule extends BaseModule
     {
         $param = $this->validate($request, ExportTaskValidate::list());
         $param['user_id'] = $request->userId;
+        $this->dep(ExportTaskDep::class)->cleanExpired();
 
         $res = $this->dep(ExportTaskDep::class)->list($param);
 
