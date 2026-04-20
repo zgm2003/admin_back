@@ -8,6 +8,7 @@ use Webman\Http\Request;
 class AccessControl implements MiddlewareInterface
 {
     private const TRUSTED_LOCAL_ORIGIN_PATTERN = '/^https?:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/i';
+    private const TRUSTED_EXTENSION_ORIGIN_PATTERN = '/^chrome-extension:\/\/[a-p]{32}$/i';
 
     public function process(Request $request, callable $handler): Response
     {
@@ -52,6 +53,10 @@ class AccessControl implements MiddlewareInterface
             return $origin;
         }
 
+        if (preg_match(self::TRUSTED_EXTENSION_ORIGIN_PATTERN, $origin) === 1) {
+            return $origin;
+        }
+
 
         if (in_array($origin, self::allowedOrigins(), true)) {
             return $origin;
@@ -73,7 +78,7 @@ class AccessControl implements MiddlewareInterface
         )));
 
         return array_values(array_unique(array_merge(
-            ['https://zgm2003.cn'],
+            ['https://zgm2003.cn', 'https://www.zgm2003.cn'],
             $configured
         )));
     }

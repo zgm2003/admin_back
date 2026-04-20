@@ -26,7 +26,7 @@ return [
     'controller_reuse' => false,
 
     'cors_allowed_origins' => array_values(array_filter(array_unique(array_merge(
-        ['https://zgm2003.cn'],
+        ['https://zgm2003.cn', 'https://www.zgm2003.cn'],
         array_map('trim', explode(',', (string) (getenv('CORS_ALLOWED_ORIGINS') ?: '')))
     )))),
 
