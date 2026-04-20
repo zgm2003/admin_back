@@ -9,9 +9,25 @@ use support\Model;
 
 class GoodsDep extends BaseDep
 {
+    private const JSON_COLUMNS = [
+        'image_list',
+        'image_list_success',
+        'meta',
+    ];
+
     protected function createModel(): Model
     {
         return new GoodsModel();
+    }
+
+    public function add(array $data): int
+    {
+        return parent::add($this->normalizeJsonColumns($data));
+    }
+
+    public function update($ids, array $data): int
+    {
+        return parent::update($ids, $this->normalizeJsonColumns($data));
     }
 
     /**
@@ -35,7 +51,7 @@ class GoodsDep extends BaseDep
      */
     public function transitStatus(int $id, int $fromStatus, int $toStatus, array $extra = []): int
     {
-        $data = array_merge(['status' => $toStatus, 'status_msg' => null], $extra);
+        $data = $this->normalizeJsonColumns(array_merge(['status' => $toStatus, 'status_msg' => null], $extra));
         return $this->model
             ->where('id', $id)
             ->where('status', $fromStatus)
@@ -82,5 +98,20 @@ class GoodsDep extends BaseDep
                     ->orWhere('srt_url', 'like', '%/audio/tts/%');
             })
             ->update(['audio_url' => null, 'srt_url' => null]);
+    }
+
+    private function normalizeJsonColumns(array $data): array
+    {
+        foreach (self::JSON_COLUMNS as $column) {
+            if (!array_key_exists($column, $data)) {
+                continue;
+            }
+
+            if (is_array($data[$column])) {
+                $data[$column] = json_encode($data[$column], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+        }
+
+        return $data;
     }
 }
