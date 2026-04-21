@@ -3,6 +3,7 @@
 namespace app\queue\redis\slow;
 
 use app\dep\Ai\AiAgentsDep;
+use app\dep\Ai\AiMessagesDep;
 use app\dep\Ai\AiModelsDep;
 use app\dep\Ai\AiRunsDep;
 use app\dep\Ai\AiRunStepsDep;
@@ -75,6 +76,7 @@ class GoodsProcess implements Consumer
         $tips    = $data['tips'] ?? $goods->tips ?? '';
         $ocrText = $goods->ocr ?? '';
         $title   = $goods->title ?? '';
+        $userId  = (int)($data['user_id'] ?? 0);
 
         // 使用前端指定的智能体
         $agentId   = (int)($data['agent_id'] ?? 0);
@@ -102,21 +104,23 @@ class GoodsProcess implements Consumer
 
         // 创建运行记录
         $runsDep   = new AiRunsDep();
+        $messagesDep = new AiMessagesDep();
         $stepsDep  = new AiRunStepsDep();
         $requestId = AiChatService::generateRequestId();
         $startTime = microtime(true);
         $stepNo    = 0;
 
-        $runId = $runsDep->add([
-            'request_id'      => $requestId,
-            'user_id'         => 0,
-            'agent_id'        => $agent->id,
-            'conversation_id' => 0,
-            'user_message_id' => 0,
-            'run_status'      => AiEnum::RUN_STATUS_RUNNING,
-            'model_snapshot'  => $model->model_code,
-            'is_del'          => CommonEnum::NO,
-        ]);
+        [$runId] = $this->seedGenerateRunAudit(
+            $runsDep,
+            $messagesDep,
+            $userId,
+            $agent->id,
+            $requestId,
+            $model->model_code,
+            $userMessage,
+            (int)$goods->id,
+            $title
+        );
 
         // Step 1: 提示词构建
         $stepsDep->add([
@@ -162,8 +166,17 @@ class GoodsProcess implements Consumer
                 'is_del'       => CommonEnum::NO,
             ]);
 
+            $assistantMessageId = $this->storeGenerateAssistantMessage(
+                $messagesDep,
+                $content,
+                $requestId,
+                (int)$goods->id,
+                $title
+            );
+
             // 标记运行成功
             $runsDep->markSuccess($runId, [
+                'assistant_message_id' => $assistantMessageId,
                 'prompt_tokens'     => $result['usage']['prompt_tokens'] ?? 0,
                 'completion_tokens' => $result['usage']['completion_tokens'] ?? 0,
                 'total_tokens'      => $result['usage']['total_tokens'] ?? 0,
@@ -324,6 +337,75 @@ class GoodsProcess implements Consumer
         }
 
         return ['point' => $point, 'script_text' => $scriptText];
+    }
+
+    /**
+     * 为商品口播生成写入 run + user message 审计记录
+     */
+    private function seedGenerateRunAudit(
+        AiRunsDep $runsDep,
+        AiMessagesDep $messagesDep,
+        int $userId,
+        int $agentId,
+        string $requestId,
+        string $modelCode,
+        string $userMessage,
+        int $goodsId,
+        string $goodsTitle
+    ): array {
+        $messageMetaJson = json_encode([
+            'scene' => AiEnum::SCENE_GOODS_SCRIPT,
+            'goods_id' => $goodsId,
+            'goods_title' => $goodsTitle,
+        ], JSON_UNESCAPED_UNICODE);
+
+        $userMessageId = $messagesDep->add([
+            'conversation_id' => 0,
+            'role'            => AiEnum::ROLE_USER,
+            'content'         => $userMessage,
+            'meta_json'       => $messageMetaJson,
+            'is_del'          => CommonEnum::NO,
+        ]);
+
+        $runId = $runsDep->add([
+            'request_id'      => $requestId,
+            'user_id'         => $userId > 0 ? $userId : 0,
+            'agent_id'        => $agentId,
+            'conversation_id' => 0,
+            'user_message_id' => $userMessageId,
+            'run_status'      => AiEnum::RUN_STATUS_RUNNING,
+            'model_snapshot'  => $modelCode,
+            'meta_json'       => $messageMetaJson,
+            'is_del'          => CommonEnum::NO,
+        ]);
+
+        return [$runId, $userMessageId];
+    }
+
+    /**
+     * 为商品口播生成写入 assistant message 审计记录
+     */
+    private function storeGenerateAssistantMessage(
+        AiMessagesDep $messagesDep,
+        string $content,
+        string $requestId,
+        int $goodsId,
+        string $goodsTitle
+    ): int {
+        $messageMetaJson = json_encode([
+            'scene' => AiEnum::SCENE_GOODS_SCRIPT,
+            'goods_id' => $goodsId,
+            'goods_title' => $goodsTitle,
+            'run_request_id' => $requestId,
+        ], JSON_UNESCAPED_UNICODE);
+
+        return $messagesDep->add([
+            'conversation_id' => 0,
+            'role'            => AiEnum::ROLE_ASSISTANT,
+            'content'         => $content,
+            'meta_json'       => $messageMetaJson,
+            'is_del'          => CommonEnum::NO,
+        ]);
     }
 
     private function extractOcrText(array $result): string

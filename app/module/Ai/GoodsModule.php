@@ -266,6 +266,7 @@ class GoodsModule extends BaseModule
         \Webman\RedisQueue\Client::send('goods_process', [
             'id'       => $id,
             'step'     => 'generate',
+            'user_id'  => (int)$request->userId,
             'agent_id' => (int)$param['agent_id'],
             'tips'     => $param['tips'] ?? '',
         ]);
