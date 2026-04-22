@@ -12,6 +12,7 @@ use app\queue\redis\slow\GoodsProcess;
 use Illuminate\Database\Capsule\Manager as Capsule;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
+use RuntimeException;
 
 class GoodsProcessRunAuditContractTest extends TestCase
 {
@@ -153,5 +154,79 @@ class GoodsProcessRunAuditContractTest extends TestCase
 
         self::assertStringContainsString("'user_id' => (int)\$request->userId", $normalizedModule);
         self::assertStringContainsString("'assistant_message_id' => \$assistantMessageId", $normalizedProcess);
+    }
+
+    public function testExecuteTtsCommandWithRetryRetriesTransientNetworkFailureUntilAudioExists(): void
+    {
+        self::assertTrue(
+            method_exists(GoodsProcess::class, 'executeTtsCommandWithRetry'),
+            'GoodsProcess::executeTtsCommandWithRetry() should exist to retry transient edge-tts network failures before marking the task failed.'
+        );
+
+        $process = new GoodsProcess();
+        $method = new ReflectionMethod(GoodsProcess::class, 'executeTtsCommandWithRetry');
+        $method->setAccessible(true);
+
+        $attempts = 0;
+        $tempFile = tempnam(sys_get_temp_dir(), 'goods-tts-audio-');
+        if ($tempFile === false) {
+            self::fail('Failed to create temporary audio file path.');
+        }
+        @unlink($tempFile);
+
+        $executor = function (string $cmd, array &$output, int &$exitCode) use (&$attempts, $tempFile): void {
+            $attempts++;
+            if ($attempts < 3) {
+                $output = ['ConnectionResetError: [WinError 64] 指定的网络名不再可用。'];
+                $exitCode = 1;
+                return;
+            }
+
+            file_put_contents($tempFile, 'ok');
+            $output = [];
+            $exitCode = 0;
+        };
+
+        try {
+            $method->invoke($process, 'edge-tts ...', $tempFile, 3, 0, $executor);
+            self::assertSame(3, $attempts);
+            self::assertFileExists($tempFile);
+        } finally {
+            @unlink($tempFile);
+        }
+    }
+
+    public function testExecuteTtsCommandWithRetryDoesNotRetryNonTransientFailure(): void
+    {
+        self::assertTrue(
+            method_exists(GoodsProcess::class, 'executeTtsCommandWithRetry'),
+            'GoodsProcess::executeTtsCommandWithRetry() should exist to keep non-network edge-tts failures visible without useless retries.'
+        );
+
+        $process = new GoodsProcess();
+        $method = new ReflectionMethod(GoodsProcess::class, 'executeTtsCommandWithRetry');
+        $method->setAccessible(true);
+
+        $attempts = 0;
+        $tempFile = tempnam(sys_get_temp_dir(), 'goods-tts-audio-');
+        if ($tempFile === false) {
+            self::fail('Failed to create temporary audio file path.');
+        }
+        @unlink($tempFile);
+
+        $executor = function (string $cmd, array &$output, int &$exitCode) use (&$attempts): void {
+            $attempts++;
+            $output = ['ModuleNotFoundError: No module named edge_tts'];
+            $exitCode = 1;
+        };
+
+        try {
+            $this->expectException(RuntimeException::class);
+            $this->expectExceptionMessage('edge-tts执行失败');
+            $method->invoke($process, 'edge-tts ...', $tempFile, 3, 0, $executor);
+        } finally {
+            self::assertSame(1, $attempts);
+            @unlink($tempFile);
+        }
     }
 }

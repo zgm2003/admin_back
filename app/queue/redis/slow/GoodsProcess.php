@@ -242,11 +242,7 @@ class GoodsProcess implements Consumer
             );
 
             $this->log('执行TTS命令', ['cmd' => $cmd]);
-            exec($cmd, $output, $exitCode);
-
-            if ($exitCode !== 0 || !file_exists($audioPath)) {
-                throw new \RuntimeException('edge-tts执行失败: ' . implode("\n", $output));
-            }
+            $this->executeTtsCommandWithRetry($cmd, $audioPath);
 
             $uploadService = new UploadService();
             $audioUpload = $uploadService->uploadLocalFile(
@@ -463,8 +459,89 @@ class GoodsProcess implements Consumer
         return implode("\n\n", $srt) . "\n";
     }
 
+    /**
+     * 执行 edge-tts 命令，遇到瞬时网络错误时做有限重试
+     */
+    private function executeTtsCommandWithRetry(
+        string $cmd,
+        string $audioPath,
+        int $maxAttempts = 3,
+        int $retryDelayMs = 800,
+        ?callable $executor = null
+    ): void {
+        $executor ??= function (string $cmd, array &$output, int &$exitCode): void {
+            exec($cmd, $output, $exitCode);
+        };
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $output = [];
+            $exitCode = 0;
+
+            $executor($cmd, $output, $exitCode);
+
+            $audioExists = file_exists($audioPath);
+            if ($exitCode === 0 && $audioExists) {
+                return;
+            }
+
+            $errorText = trim(implode("\n", $output));
+            if ($errorText === '') {
+                $errorText = "exit code {$exitCode}";
+            }
+
+            $shouldRetry = $attempt < $maxAttempts
+                && $this->isTransientTtsFailure($errorText, $exitCode, $audioExists);
+
+            if ($shouldRetry) {
+                $this->log('TTS命令失败，准备重试', [
+                    'attempt' => $attempt,
+                    'max_attempts' => $maxAttempts,
+                    'exit_code' => $exitCode,
+                    'error' => $errorText,
+                ]);
+                usleep($retryDelayMs * 1000);
+                continue;
+            }
+
+            throw new \RuntimeException('edge-tts执行失败: ' . $errorText);
+        }
+    }
+
+    /**
+     * 判断是否属于 edge-tts 的瞬时网络错误
+     */
+    private function isTransientTtsFailure(string $errorText, int $exitCode, bool $audioExists): bool
+    {
+        if ($audioExists) {
+            return false;
+        }
+
+        $patterns = [
+            'WinError 64',
+            '指定的网络名不再可用',
+            'ConnectionResetError',
+            'ClientConnectorError',
+            'Cannot connect to host speech.platform.bing.com',
+            'Server disconnected',
+            'TimeoutError',
+            'timed out',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (str_contains($errorText, $pattern)) {
+                return true;
+            }
+        }
+
+        return $exitCode !== 0 && str_contains($errorText, 'Network');
+    }
+
     private function log($msg, $context = [])
     {
+        if (!function_exists('log_daily')) {
+            return;
+        }
+
         log_daily("queue_{$this->queue}")->info($msg, $context);
     }
 }
