@@ -69,6 +69,37 @@ class PermissionDep extends BaseDep
     }
 
     /**
+     * 查询被软删除但仍占用唯一索引的平台权限码。
+     */
+    public function findDeletedByPlatformCode(string $platform, string $code)
+    {
+        return $this->model
+            ->where('platform', $platform)
+            ->where('code', $code)
+            ->where('is_del', CommonEnum::YES)
+            ->first();
+    }
+
+    /**
+     * 复用软删除权限码对应的旧行，避免新增时撞 uk_permissions_platform_code。
+     */
+    public function restoreDeletedByPlatformCode(string $platform, string $code, array $data): ?int
+    {
+        $row = $this->findDeletedByPlatformCode($platform, $code);
+        if (!$row) {
+            return null;
+        }
+
+        $id = (int)$row->id;
+        $affected = $this->model
+            ->where('id', $id)
+            ->where('is_del', CommonEnum::YES)
+            ->update(array_merge($data, ['is_del' => CommonEnum::NO]));
+
+        return $affected > 0 ? $id : null;
+    }
+
+    /**
      * 根据平台+path查询（唯一性检查）
      */
     public function findByPlatformPath(string $platform, string $path, ?int $excludeId = null)

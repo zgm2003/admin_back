@@ -5,6 +5,7 @@ namespace app\module\Permission;
 use app\dep\Permission\PermissionDep;
 use app\dep\Permission\RolePermissionDep;
 use app\dep\User\UsersDep;
+use app\enum\CommonEnum;
 use app\enum\PermissionEnum;
 use app\module\BaseModule;
 use app\service\Common\DictService;
@@ -85,14 +86,21 @@ class PermissionModule extends BaseModule
         } elseif ($param['type'] == PermissionEnum::TYPE_BUTTON) {
             self::throwIf($dep->existsByPlatformCode($platform, $param['code']), '该平台下权限标识已存在');
 
-            $id = $dep->add([
+            $data = [
                 'name'      => $param['name'],
                 'parent_id' => $parentId,
                 'code'      => $param['code'],
                 'type'      => $param['type'],
                 'platform'  => $platform,
                 'sort'      => $param['sort'],
-            ]);
+                'status'    => CommonEnum::YES,
+                'is_del'    => CommonEnum::NO,
+            ];
+
+            $id = $dep->restoreDeletedByPlatformCode($platform, $param['code'], $data);
+            if ($id === null) {
+                $id = $dep->add($data);
+            }
         }
 
         $this->clearPermissionCache();

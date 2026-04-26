@@ -40,6 +40,19 @@ class PermissionManagementContractTest extends TestCase
         self::assertStringContainsString("getRoleIdsByPermissionIds", $content);
     }
 
+    public function testPermissionAddRestoresSoftDeletedButtonCodeBeforeInsert(): void
+    {
+        $moduleContent = file_get_contents(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/module/Permission/PermissionModule.php');
+        $depContent = file_get_contents(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/dep/Permission/PermissionDep.php');
+
+        self::assertNotFalse($moduleContent);
+        self::assertNotFalse($depContent);
+        self::assertStringContainsString('restoreDeletedByPlatformCode', $moduleContent);
+        self::assertStringContainsString('restoreDeletedByPlatformCode', $depContent);
+        self::assertStringContainsString('findDeletedByPlatformCode', $depContent);
+        self::assertStringContainsString("'is_del'    => CommonEnum::NO", $moduleContent);
+    }
+
     public function testAuthPlatformModuleProtectsAdminPlatformFromDisableAndDelete(): void
     {
         $content = file_get_contents(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/module/Permission/AuthPlatformModule.php');
