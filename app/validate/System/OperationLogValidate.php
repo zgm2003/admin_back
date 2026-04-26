@@ -25,14 +25,4 @@ class OperationLogValidate
         ];
     }
 
-    public static function listCursor(): array
-    {
-        return [
-            'page_size' => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
-            'cursor'    => v::optional(v::intVal()),
-            'user_id'   => v::optional(v::intVal()),
-            'action'    => v::optional(v::stringType()),
-            'date'      => v::optional(v::arrayType()),
-        ];
-    }
 }

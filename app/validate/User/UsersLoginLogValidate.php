@@ -22,18 +22,4 @@ class UsersLoginLogValidate
         ];
     }
 
-    public static function listCursor(): array
-    {
-        return [
-            'page_size'     => v::intVal()->between(CommonEnum::PAGE_SIZE_MIN, CommonEnum::PAGE_SIZE_MAX)->setName('每页数量'),
-            'cursor'        => v::optional(v::intVal())->setName('游标'),
-            'user_id'       => v::optional(v::intVal()),
-            'login_account' => v::optional(v::stringType()),
-            'login_type'    => v::optional(v::stringType()),
-            'ip'            => v::optional(v::stringType()),
-            'platform'      => v::optional(v::stringType()),
-            'is_success'    => v::optional(v::intVal()->in(array_keys(CommonEnum::$isArr))),
-            'date'          => v::optional(v::arrayType()),
-        ];
-    }
 }

@@ -12,7 +12,7 @@ use app\validate\User\UsersLoginLogValidate;
 
 /**
  * 用户登录日志模块
- * 负责：日志列表初始化、分页列表、游标分页列表
+ * 负责：日志列表初始化、分页列表
  */
 class UsersLoginLogModule extends BaseModule
 {
@@ -31,9 +31,7 @@ class UsersLoginLogModule extends BaseModule
         return self::success(['dict' => $dict]);
     }
 
-    /**
-     * 登录日志列表（传统分页）
-     */
+    /** 登录日志列表（普通分页） */
     public function list($request): array
     {
         $param = $this->validate($request, UsersLoginLogValidate::list());
@@ -52,22 +50,6 @@ class UsersLoginLogModule extends BaseModule
         ];
 
         return self::paginate($list, $page);
-    }
-
-    /**
-     * 登录日志列表（游标分页，深分页优化）
-     */
-    public function listCursor($request): array
-    {
-        $param = $this->validate($request, UsersLoginLogValidate::listCursor());
-        $result = $this->dep(UsersLoginLogDep::class)->listByCursor($param);
-
-        // 批量预加载用户数据
-        $userMap = $this->preloadUsers($result['list']);
-
-        $list = $result['list']->map(fn($item) => $this->formatLogItem($item, $userMap));
-
-        return self::cursorPaginate($list, $result['next_cursor'], $result['has_more']);
     }
 
     // ==================== 私有方法 ====================

@@ -48,14 +48,6 @@ class BaseModule
         return [['list' => $list, 'page' => $page], self::CODE_SUCCESS, $msg];
     }
 
-    /**
-     * 游标分页响应
-     */
-    public static function cursorPaginate($list, ?int $nextCursor, bool $hasMore, string $msg = 'success'): array
-    {
-        return [['list' => $list, 'next_cursor' => $nextCursor, 'has_more' => $hasMore], self::CODE_SUCCESS, $msg];
-    }
-
     // ==================== 异常快捷方法 ====================
 
     /**

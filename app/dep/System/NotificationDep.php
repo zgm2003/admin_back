@@ -31,20 +31,6 @@ class NotificationDep extends BaseDep
     }
 
     /**
-     * 获取用户通知列表（游标分页，H5用）
-     */
-    public function listByUser(int $userId, string $platform, array $param): array
-    {
-        return $this->listCursor(
-            $param,
-            fn($q) => $q->where('user_id', $userId)
-                ->where(fn($q) => $q->where('platform', $platform)->orWhere('platform', 'all'))
-                ->when(isset($param['is_read']) && $param['is_read'] !== '',
-                    fn($q) => $q->where('is_read', $param['is_read']))
-        );
-    }
-
-    /**
      * 获取用户未读通知数
      */
     public function unreadCount(int $userId, string $platform): int

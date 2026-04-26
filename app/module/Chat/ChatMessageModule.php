@@ -14,7 +14,7 @@ use app\validate\Chat\ChatValidate;
 
 /**
  * 聊天消息模块
- * 负责：发送消息、消息历史（游标分页）、标记已读、撤回消息
+ * 负责：发送消息、消息历史分页、标记已读、撤回消息
  * 所有操作均校验参与者权限
  */
 class ChatMessageModule extends BaseModule
@@ -96,15 +96,13 @@ class ChatMessageModule extends BaseModule
         return self::success(['message' => $messageData]);
     }
 
-    /**
-     * 消息历史列表（游标分页，批量查询发送者信息）
-     */
+    /** 消息历史列表（普通分页，批量查询发送者信息） */
     public function messageList($request): array
     {
         $param = $this->validate($request, ChatValidate::messageList());
         $currentUserId  = $request->userId;
         $conversationId = (int)$param['conversation_id'];
-        $cursor         = isset($param['cursor']) ? (int)$param['cursor'] : null;
+        $currentPage    = (int)$param['current_page'];
         $pageSize       = isset($param['page_size']) ? (int)$param['page_size'] : 20;
 
         self::throwIf(
@@ -112,13 +110,13 @@ class ChatMessageModule extends BaseModule
             '无权操作', self::CODE_FORBIDDEN
         );
 
-        $result = $this->dep(ChatMessageDep::class)->listByConversation($conversationId, $cursor, $pageSize);
+        $paginator = $this->dep(ChatMessageDep::class)->listByConversation($conversationId, $currentPage, $pageSize);
 
         // 批量查询发送者信息
-        $senderIds = $result['list']->pluck('sender_id')->unique()->filter()->values()->toArray();
+        $senderIds = $paginator->pluck('sender_id')->unique()->filter()->values()->toArray();
         $usersMap = $this->dep(UsersDep::class)->getMapWithProfile($senderIds);
 
-        $list = $result['list']->map(function ($msg) use ($usersMap) {
+        $list = $paginator->map(function ($msg) use ($usersMap) {
             $row = $msg->toArray();
             $user = $usersMap[$msg->sender_id] ?? null;
             $row['sender'] = $user ? [
@@ -129,7 +127,12 @@ class ChatMessageModule extends BaseModule
             return $row;
         });
 
-        return self::cursorPaginate($list, $result['next_cursor'], $result['has_more']);
+        return self::paginate($list, [
+            'page_size'    => $paginator->perPage(),
+            'current_page' => $paginator->currentPage(),
+            'total_page'   => $paginator->lastPage(),
+            'total'        => $paginator->total(),
+        ]);
     }
 
     /**

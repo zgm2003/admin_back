@@ -3,7 +3,9 @@
 namespace app\dep\Chat;
 
 use app\dep\BaseDep;
+use app\enum\CommonEnum;
 use app\model\Chat\ChatMessageModel;
+use Illuminate\Pagination\LengthAwarePaginator;
 use support\Model;
 
 class ChatMessageDep extends BaseDep
@@ -23,22 +25,13 @@ class ChatMessageDep extends BaseDep
         return $this->add($data);
     }
 
-    /**
-     * 游标分页查询会话消息历史
-     * 使用 BaseDep::listCursor，checkDel=true（消息表使用 is_del 字段）
-     *
-     * @param int $conversationId 会话 ID
-     * @param int|null $cursor 游标（上一页最后一条消息的 ID），null 表示从最新开始
-     * @param int $limit 每页数量
-     * @return array ['list' => Collection, 'next_cursor' => int|null, 'has_more' => bool]
-     */
-    public function listByConversation(int $conversationId, ?int $cursor, int $limit = 20): array
+    /** 会话消息历史（普通分页，按最新消息倒序） */
+    public function listByConversation(int $conversationId, int $currentPage, int $pageSize = 20): LengthAwarePaginator
     {
-        return $this->listCursor(
-            ['page_size' => $limit, 'cursor' => $cursor],
-            fn($q) => $q->where('conversation_id', $conversationId),
-            ['*'],
-            true
-        );
+        return $this->model
+            ->where('conversation_id', $conversationId)
+            ->where('is_del', CommonEnum::NO)
+            ->orderBy('id', 'desc')
+            ->paginate($pageSize, ['*'], 'page', $currentPage);
     }
 }

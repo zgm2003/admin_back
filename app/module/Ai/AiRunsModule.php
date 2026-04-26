@@ -204,11 +204,7 @@ class AiRunsModule extends BaseModule
 
         $result = $this->dep(AiRunsDep::class)->getStatsByDate($param);
 
-        return self::success([
-            'list'         => $result['list'],
-            'has_more'     => $result['has_more'],
-            'current_page' => $result['current_page'],
-        ]);
+        return self::paginate($result['list'], $result['page']);
     }
 
     /**
@@ -235,11 +231,7 @@ class AiRunsModule extends BaseModule
             'avg_latency_ms'           => $item->avg_latency_ms,
         ]);
 
-        return self::success([
-            'list'         => $list,
-            'has_more'     => $result['has_more'],
-            'current_page' => $result['current_page'],
-        ]);
+        return self::paginate($list, $result['page']);
     }
 
     /**
@@ -266,11 +258,7 @@ class AiRunsModule extends BaseModule
             'avg_latency_ms'           => $item->avg_latency_ms,
         ]);
 
-        return self::success([
-            'list'         => $list,
-            'has_more'     => $result['has_more'],
-            'current_page' => $result['current_page'],
-        ]);
+        return self::paginate($list, $result['page']);
     }
 
     /**

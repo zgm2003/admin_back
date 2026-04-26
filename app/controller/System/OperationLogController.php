@@ -10,7 +10,6 @@ class OperationLogController extends Controller
 {
     public function init(Request $request) { return $this->run([OperationLogModule::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([OperationLogModule::class, 'list'], $request); }
-    public function listCursor(Request $request) { return $this->run([OperationLogModule::class, 'listCursor'], $request); }
 
     /** @Permission("devTools_operationLog_del") */
     public function del(Request $request) { return $this->run([OperationLogModule::class, 'del'], $request); }

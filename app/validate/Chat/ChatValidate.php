@@ -41,14 +41,12 @@ class ChatValidate
         ];
     }
 
-    /**
-     * 消息历史列表（游标分页）
-     */
+    /** 消息历史列表（普通分页） */
     public static function messageList(): array
     {
         return [
             'conversation_id' => v::intVal()->positive()->setName('会话ID'),
-            'cursor'          => v::optional(v::intVal()->positive())->setName('游标'),
+            'current_page'    => v::intVal()->positive()->setName('当前页'),
             'page_size'       => v::optional(v::intVal()->between(1, 50))->setName('每页数量'),
         ];
     }

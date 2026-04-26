@@ -74,13 +74,11 @@ Route::group('/api/admin', function () {
     //操作日志管理
     Route::post('/OperationLog/init', [controller\System\OperationLogController::class, 'init']);
     Route::post('/OperationLog/list', [controller\System\OperationLogController::class, 'list']);
-    Route::post('/OperationLog/listCursor', [controller\System\OperationLogController::class, 'listCursor']);
     Route::post('/OperationLog/del', [controller\System\OperationLogController::class, 'del']);
 
     //用户登录日志管理
     Route::post('/UsersLoginLog/init', [controller\User\UsersLoginLogController::class, 'init']);
     Route::post('/UsersLoginLog/list', [controller\User\UsersLoginLogController::class, 'list']);
-    Route::post('/UsersLoginLog/listCursor', [controller\User\UsersLoginLogController::class, 'listCursor']);
 
     //用户快捷入口
     Route::post('/UsersQuickEntry/save', [controller\User\UsersQuickEntryController::class, 'save']);
@@ -239,7 +237,6 @@ Route::group('/api/admin', function () {
     // 通知管理
     Route::post('/Notification/init', [controller\System\NotificationController::class, 'init']);
     Route::post('/Notification/list', [controller\System\NotificationController::class, 'list']);
-    Route::post('/Notification/listCursor', [controller\System\NotificationController::class, 'listCursor']);
     Route::post('/Notification/unreadCount', [controller\System\NotificationController::class, 'unreadCount']);
     Route::post('/Notification/read', [controller\System\NotificationController::class, 'read']);
     Route::post('/Notification/del', [controller\System\NotificationController::class, 'del']);

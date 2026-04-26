@@ -10,5 +10,4 @@ class UsersLoginLogController extends Controller
 {
     public function init(Request $request) { return $this->run([UsersLoginLogModule::class, 'init'], $request); }
     public function list(Request $request) { return $this->run([UsersLoginLogModule::class, 'list'], $request); }
-    public function listCursor(Request $request) { return $this->run([UsersLoginLogModule::class, 'listCursor'], $request); }
 }

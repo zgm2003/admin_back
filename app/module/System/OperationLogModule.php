@@ -9,7 +9,7 @@ use app\validate\System\OperationLogValidate;
 
 /**
  * 操作日志模块
- * 负责：后台操作日志的列表查询（普通分页 + 游标分页）、删除
+ * 负责：后台操作日志的分页列表查询、删除
  * 列表返回时批量预加载用户信息，避免 N+1 查询
  */
 class OperationLogModule extends BaseModule
@@ -33,9 +33,7 @@ class OperationLogModule extends BaseModule
         return self::success();
     }
 
-    /**
-     * 操作日志列表（普通分页，批量预加载用户数据）
-     */
+    /** 操作日志列表（普通分页，批量预加载用户数据） */
     public function list($request)
     {
         $param = $this->validate($request, OperationLogValidate::list());
@@ -55,24 +53,6 @@ class OperationLogModule extends BaseModule
         ];
 
         return self::paginate($data['list'], $data['page']);
-    }
-
-
-    /**
-     * 操作日志列表（游标分页，适用于深分页场景）
-     */
-    public function listCursor($request)
-    {
-        $param = $this->validate($request, OperationLogValidate::listCursor());
-        $result = $this->dep(OperationLogDep::class)->listByCursor($param);
-
-        // 批量预加载用户数据，避免 N+1
-        $userIds = $result['list']->pluck('user_id')->unique()->toArray();
-        $userMap = $this->dep(UsersDep::class)->getMap($userIds);
-
-        $list = $result['list']->map(fn($item) => $this->buildLogItem($item, $userMap));
-
-        return self::cursorPaginate($list, $result['next_cursor'], $result['has_more']);
     }
 
     // ==================== 私有方法 ====================

@@ -169,10 +169,6 @@ class AiRunsDep extends BaseDep
      */
     public function getStatsByDate(array $param): array
     {
-        $pageSize = $param['page_size'];
-        $currentPage = $param['current_page'];
-        $offset = $currentPage ? ($currentPage - 1) * $pageSize : 0;
-
         $query = $this->model
             ->selectRaw('DATE(created_at) as date, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
             ->where('is_del', CommonEnum::NO)
@@ -183,13 +179,7 @@ class AiRunsDep extends BaseDep
             ->groupBy('date')
             ->orderBy('date', 'desc');
 
-        $list = $query->offset($offset)->limit($pageSize ? $pageSize + 1 : null)->get();
-        $hasMore = $pageSize ? $list->count() > $pageSize : false;
-        if ($hasMore && $pageSize) {
-            $list = $list->slice(0, $pageSize);
-        }
-
-        return ['list' => $list, 'has_more' => $hasMore, 'current_page' => $currentPage];
+        return $this->paginateStatsQuery($query, $param);
     }
 
     /**
@@ -197,10 +187,6 @@ class AiRunsDep extends BaseDep
      */
     public function getStatsByAgent(array $param): array
     {
-        $pageSize = $param['page_size'];
-        $currentPage = $param['current_page'];
-        $offset = $currentPage ? ($currentPage - 1) * $pageSize : 0;
-
         $query = $this->model
             ->selectRaw('agent_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
             ->where('is_del', CommonEnum::NO)
@@ -211,13 +197,7 @@ class AiRunsDep extends BaseDep
             ->groupBy('agent_id')
             ->orderByRaw('total_runs DESC');
 
-        $list = $query->offset($offset)->limit($pageSize ? $pageSize + 1 : null)->get();
-        $hasMore = $pageSize ? $list->count() > $pageSize : false;
-        if ($hasMore && $pageSize) {
-            $list = $list->slice(0, $pageSize);
-        }
-
-        return ['list' => $list, 'has_more' => $hasMore, 'current_page' => $currentPage];
+        return $this->paginateStatsQuery($query, $param);
     }
 
     /**
@@ -225,10 +205,6 @@ class AiRunsDep extends BaseDep
      */
     public function getStatsByUser(array $param): array
     {
-        $pageSize = $param['page_size'];
-        $currentPage = $param['current_page'];
-        $offset = $currentPage ? ($currentPage - 1) * $pageSize : 0;
-
         $query = $this->model
             ->selectRaw('user_id, COUNT(*) as total_runs, SUM(total_tokens) as total_tokens, SUM(prompt_tokens) as total_prompt_tokens, SUM(completion_tokens) as total_completion_tokens, AVG(latency_ms) as avg_latency_ms')
             ->where('is_del', CommonEnum::NO)
@@ -239,12 +215,25 @@ class AiRunsDep extends BaseDep
             ->groupBy('user_id')
             ->orderByRaw('total_runs DESC');
 
-        $list = $query->offset($offset)->limit($pageSize ? $pageSize + 1 : null)->get();
-        $hasMore = $pageSize ? $list->count() > $pageSize : false;
-        if ($hasMore && $pageSize) {
-            $list = $list->slice(0, $pageSize);
-        }
+        return $this->paginateStatsQuery($query, $param);
+    }
 
-        return ['list' => $list, 'has_more' => $hasMore, 'current_page' => $currentPage];
+    private function paginateStatsQuery($query, array $param): array
+    {
+        $pageSize = (int)$param['page_size'];
+        $currentPage = (int)$param['current_page'];
+        $offset = ($currentPage - 1) * $pageSize;
+        $total = (clone $query)->get()->count();
+        $list = $query->offset($offset)->limit($pageSize)->get();
+
+        return [
+            'list' => $list,
+            'page' => [
+                'page_size'    => $pageSize,
+                'current_page' => $currentPage,
+                'total_page'   => $total > 0 ? (int)\ceil($total / $pageSize) : 0,
+                'total'        => $total,
+            ],
+        ];
     }
 }
