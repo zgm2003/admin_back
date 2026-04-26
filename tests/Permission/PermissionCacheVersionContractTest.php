@@ -34,4 +34,13 @@ class PermissionCacheVersionContractTest extends TestCase
             PermissionService::buttonCacheKey(12, 'app')
         );
     }
+
+    public function testPermissionTreeDictExposesTypeAndCodeForFrontendRbacEditors(): void
+    {
+        $content = file_get_contents(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/service/Common/DictService.php');
+
+        self::assertNotFalse($content);
+        self::assertStringContainsString("'type'      => (int)", $content);
+        self::assertStringContainsString("'code'      => \$item['code'] ?? ''", $content);
+    }
 }

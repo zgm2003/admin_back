@@ -255,6 +255,8 @@ class DictService
             'value'     => $item['id'],
             'parent_id' => (int)$item['parent_id'],
             'platform'  => $item['platform'] ?? '',
+            'type'      => (int)$item['type'],
+            'code'      => $item['code'] ?? '',
         ], $allPermissions);
 
         $tree = listToTree($resCategory, PermissionEnum::ROOT_PARENT_ID);
