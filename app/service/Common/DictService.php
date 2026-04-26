@@ -33,7 +33,7 @@ class DictService
 
     // ==================== 缓存管理 ====================
 
-    private const CACHE_KEY_PERMISSION_TREE = 'dict_permission_tree';
+    private const CACHE_KEY_PERMISSION_TREE = 'dict_permission_tree_v20260426_remove_ai_codegen';
     private const CACHE_KEY_ADDRESS_TREE    = 'dict_address_tree';
 
     /** 清除所有字典缓存 */

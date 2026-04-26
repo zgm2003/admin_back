@@ -184,13 +184,6 @@ Route::group('/api/admin', function () {
     Route::post('/AiPrompts/toggleFavorite', [controller\Ai\AiPromptsController::class, 'toggleFavorite']);
     Route::post('/AiPrompts/use', [controller\Ai\AiPromptsController::class, 'use']);
 
-    // AI 代码生成（流式）
-    Route::post('/Ai/GenAi/init', [controller\Ai\GenAiController::class, 'init']);
-    Route::post('/Ai/GenAi/conversations', [controller\Ai\GenAiController::class, 'conversations']);
-    Route::post('/Ai/GenAi/messages', [controller\Ai\GenAiController::class, 'messages']);
-    Route::post('/Ai/GenAi/deleteConversation', [controller\Ai\GenAiController::class, 'deleteConversation']);
-    Route::post('/Ai/GenAi/stream', [controller\Ai\GenAiController::class, 'stream']);
-
     // 队列监控
     Route::post('/QueueMonitor/list', [controller\System\QueueMonitorController::class, 'list']);
     Route::post('/QueueMonitor/failedList', [controller\System\QueueMonitorController::class, 'failedList']);

@@ -18,12 +18,6 @@ class ToolExecutor
     private static array $internalTools = [
         'get_current_time'          => [self::class, 'toolGetCurrentTime'],
         'query_user_stats'          => [self::class, 'toolQueryUserStats'],
-        'codegen_list_tables'       => [CodeGenTools::class, 'listTables'],
-        'codegen_get_columns'       => [CodeGenTools::class, 'getColumns'],
-        'codegen_read_convention'   => [CodeGenTools::class, 'readConvention'],
-        'codegen_read_example'      => [CodeGenTools::class, 'readExample'],
-        'codegen_list_files'        => [CodeGenTools::class, 'listFiles'],
-        'codegen_alter_table'       => [CodeGenTools::class, 'showCreateTable'],
     ];
 
     /**
