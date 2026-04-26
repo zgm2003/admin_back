@@ -65,7 +65,7 @@ class RolePermissionDep extends BaseDep
             return;
         }
 
-        $permissionIds = $this->filterActiveAssignablePermissionIds($permissionIds);
+        $permissionIds = $this->normalizeAssignablePermissionIdsWithPageParents($permissionIds);
 
         $current = $this->model
             ->where('role_id', $roleId)
@@ -136,29 +136,50 @@ class RolePermissionDep extends BaseDep
 
     public function filterToActiveAssignablePermissionIds(array $permissionIds): array
     {
+        return $this->normalizeAssignablePermissionIdsWithPageParents($permissionIds);
+    }
+
+    /**
+     * Normalize role assignments to the real RBAC contract:
+     * - DIR is a menu container, never persisted as a grant.
+     * - PAGE is an explicit page/view grant.
+     * - BUTTON is an operation grant and always implies its parent PAGE when present.
+     */
+    public function normalizeAssignablePermissionIdsWithPageParents(array $permissionIds): array
+    {
         $permissionIds = $this->normalizeIds($permissionIds);
         if (empty($permissionIds)) {
             return [];
         }
 
-        $assignableIdMap = [];
+        $permissionMap = $this->activePermissionMap();
+        $normalizedIdMap = [];
 
-        foreach ($this->permissionDep()->allActive() as $permission) {
-            $id = (int)(is_array($permission) ? ($permission['id'] ?? 0) : ($permission->id ?? 0));
-            $type = (int)(is_array($permission) ? ($permission['type'] ?? 0) : ($permission->type ?? 0));
-            if ($id <= 0) {
+        foreach ($permissionIds as $permissionId) {
+            $permission = $permissionMap[$permissionId] ?? null;
+            if ($permission === null) {
                 continue;
             }
 
-            if (\in_array($type, [PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON], true)) {
-                $assignableIdMap[$id] = true;
+            if ($permission['type'] === PermissionEnum::TYPE_PAGE) {
+                $normalizedIdMap[$permissionId] = true;
+                continue;
+            }
+
+            if ($permission['type'] === PermissionEnum::TYPE_BUTTON) {
+                $normalizedIdMap[$permissionId] = true;
+
+                $parentId = $permission['parent_id'];
+                if (($permissionMap[$parentId]['type'] ?? null) === PermissionEnum::TYPE_PAGE) {
+                    $normalizedIdMap[$parentId] = true;
+                }
             }
         }
 
-        return array_values(array_filter(
-            $permissionIds,
-            static fn(int $permissionId): bool => isset($assignableIdMap[$permissionId])
-        ));
+        $ids = array_keys($normalizedIdMap);
+        sort($ids);
+
+        return $ids;
     }
 
     public function filterToActiveLeafPermissionIds(array $permissionIds): array
@@ -169,5 +190,28 @@ class RolePermissionDep extends BaseDep
     protected function filterActiveAssignablePermissionIds(array $permissionIds): array
     {
         return $this->filterToActiveAssignablePermissionIds($permissionIds);
+    }
+
+    /**
+     * Build an active permission lookup from the permanent permission metadata cache.
+     */
+    private function activePermissionMap(): array
+    {
+        $map = [];
+
+        foreach ($this->permissionDep()->getAllPermissions() as $permission) {
+            $id = (int)(is_array($permission) ? ($permission['id'] ?? 0) : ($permission->id ?? 0));
+            if ($id <= 0) {
+                continue;
+            }
+
+            $map[$id] = [
+                'id'        => $id,
+                'parent_id' => (int)(is_array($permission) ? ($permission['parent_id'] ?? 0) : ($permission->parent_id ?? 0)),
+                'type'      => (int)(is_array($permission) ? ($permission['type'] ?? 0) : ($permission->type ?? 0)),
+            ];
+        }
+
+        return $map;
     }
 }

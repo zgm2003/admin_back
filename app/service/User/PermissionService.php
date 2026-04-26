@@ -12,11 +12,11 @@ use app\service\Permission\AuthPlatformService;
 /**
  * 权限计算服务
  * 唯一事实源：根据用户角色 + 平台，计算菜单树、路由表、按钮权限码
- * 算法：叶子节点向上回溯 + 路径缓存，O(N) 构建树
+ * 算法：授权节点向上回溯 + 路径缓存，O(N) 构建树
  */
 class PermissionService
 {
-    public const BUTTON_CACHE_KEY_VERSION = 'v20260426_remove_app_button_menu';
+    public const BUTTON_CACHE_KEY_VERSION = 'v20260426_rbac_page_grants';
 
     private static ?RoleDep $roleDep = null;
     private static ?RolePermissionDep $rolePermissionDep = null;
@@ -39,7 +39,7 @@ class PermissionService
 
     /**
      * ⭐ 权限计算唯一事实源
-     * 根据用户角色的叶子权限 ID，向上回溯构建完整权限树
+     * 根据用户角色的授权权限 ID，向上回溯构建完整权限树
      *
      * @param mixed  $user     用户对象（需含 role_id）
      * @param string $platform 平台标识（admin/app 等）
@@ -61,9 +61,9 @@ class PermissionService
             throw new \InvalidArgumentException("无效的平台标识: {$platform}");
         }
 
-        $leafIds = self::normalizeLeafIds(self::rolePermissionDep()->getPermissionIdsByRoleId($roleId));
+        $grantedIds = self::normalizePermissionIds(self::rolePermissionDep()->getPermissionIdsByRoleId($roleId));
 
-        if (empty($leafIds)) {
+        if (empty($grantedIds)) {
             return ['permissions' => [], 'router' => [], 'buttonCodes' => []];
         }
 
@@ -72,8 +72,8 @@ class PermissionService
         $allPerms = array_filter($allPerms, fn($p) => ($p['platform'] ?? '') === $platform);
         $permMap  = array_column($allPerms, null, 'id');
 
-        // 2. 叶子节点向上回溯，计算有效权限 ID（路径缓存避免重复遍历）
-        $enabledIdMap = self::resolveEnabledIds($leafIds, $permMap);
+        // 2. 授权节点向上回溯，计算有效权限 ID（路径缓存避免重复遍历）
+        $enabledIdMap = self::resolveEnabledIds($grantedIds, $permMap);
         $enabledIds   = array_keys($enabledIdMap);
 
         // 3. 按类型分类收集：菜单、路由、按钮
@@ -144,7 +144,7 @@ class PermissionService
      */
     public static function buildTreeWithMatchedAncestors(array $items, array $matchedIds): array
     {
-        $matchedIds = self::normalizeLeafIds($matchedIds);
+        $matchedIds = self::normalizePermissionIds($matchedIds);
         if (empty($matchedIds) || empty($items)) {
             return [];
         }
@@ -186,11 +186,11 @@ class PermissionService
     // ==================== 私有方法 ====================
 
     /**
-     * 叶子节点向上回溯，计算所有有效权限 ID
+     * 授权节点向上回溯，计算所有有效权限 ID
      * 路径缓存：已确认有效的节点直接跳过，避免重复遍历
      * 环检测：visited 防止数据异常导致死循环
      */
-    private static function normalizeLeafIds(array $permissionIds): array
+    private static function normalizePermissionIds(array $permissionIds): array
     {
         return array_values(array_unique(array_filter(
             array_map('intval', $permissionIds),
@@ -198,12 +198,12 @@ class PermissionService
         )));
     }
 
-    private static function resolveEnabledIds(array $leafIds, array $permMap): array
+    private static function resolveEnabledIds(array $grantedIds, array $permMap): array
     {
         $enabledIdMap = [];
 
-        foreach ($leafIds as $leafId) {
-            $curr = (int)$leafId;
+        foreach ($grantedIds as $grantedId) {
+            $curr = (int)$grantedId;
             if (!isset($permMap[$curr])) {
                 continue;
             }

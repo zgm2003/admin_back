@@ -49,12 +49,12 @@ class PermissionManagementContractTest extends TestCase
         self::assertStringContainsString('核心平台 [admin] 不允许禁用', $content);
     }
 
-    public function testRoleModuleListFiltersPermissionIdsToActiveAssignableNodes(): void
+    public function testRoleModuleListNormalizesPermissionIdsToPageAndButtonGrants(): void
     {
         $content = file_get_contents(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/module/Permission/RoleModule.php');
 
         self::assertNotFalse($content);
-        self::assertStringContainsString('filterToActiveAssignablePermissionIds', $content);
+        self::assertStringContainsString('normalizeAssignablePermissionIdsWithPageParents', $content);
     }
 
     public function testRolePermissionSyncKeepsPageAndButtonAssignments(): void
@@ -63,6 +63,7 @@ class PermissionManagementContractTest extends TestCase
 
         self::assertNotFalse($content);
         self::assertStringContainsString('filterActiveAssignablePermissionIds', $content);
+        self::assertStringContainsString('normalizeAssignablePermissionIdsWithPageParents', $content);
         self::assertStringContainsString('PermissionEnum::TYPE_PAGE', $content);
         self::assertStringContainsString('PermissionEnum::TYPE_BUTTON', $content);
     }

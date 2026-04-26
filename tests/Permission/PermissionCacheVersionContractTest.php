@@ -10,7 +10,7 @@ use ReflectionClass;
 
 class PermissionCacheVersionContractTest extends TestCase
 {
-    public function testPermissionRouteCachesUsePostAppButtonMenuRemovalVersion(): void
+    public function testPermissionRouteCachesUseRbacPageGrantVersion(): void
     {
         self::assertSame(
             'perm_all_permissions_v20260426_rbac_editor_metadata',
@@ -25,12 +25,12 @@ class PermissionCacheVersionContractTest extends TestCase
         );
 
         self::assertSame(
-            'v20260426_remove_app_button_menu',
+            'v20260426_rbac_page_grants',
             PermissionService::BUTTON_CACHE_KEY_VERSION
         );
 
         self::assertSame(
-            'auth_perm_uid_v20260426_remove_app_button_menu_12_app',
+            'auth_perm_uid_v20260426_rbac_page_grants_12_app',
             PermissionService::buttonCacheKey(12, 'app')
         );
     }
