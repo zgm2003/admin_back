@@ -42,7 +42,7 @@ class ProfileModule extends BaseModule
         $platform = $request->platform;
         $perm = PermissionService::buildPermissionContextByUser($user, $platform);
 
-        Cache::set("auth_perm_uid_{$user->id}_{$platform}", $perm['buttonCodes'], CacheTTLEnum::PERMISSION_BUTTONS);
+        Cache::set(PermissionService::buttonCacheKey((int)$user->id, $platform), $perm['buttonCodes'], CacheTTLEnum::PERMISSION_BUTTONS);
 
         $quickEntry = $this->dep(UsersQuickEntryDep::class)->listByUserId($user->id);
 

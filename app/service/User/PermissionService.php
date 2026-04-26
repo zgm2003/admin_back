@@ -16,6 +16,8 @@ use app\service\Permission\AuthPlatformService;
  */
 class PermissionService
 {
+    public const BUTTON_CACHE_KEY_VERSION = 'v20260426_remove_app_button_menu';
+
     private static ?RoleDep $roleDep = null;
     private static ?RolePermissionDep $rolePermissionDep = null;
     private static ?PermissionDep $permissionDep = null;
@@ -112,6 +114,11 @@ class PermissionService
     public static function buildRouteViewKey(string $component): string
     {
         return ltrim($component, '/');
+    }
+
+    public static function buttonCacheKey(int $userId, string $platform): string
+    {
+        return 'auth_perm_uid_' . self::BUTTON_CACHE_KEY_VERSION . "_{$userId}_{$platform}";
     }
 
     /**

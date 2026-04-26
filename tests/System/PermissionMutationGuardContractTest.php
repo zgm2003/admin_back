@@ -17,5 +17,7 @@ class PermissionMutationGuardContractTest extends TestCase
         self::assertStringContainsString('页面类型的父节点只能是目录或根节点', $content);
         self::assertStringContainsString('按钮类型的父节点只能是页面', $content);
         self::assertStringContainsString('目录类型的父节点只能是目录或根节点', $content);
+        self::assertStringContainsString('$requiresButtonParent = (int)$param[\'type\'] === PermissionEnum::TYPE_BUTTON && $param[\'platform\'] === \'admin\';', $content);
+        self::assertStringContainsString('self::throwIf($type === PermissionEnum::TYPE_BUTTON && $platform === \'admin\', \'按钮类型的父节点只能是页面\');', $content);
     }
 }

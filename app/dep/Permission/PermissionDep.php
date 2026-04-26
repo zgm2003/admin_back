@@ -11,7 +11,7 @@ use support\Model;
 
 class PermissionDep extends BaseDep
 {
-    const CACHE_KEY_ALL = 'perm_all_permissions_v20260426_remove_ai_codegen';
+    const CACHE_KEY_ALL = 'perm_all_permissions_v20260426_remove_app_button_menu';
 
     protected function createModel(): Model
     {

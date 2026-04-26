@@ -11,6 +11,7 @@ use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\Common\AddressService;
 use app\service\Common\DictService;
+use app\service\User\PermissionService;
 use app\validate\User\UsersListValidate;
 use support\Cache;
 use Webman\RedisQueue\Client as RedisQueue;
@@ -97,7 +98,7 @@ class UsersListModule extends BaseModule
         if ($roleChanged) {
             try {
                 foreach (AuthPlatformService::getAllowedPlatforms() as $platform) {
-                    Cache::delete("auth_perm_uid_{$param['id']}_{$platform}");
+                    Cache::delete(PermissionService::buttonCacheKey((int)$param['id'], $platform));
                 }
             } catch (\Throwable $e) {
                 \support\Log::warning('UsersListModule edit clear permission cache failed', [

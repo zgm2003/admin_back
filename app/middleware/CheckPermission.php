@@ -24,7 +24,7 @@ class CheckPermission implements MiddlewareInterface
 
         // 已经由 CheckToken 保证 userId 和 platform 存在
         $platform = $request->platform;
-        $cacheKey = 'auth_perm_uid_' . $request->userId . '_' . $platform;
+        $cacheKey = PermissionService::buttonCacheKey((int)$request->userId, $platform);
         $buttonCodes = Cache::get($cacheKey);
 
         if (!is_array($buttonCodes)) {

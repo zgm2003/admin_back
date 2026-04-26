@@ -108,7 +108,8 @@ class PermissionModule extends BaseModule
     public function edit($request)
     {
         $param = $this->validate($request, PermissionValidate::editBase());
-        $param = $this->validate($request, PermissionValidate::edit((int)$param['type'], (int)$param['type'] === PermissionEnum::TYPE_BUTTON), $param);
+        $requiresButtonParent = (int)$param['type'] === PermissionEnum::TYPE_BUTTON && $param['platform'] === 'admin';
+        $param = $this->validate($request, PermissionValidate::edit((int)$param['type'], $requiresButtonParent), $param);
 
         $platform = $param['platform'];
         $parentId = $this->normalizeParentId($param['parent_id'] ?? null);
@@ -203,7 +204,7 @@ class PermissionModule extends BaseModule
         }
 
         if ($parentId === PermissionEnum::ROOT_PARENT_ID) {
-            self::throwIf($type === PermissionEnum::TYPE_BUTTON, '按钮类型的父节点只能是页面');
+            self::throwIf($type === PermissionEnum::TYPE_BUTTON && $platform === 'admin', '按钮类型的父节点只能是页面');
             return;
         }
 
@@ -451,7 +452,7 @@ class PermissionModule extends BaseModule
         $keys = [];
         foreach ($userIds as $uid) {
             foreach (AuthPlatformService::getAllowedPlatforms() as $platform) {
-                $keys[] = "cache:auth_perm_uid_{$uid}_{$platform}";
+                $keys[] = 'cache:' . PermissionService::buttonCacheKey((int)$uid, $platform);
             }
         }
 
