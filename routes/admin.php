@@ -43,11 +43,6 @@ Route::group('/api/admin', function () {
     Route::post('/Permission/list', [controller\Permission\PermissionController::class, 'list']);
     Route::post('/Permission/batchEdit', [controller\Permission\PermissionController::class, 'batchEdit']);
     Route::post('/Permission/status', [controller\Permission\PermissionController::class, 'status']);
-    Route::post('/Permission/appButtonList', [controller\Permission\PermissionController::class, 'appButtonList']);
-    Route::post('/Permission/appButtonAdd', [controller\Permission\PermissionController::class, 'appButtonAdd']);
-    Route::post('/Permission/appButtonEdit', [controller\Permission\PermissionController::class, 'appButtonEdit']);
-    Route::post('/Permission/appButtonStatus', [controller\Permission\PermissionController::class, 'appButtonStatus']);
-    Route::post('/Permission/appButtonDel', [controller\Permission\PermissionController::class, 'appButtonDel']);
 
     //角色管理
     Route::post('/Role/init', [controller\Permission\RoleController::class, 'init']);

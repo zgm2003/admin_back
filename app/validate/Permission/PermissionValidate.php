@@ -29,16 +29,6 @@ class PermissionValidate
         return array_merge(self::editBase(), self::typeRules($type, $requireButtonParent));
     }
 
-    public static function appButtonAdd(): array
-    {
-        return self::add(PermissionEnum::TYPE_BUTTON);
-    }
-
-    public static function appButtonEdit(): array
-    {
-        return self::edit(PermissionEnum::TYPE_BUTTON);
-    }
-
     public static function del(): array
     {
         return [

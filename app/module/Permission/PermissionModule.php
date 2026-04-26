@@ -15,7 +15,7 @@ use support\Redis;
 
 /**
  * 权限管理模块
- * 负责：菜单/页面/按钮权限的 CRUD、状态切换、APP 端按钮权限管理
+ * 负责：菜单/页面/按钮权限的 CRUD、状态切换和缓存失效
  * 权限类型：目录(DIR) / 页面(PAGE) / 按钮(BUTTON)
  * 修改后自动清理权限树缓存 + 用户权限缓存
  */
@@ -335,84 +335,6 @@ class PermissionModule extends BaseModule
             'sort'      => $item->sort,
             'show_menu' => $item->show_menu,
         ];
-    }
-
-    /**
-     * APP/H5/小程序 按钮权限列表（扁平化，非树形）
-     */
-    public function appButtonList($request)
-    {
-        $param = $this->validate($request, PermissionValidate::list());
-        $param['type'] = PermissionEnum::TYPE_BUTTON;
-
-        $resList = $this->dep(PermissionDep::class)->list($param);
-
-        $data = $resList->map(fn($item) => [
-            'id'            => $item->id,
-            'name'          => $item->name,
-            'status'        => $item->status,
-            'code'          => $item->code,
-            'sort'          => $item->sort,
-            'platform'      => $item->platform,
-            'platform_name' => AuthPlatformService::getPlatformName($item->platform),
-        ]);
-
-        return self::success($data->toArray());
-    }
-
-    /**
-     * APP/H5/小程序 按钮权限新增（仅限非 admin 平台）
-     */
-    public function appButtonAdd($request)
-    {
-        $param = $this->validate($request, PermissionValidate::appButtonAdd());
-        $platform = $param['platform'];
-        $dep = $this->dep(PermissionDep::class);
-
-        self::throwIf($platform === 'admin', '仅限非 PC 端平台操作');
-        self::throwIf($dep->existsByPlatformCode($platform, $param['code']), '该平台下权限标识已存在');
-
-        $id = $dep->add([
-            'name'      => $param['name'],
-            'parent_id' => PermissionEnum::ROOT_PARENT_ID,
-            'code'      => $param['code'],
-            'type'      => PermissionEnum::TYPE_BUTTON,
-            'platform'  => $platform,
-            'sort'      => $param['sort'] ?? 1,
-        ]);
-
-        $this->clearPermissionCache();
-        $this->clearUserPermissionCacheByPermissionIds([$id]);
-
-        return self::success();
-    }
-
-    /**
-     * APP/H5/小程序 按钮权限编辑（仅限非 admin 平台，排除自身唯一校验）
-     */
-    public function appButtonEdit($request)
-    {
-        $param = $this->validate($request, PermissionValidate::appButtonEdit());
-        $platform = $param['platform'];
-        $id = $param['id'];
-        $dep = $this->dep(PermissionDep::class);
-
-        self::throwIf($platform === 'admin', '仅限非 PC 端平台操作');
-        self::throwIf($dep->existsByPlatformCode($platform, $param['code'], $id), '该平台下权限标识已存在');
-
-        $dep->update($id, [
-            'name'      => $param['name'],
-            'parent_id' => PermissionEnum::ROOT_PARENT_ID,
-            'code'      => $param['code'],
-            'type'      => PermissionEnum::TYPE_BUTTON,
-            'platform'  => $platform,
-            'sort'      => $param['sort'] ?? 1,
-        ]);
-
-        $this->clearPermissionCache();
-        $this->clearUserPermissionCacheByPermissionIds([$id]);
-
-        return self::success();
     }
 
     /**
