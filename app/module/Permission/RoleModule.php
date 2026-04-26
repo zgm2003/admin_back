@@ -114,7 +114,7 @@ class RoleModule extends BaseModule
         $data['list'] = $resList->map(fn($item) => [
             'id'            => $item['id'],
             'name'          => $item['name'],
-            'permission_id' => $rolePermissionDep->filterToActiveLeafPermissionIds($permissionMap[(int)$item['id']] ?? []),
+            'permission_id' => $rolePermissionDep->filterToActiveAssignablePermissionIds($permissionMap[(int)$item['id']] ?? []),
             'is_default'    => $item['is_default'] ?? CommonEnum::NO,
             'created_at'    => $item['created_at'],
             'updated_at'    => $item['updated_at'],

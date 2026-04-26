@@ -4,6 +4,7 @@ namespace app\dep\Permission;
 
 use app\dep\BaseDep;
 use app\enum\CommonEnum;
+use app\enum\PermissionEnum;
 use app\model\Permission\RolePermissionModel;
 use support\Model;
 
@@ -64,7 +65,7 @@ class RolePermissionDep extends BaseDep
             return;
         }
 
-        $permissionIds = $this->filterActiveLeafPermissionIds($permissionIds);
+        $permissionIds = $this->filterActiveAssignablePermissionIds($permissionIds);
 
         $current = $this->model
             ->where('role_id', $roleId)
@@ -133,35 +134,40 @@ class RolePermissionDep extends BaseDep
         return new PermissionDep();
     }
 
-    public function filterToActiveLeafPermissionIds(array $permissionIds): array
+    public function filterToActiveAssignablePermissionIds(array $permissionIds): array
     {
         $permissionIds = $this->normalizeIds($permissionIds);
         if (empty($permissionIds)) {
             return [];
         }
 
-        $activeIdMap = [];
-        $parentIdMap = [];
+        $assignableIdMap = [];
 
         foreach ($this->permissionDep()->allActive() as $permission) {
             $id = (int)(is_array($permission) ? ($permission['id'] ?? 0) : ($permission->id ?? 0));
-            $parentId = (int)(is_array($permission) ? ($permission['parent_id'] ?? 0) : ($permission->parent_id ?? 0));
+            $type = (int)(is_array($permission) ? ($permission['type'] ?? 0) : ($permission->type ?? 0));
             if ($id <= 0) {
                 continue;
             }
 
-            $activeIdMap[$id] = true;
-            $parentIdMap[$parentId] = true;
+            if (\in_array($type, [PermissionEnum::TYPE_PAGE, PermissionEnum::TYPE_BUTTON], true)) {
+                $assignableIdMap[$id] = true;
+            }
         }
 
         return array_values(array_filter(
             $permissionIds,
-            static fn(int $permissionId): bool => isset($activeIdMap[$permissionId]) && !isset($parentIdMap[$permissionId])
+            static fn(int $permissionId): bool => isset($assignableIdMap[$permissionId])
         ));
     }
 
-    protected function filterActiveLeafPermissionIds(array $permissionIds): array
+    public function filterToActiveLeafPermissionIds(array $permissionIds): array
     {
-        return $this->filterToActiveLeafPermissionIds($permissionIds);
+        return $this->filterToActiveAssignablePermissionIds($permissionIds);
+    }
+
+    protected function filterActiveAssignablePermissionIds(array $permissionIds): array
+    {
+        return $this->filterToActiveAssignablePermissionIds($permissionIds);
     }
 }

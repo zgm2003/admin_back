@@ -49,11 +49,21 @@ class PermissionManagementContractTest extends TestCase
         self::assertStringContainsString('核心平台 [admin] 不允许禁用', $content);
     }
 
-    public function testRoleModuleListFiltersPermissionIdsToActiveLeafNodes(): void
+    public function testRoleModuleListFiltersPermissionIdsToActiveAssignableNodes(): void
     {
         $content = file_get_contents(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/module/Permission/RoleModule.php');
 
         self::assertNotFalse($content);
-        self::assertStringContainsString('filterToActiveLeafPermissionIds', $content);
+        self::assertStringContainsString('filterToActiveAssignablePermissionIds', $content);
+    }
+
+    public function testRolePermissionSyncKeepsPageAndButtonAssignments(): void
+    {
+        $content = file_get_contents(dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/dep/Permission/RolePermissionDep.php');
+
+        self::assertNotFalse($content);
+        self::assertStringContainsString('filterActiveAssignablePermissionIds', $content);
+        self::assertStringContainsString('PermissionEnum::TYPE_PAGE', $content);
+        self::assertStringContainsString('PermissionEnum::TYPE_BUTTON', $content);
     }
 }
