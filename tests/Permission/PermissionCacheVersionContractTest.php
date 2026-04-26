@@ -25,15 +25,15 @@ class PermissionCacheVersionContractTest extends TestCase
         );
     }
 
-    public function testUserPermissionCachesKeepExplicitVersionForIssuedSessions(): void
+    public function testUserPermissionCachesUseSemanticSchemaSegment(): void
     {
         self::assertSame(
-            'v20260426_rbac_page_grants',
-            PermissionService::BUTTON_CACHE_KEY_VERSION
+            'rbac_page_grants',
+            PermissionService::BUTTON_CACHE_KEY_SCHEMA
         );
 
         self::assertSame(
-            'auth_perm_uid_v20260426_rbac_page_grants_12_app',
+            'auth_perm_uid_12_app_rbac_page_grants',
             PermissionService::buttonCacheKey(12, 'app')
         );
     }

@@ -1,6 +1,6 @@
 -- 移除旧的“APP按钮权限”后台菜单入口。
 -- 统一改由“后台菜单管理”的平台切换维护 PC后台 / H5/APP 的目录、页面和按钮权限。
--- 已登录用户的按钮权限缓存通过 PermissionService::BUTTON_CACHE_KEY_VERSION 版本化失效。
+-- 已登录用户的按钮权限缓存通过 PermissionService::BUTTON_CACHE_KEY_SCHEMA 命名空间失效。
 
 DROP TEMPORARY TABLE IF EXISTS tmp_remove_app_button_permissions;
 

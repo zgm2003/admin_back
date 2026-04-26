@@ -16,7 +16,7 @@ use app\service\Permission\AuthPlatformService;
  */
 class PermissionService
 {
-    public const BUTTON_CACHE_KEY_VERSION = 'v20260426_rbac_page_grants';
+    public const BUTTON_CACHE_KEY_SCHEMA = 'rbac_page_grants';
 
     private static ?RoleDep $roleDep = null;
     private static ?RolePermissionDep $rolePermissionDep = null;
@@ -118,7 +118,7 @@ class PermissionService
 
     public static function buttonCacheKey(int $userId, string $platform): string
     {
-        return 'auth_perm_uid_' . self::BUTTON_CACHE_KEY_VERSION . "_{$userId}_{$platform}";
+        return "auth_perm_uid_{$userId}_{$platform}_" . self::BUTTON_CACHE_KEY_SCHEMA;
     }
 
     /**
