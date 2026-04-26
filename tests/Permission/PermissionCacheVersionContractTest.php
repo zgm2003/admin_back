@@ -13,14 +13,14 @@ class PermissionCacheVersionContractTest extends TestCase
     public function testPermissionRouteCachesUsePostAppButtonMenuRemovalVersion(): void
     {
         self::assertSame(
-            'perm_all_permissions_v20260426_remove_app_button_menu',
+            'perm_all_permissions_v20260426_rbac_editor_metadata',
             PermissionDep::CACHE_KEY_ALL
         );
 
         $dictService = new ReflectionClass(DictService::class);
 
         self::assertSame(
-            'dict_permission_tree_v20260426_remove_app_button_menu',
+            'dict_permission_tree_v20260426_rbac_editor_metadata',
             $dictService->getConstant('CACHE_KEY_PERMISSION_TREE')
         );
 
