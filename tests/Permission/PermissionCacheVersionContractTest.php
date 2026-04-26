@@ -10,20 +10,23 @@ use ReflectionClass;
 
 class PermissionCacheVersionContractTest extends TestCase
 {
-    public function testPermissionRouteCachesUseRbacPageGrantVersion(): void
+    public function testPermissionDefinitionCachesUseStableSemanticKeys(): void
     {
         self::assertSame(
-            'perm_all_permissions_v20260426_rbac_editor_metadata',
+            'permission_all_active',
             PermissionDep::CACHE_KEY_ALL
         );
 
         $dictService = new ReflectionClass(DictService::class);
 
         self::assertSame(
-            'dict_permission_tree_v20260426_rbac_editor_metadata',
+            'dict_permission_tree',
             $dictService->getConstant('CACHE_KEY_PERMISSION_TREE')
         );
+    }
 
+    public function testUserPermissionCachesKeepExplicitVersionForIssuedSessions(): void
+    {
         self::assertSame(
             'v20260426_rbac_page_grants',
             PermissionService::BUTTON_CACHE_KEY_VERSION

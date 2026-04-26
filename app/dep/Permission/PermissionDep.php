@@ -11,7 +11,7 @@ use support\Model;
 
 class PermissionDep extends BaseDep
 {
-    const CACHE_KEY_ALL = 'perm_all_permissions_v20260426_rbac_editor_metadata';
+    const CACHE_KEY_ALL = 'permission_all_active';
 
     protected function createModel(): Model
     {
