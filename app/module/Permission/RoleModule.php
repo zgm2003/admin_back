@@ -26,6 +26,7 @@ class RoleModule extends BaseModule
     {
         $data['dict'] = $this->svc(DictService::class)
             ->setPermissionTree()
+            ->setPermissionPlatformArr()
             ->getDict();
 
         return self::success($data);
