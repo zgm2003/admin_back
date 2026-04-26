@@ -6,5 +6,5 @@ use app\model\BaseModel;
 
 class PermissionModel extends BaseModel
 {
-    protected $table = 'permission';
+    protected $table = 'permissions';
 }

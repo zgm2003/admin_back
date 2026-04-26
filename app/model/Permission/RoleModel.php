@@ -6,5 +6,5 @@ use app\model\BaseModel;
 
 class RoleModel extends BaseModel
 {
-    protected $table = 'role';
+    protected $table = 'roles';
 }
