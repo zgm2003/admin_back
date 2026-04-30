@@ -90,6 +90,7 @@ class UploadConfigEnum
     const FOLDER_CHAT_IMAGES = 'chat_images';
     const FOLDER_CHAT_FILES = 'chat_files';
     const FOLDER_RECONCILE_REPORTS = 'reconcile_reports';
+    const FOLDER_CINE_KEYFRAMES = 'cine_keyframes';
 
     public static $folderArr = [
         self::FOLDER_AVATARS => 'avatars',
@@ -104,6 +105,7 @@ class UploadConfigEnum
         self::FOLDER_CHAT_IMAGES => 'chat_images',
         self::FOLDER_CHAT_FILES => 'chat_files',
         self::FOLDER_RECONCILE_REPORTS => 'reconcile_reports',
+        self::FOLDER_CINE_KEYFRAMES => 'cine_keyframes',
     ];
 
     // Tauri 平台类型

@@ -248,6 +248,18 @@ Route::group('/api/admin', function () {
     Route::post('/Goods/generate', [controller\Ai\GoodsController::class, 'generate']);
     Route::post('/Goods/tts', [controller\Ai\GoodsController::class, 'tts']);
 
+    // AI短剧工厂
+    Route::post('/Cine/init', [controller\Ai\CineController::class, 'init']);
+    Route::post('/Cine/statusCount', [controller\Ai\CineController::class, 'statusCount']);
+    Route::post('/Cine/list', [controller\Ai\CineController::class, 'list']);
+    Route::post('/Cine/detail', [controller\Ai\CineController::class, 'detail']);
+    Route::post('/Cine/add', [controller\Ai\CineController::class, 'add']);
+    Route::post('/Cine/edit', [controller\Ai\CineController::class, 'edit']);
+    Route::post('/Cine/del', [controller\Ai\CineController::class, 'del']);
+    Route::post('/Cine/generate', [controller\Ai\CineController::class, 'generate']);
+    Route::post('/Cine/generateStoryboard', [controller\Ai\CineController::class, 'generateStoryboard']);
+    Route::post('/Cine/generateKeyframes', [controller\Ai\CineController::class, 'generateKeyframes']);
+
     // 聊天管理
     Route::post('/Chat/conversationList', [controller\Chat\ChatController::class, 'conversationList']);
     Route::post('/Chat/createPrivate', [controller\Chat\ChatController::class, 'createPrivate']);

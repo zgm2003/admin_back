@@ -3,6 +3,7 @@
 namespace app\lib\Ai;
 
 use app\enum\AiEnum;
+use app\service\Ai\CineImageGenerationService;
 use GuzzleHttp\Client;
 use support\Db;
 use support\Log;
@@ -18,6 +19,7 @@ class ToolExecutor
     private static array $internalTools = [
         'get_current_time'          => [self::class, 'toolGetCurrentTime'],
         'query_user_stats'          => [self::class, 'toolQueryUserStats'],
+        'cine_generate_keyframe'    => [self::class, 'toolCineGenerateKeyframe'],
     ];
 
     /**
@@ -89,6 +91,11 @@ class ToolExecutor
             'date_range'   => $range,
             'query_time'   => date('Y-m-d H:i:s'),
         ], JSON_UNESCAPED_UNICODE);
+    }
+
+    private static function toolCineGenerateKeyframe(array $inputs): array
+    {
+        return (new CineImageGenerationService())->generateKeyframe($inputs, (bool)($inputs['dry_run'] ?? false));
     }
 
     // ==================== HTTP 白名单执行器 ====================

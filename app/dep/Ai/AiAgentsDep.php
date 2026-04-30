@@ -88,6 +88,20 @@ class AiAgentsDep extends BaseDep
     }
 
     /**
+     * 根据场景 + 模式获取所有启用智能体（字典用）
+     */
+    public function getActiveBySceneAndMode(string $scene, string $mode)
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->where('scene', $scene)
+            ->where('mode', $mode)
+            ->orderBy('id', 'desc')
+            ->get();
+    }
+
+    /**
      * 根据多个场景获取所有启用的智能体
      */
     public function getActiveByScenes(array $scenes)

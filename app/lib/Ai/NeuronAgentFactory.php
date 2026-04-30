@@ -5,6 +5,7 @@ namespace app\lib\Ai;
 use app\enum\AiEnum;
 use app\lib\Crypto\KeyVault;
 use NeuronAI\Agent\Agent;
+use NeuronAI\HttpClient\GuzzleHttpClient;
 use NeuronAI\Providers\AIProviderInterface;
 use NeuronAI\Providers\Anthropic\Anthropic;
 use NeuronAI\Providers\Cohere\Cohere;
@@ -61,7 +62,8 @@ class NeuronAgentFactory
         }
 
         // 只传用户显式设置的运行时参数，其余让 Provider 官方默认值生效
-        $parameters = self::mergeParameters($runtimeParams);
+        $parameters = self::mergeParameters($driver, $runtimeParams);
+        $httpClient = self::createHttpClient($runtimeParams);
 
         try {
             $provider = match ($driver) {
@@ -71,6 +73,7 @@ class NeuronAgentFactory
                     key: $apiKey,
                     model: $modelCode,
                     parameters: $parameters,
+                    httpClient: $httpClient,
                 ),
                 AiEnum::DRIVER_DEEPSEEK => new Deepseek(key: $apiKey, model: $modelCode, parameters: $parameters),
                 AiEnum::DRIVER_CLAUDE   => new Anthropic(key: $apiKey, model: $modelCode, parameters: $parameters),
@@ -84,7 +87,7 @@ class NeuronAgentFactory
                     parameters: $parameters,
                 ),
                 // ---- OpenAI 兼容接口 ----
-                default => self::createOpenAILike($driver, $apiKey, $modelCode, $endpoint, $parameters),
+                default => self::createOpenAILike($driver, $apiKey, $modelCode, $endpoint, $parameters, $httpClient),
             };
         } catch (\Throwable $e) {
             return [null, "创建 Provider 失败: {$e->getMessage()}"];
@@ -101,6 +104,7 @@ class NeuronAgentFactory
                 key: $apiKey,
                 model: $modelCode,
                 parameters: $parameters,
+                httpClient: $httpClient,
             );
         }
 
@@ -111,7 +115,12 @@ class NeuronAgentFactory
      * 创建 OpenAILike Provider（通用 OpenAI 兼容接口 + 反代服务）
      */
     private static function createOpenAILike(
-        string $driver, string $apiKey, string $modelCode, string $endpoint, array $parameters
+        string $driver,
+        string $apiKey,
+        string $modelCode,
+        string $endpoint,
+        array $parameters,
+        ?GuzzleHttpClient $httpClient = null
     ): OpenAILike {
         $baseUri = !empty($endpoint)
             ? rtrim($endpoint, '/')
@@ -126,6 +135,7 @@ class NeuronAgentFactory
             key: $apiKey,
             model: $modelCode,
             parameters: $parameters,
+            httpClient: $httpClient,
         );
     }
 
@@ -145,8 +155,9 @@ class NeuronAgentFactory
             ->setAiProvider($provider)
             ->setInstructions($instructions);
 
-        // mode=tool 时注入工具
-        if (($agent->mode ?? '') === AiEnum::MODE_TOOL) {
+        // mode=tool 时注入工具。个别后台批处理可显式关闭工具，避免草稿阶段把图片工具塞给模型。
+        $disableTools = (bool)($runtimeParams['disable_tools'] ?? false);
+        if (!$disableTools && ($agent->mode ?? '') === AiEnum::MODE_TOOL) {
             $tools = self::loadAgentTools((int)$agent->id);
             if (!empty($tools)) {
                 $neuronAgent->addTool($tools);
@@ -179,7 +190,7 @@ class NeuronAgentFactory
      * 合并运行时参数（用户在聊天界面实时调整的 temperature/max_tokens 等）
      * 只传用户显式设置的值，其余让 Provider 官方默认值生效
      */
-    private static function mergeParameters(?array $runtimeParams): array
+    private static function mergeParameters(string $driver, ?array $runtimeParams): array
     {
         if (empty($runtimeParams) || !\is_array($runtimeParams)) {
             return [];
@@ -188,7 +199,7 @@ class NeuronAgentFactory
         $params = [];
 
         // 只允许白名单参数透传，防止注入奇怪的东西
-        $allowedKeys = ['temperature', 'max_tokens', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'];
+        $allowedKeys = ['temperature', 'top_p', 'top_k', 'frequency_penalty', 'presence_penalty'];
         foreach ($allowedKeys as $key) {
             if (isset($runtimeParams[$key]) && $runtimeParams[$key] !== null) {
                 $params[$key] = is_numeric($runtimeParams[$key])
@@ -197,6 +208,51 @@ class NeuronAgentFactory
             }
         }
 
+        $maxOutputTokens = $runtimeParams['max_output_tokens'] ?? $runtimeParams['max_tokens'] ?? null;
+        if ($maxOutputTokens !== null) {
+            $tokenKey = $driver === AiEnum::DRIVER_OPENAI ? 'max_output_tokens' : 'max_tokens';
+            $params[$tokenKey] = max(1, (int)$maxOutputTokens);
+        }
+
+        if (!empty($runtimeParams['reasoning_effort']) && $driver === AiEnum::DRIVER_OPENAI) {
+            $effort = (string)$runtimeParams['reasoning_effort'];
+            if (\in_array($effort, ['low', 'medium', 'high', 'xhigh'], true)) {
+                $params['reasoning'] = ['effort' => $effort];
+            }
+        }
+
         return $params;
+    }
+
+    private static function createHttpClient(?array $runtimeParams): ?GuzzleHttpClient
+    {
+        if (empty($runtimeParams) || !\is_array($runtimeParams)) {
+            return null;
+        }
+
+        $timeout = self::floatParam($runtimeParams, 'http_timeout');
+        $connectTimeout = self::floatParam($runtimeParams, 'connect_timeout');
+        if ($timeout === null && $connectTimeout === null) {
+            return null;
+        }
+
+        return new GuzzleHttpClient(
+            timeout: self::clampFloat($timeout ?? 60.0, 1.0, 600.0),
+            connectTimeout: self::clampFloat($connectTimeout ?? 10.0, 1.0, 60.0),
+        );
+    }
+
+    private static function floatParam(array $params, string $key): ?float
+    {
+        if (!isset($params[$key]) || !is_numeric($params[$key])) {
+            return null;
+        }
+
+        return (float)$params[$key];
+    }
+
+    private static function clampFloat(float $value, float $min, float $max): float
+    {
+        return min($max, max($min, $value));
     }
 }
