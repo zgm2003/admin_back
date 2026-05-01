@@ -155,9 +155,9 @@ class NeuronAgentFactory
             ->setAiProvider($provider)
             ->setInstructions($instructions);
 
-        // mode=tool 时注入工具。个别后台批处理可显式关闭工具，避免草稿阶段把图片工具塞给模型。
+        // 启用 tools 能力时注入工具。个别后台批处理可显式关闭工具，避免草稿阶段把图片工具塞给模型。
         $disableTools = (bool)($runtimeParams['disable_tools'] ?? false);
-        if (!$disableTools && ($agent->mode ?? '') === AiEnum::MODE_TOOL) {
+        if (!$disableTools && self::agentHasCapability($agent, AiEnum::CAPABILITY_TOOLS)) {
             $tools = self::loadAgentTools((int)$agent->id);
             if (!empty($tools)) {
                 $neuronAgent->addTool($tools);
@@ -165,6 +165,31 @@ class NeuronAgentFactory
         }
 
         return [$neuronAgent, null];
+    }
+
+    private static function agentHasCapability(object $agent, string $capability): bool
+    {
+        $capabilities = $agent->capabilities_json ?? [];
+        if (is_string($capabilities)) {
+            $decoded = json_decode($capabilities, true);
+            $capabilities = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($capabilities)) {
+            $capabilities = [];
+        }
+
+        if (array_key_exists($capability, $capabilities)) {
+            return (bool)$capabilities[$capability];
+        }
+
+        // 兼容未迁移旧数据：旧 mode=tool 等价于启用 tools 能力。
+        $legacyMode = $agent->mode ?? '';
+        return match ($capability) {
+            AiEnum::CAPABILITY_TOOLS => $legacyMode === AiEnum::MODE_TOOL,
+            AiEnum::CAPABILITY_RAG => $legacyMode === AiEnum::MODE_RAG,
+            AiEnum::CAPABILITY_WORKFLOW => $legacyMode === AiEnum::MODE_WORKFLOW,
+            default => false,
+        };
     }
 
     /**

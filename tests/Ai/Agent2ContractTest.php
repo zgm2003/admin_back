@@ -61,4 +61,14 @@ class Agent2ContractTest extends TestCase
         self::assertStringContainsString('function getSceneCodesByAgentIds(array $agentIds)', $content);
         self::assertStringContainsString('function getAgentIdsBySceneCode(string $sceneCode)', $content);
     }
+
+    public function testNeuronFactoryUsesCapabilityToolsInsteadOfModeTool(): void
+    {
+        $path = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/lib/Ai/NeuronAgentFactory.php';
+        $content = file_get_contents($path);
+
+        self::assertStringContainsString('agentHasCapability', $content);
+        self::assertStringContainsString('AiEnum::CAPABILITY_TOOLS', $content);
+        self::assertStringNotContainsString("(\$agent->mode ?? '') === AiEnum::MODE_TOOL", $content);
+    }
 }
