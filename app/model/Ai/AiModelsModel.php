@@ -12,13 +12,6 @@ class AiModelsModel extends BaseModel
     protected $table = 'ai_models';
 
     /**
-     * 类型转换
-     */
-    protected $casts = [
-        'modalities' => 'array',
-    ];
-
-    /**
      * 隐藏字段（不直接对外暴露加密后的 key）
      */
     protected $hidden = [

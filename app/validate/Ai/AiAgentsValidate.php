@@ -23,6 +23,7 @@ class AiAgentsValidate
             'policy'       => v::optional(v::arrayType())->setName('策略配置'),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
             'tool_ids'     => v::optional(v::arrayType()->each(v::intVal()->positive()))->setName('工具ID列表'),
+            'knowledge_base_ids' => v::optional(v::arrayType()->each(v::intVal()->positive()))->setName('知识库ID列表'),
         ];
     }
 
@@ -42,6 +43,7 @@ class AiAgentsValidate
             'policy'       => v::optional(v::arrayType())->setName('策略配置'),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
             'tool_ids'     => v::optional(v::arrayType()->each(v::intVal()->positive()))->setName('工具ID列表'),
+            'knowledge_base_ids' => v::optional(v::arrayType()->each(v::intVal()->positive()))->setName('知识库ID列表'),
         ];
     }
 

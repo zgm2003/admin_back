@@ -142,6 +142,23 @@ Route::group('/api/admin', function () {
     Route::post('/AiAgents/del', [controller\Ai\AiAgentsController::class, 'del']);
     Route::post('/AiAgents/status', [controller\Ai\AiAgentsController::class, 'status']);
 
+    // AI 知识库
+    Route::post('/AiKnowledgeBases/init', [controller\Ai\AiKnowledgeBasesController::class, 'init']);
+    Route::post('/AiKnowledgeBases/list', [controller\Ai\AiKnowledgeBasesController::class, 'list']);
+    Route::post('/AiKnowledgeBases/detail', [controller\Ai\AiKnowledgeBasesController::class, 'detail']);
+    Route::post('/AiKnowledgeBases/add', [controller\Ai\AiKnowledgeBasesController::class, 'add']);
+    Route::post('/AiKnowledgeBases/edit', [controller\Ai\AiKnowledgeBasesController::class, 'edit']);
+    Route::post('/AiKnowledgeBases/del', [controller\Ai\AiKnowledgeBasesController::class, 'del']);
+    Route::post('/AiKnowledgeBases/status', [controller\Ai\AiKnowledgeBasesController::class, 'status']);
+    Route::post('/AiKnowledgeBases/documents', [controller\Ai\AiKnowledgeBasesController::class, 'documents']);
+    Route::post('/AiKnowledgeBases/documentDetail', [controller\Ai\AiKnowledgeBasesController::class, 'documentDetail']);
+    Route::post('/AiKnowledgeBases/addDocument', [controller\Ai\AiKnowledgeBasesController::class, 'addDocument']);
+    Route::post('/AiKnowledgeBases/editDocument', [controller\Ai\AiKnowledgeBasesController::class, 'editDocument']);
+    Route::post('/AiKnowledgeBases/delDocument', [controller\Ai\AiKnowledgeBasesController::class, 'delDocument']);
+    Route::post('/AiKnowledgeBases/reindexDocument', [controller\Ai\AiKnowledgeBasesController::class, 'reindexDocument']);
+    Route::post('/AiKnowledgeBases/chunks', [controller\Ai\AiKnowledgeBasesController::class, 'chunks']);
+    Route::post('/AiKnowledgeBases/retrievalTest', [controller\Ai\AiKnowledgeBasesController::class, 'retrievalTest']);
+
     // AI 会话管理
     Route::post('/AiConversations/list', [controller\Ai\AiConversationsController::class, 'list']);
     Route::post('/AiConversations/detail', [controller\Ai\AiConversationsController::class, 'detail']);

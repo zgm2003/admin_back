@@ -3,6 +3,7 @@
 namespace app\module\Ai;
 
 use app\dep\Ai\AiAgentsDep;
+use app\dep\Ai\AiAgentKnowledgeBasesDep;
 use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiMessagesDep;
 use app\dep\Ai\AiModelsDep;
@@ -12,6 +13,7 @@ use app\enum\AiEnum;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\Ai\AiChatService;
+use app\service\Ai\AiRagService;
 use app\validate\Ai\AiChatValidate;
 use Webman\Event\Event;
 use Webman\RedisQueue\Client as RedisQueue;
@@ -137,6 +139,16 @@ class AiChatModule extends BaseModule
             'messages_count' => \count($ctx['historyMessages']),
             'model'          => $ctx['modelCode'],
         ]);
+
+        if (!empty($ctx['ragChunks'])) {
+            $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_RAG, [
+                'chunks_count' => \count($ctx['ragChunks']),
+                'documents'    => array_values(array_unique(array_map(
+                    static fn(array $chunk) => $chunk['document_title'] ?? '',
+                    $ctx['ragChunks']
+                ))),
+            ]);
+        }
 
         $errorMsg           = null;
         $llmStepId          = null;
@@ -342,6 +354,11 @@ class AiChatModule extends BaseModule
         self::throwIf(!$model, '模型不存在');
         self::throwIf($model->status !== CommonEnum::YES, '模型已禁用');
 
+        $ragChunks = $this->retrieveRagChunks($agent, $content);
+        if (!empty($ragChunks)) {
+            $agent->system_prompt = AiRagService::buildAugmentedSystemPrompt((string)($agent->system_prompt ?? ''), $ragChunks);
+        }
+
         // 运行时参数（用户在聊天界面调整的 temperature/max_tokens 等）
         $runtimeParams = array_filter([
             'temperature' => $param['temperature'] ?? null,
@@ -363,12 +380,11 @@ class AiChatModule extends BaseModule
             'is_del'          => CommonEnum::NO,
         ]);
 
-        $modalities      = $model->modalities ?? null;
         // 排除刚插入的用户消息，避免与 userContent 重复发送给 AI
-        $historyMessages = AiChatService::buildMessages($agent, $conversationId, $maxHistory, $modalities, $userMessageId);
+        $historyMessages = AiChatService::buildMessages($agent, $conversationId, $maxHistory, $userMessageId);
 
         // 当前消息也需要构建多模态内容（与历史消息一致的格式）
-        $userContent = AiChatService::buildMultimodalContent($content, $attachments, $modalities);
+        $userContent = AiChatService::buildMultimodalContent($content, $attachments);
 
         return [
             'conversationId'  => $conversationId,
@@ -379,8 +395,49 @@ class AiChatModule extends BaseModule
             'userContent'     => $userContent,
             'historyMessages' => $historyMessages,
             'modelCode'       => $model->model_code,
-            'modalities'      => $modalities,
+            'ragChunks'       => $ragChunks,
         ];
+    }
+
+    private function retrieveRagChunks(object $agent, string $content): array
+    {
+        if (!$this->agentHasCapability($agent, AiEnum::CAPABILITY_RAG)) {
+            return [];
+        }
+
+        $knowledgeBases = $this->dep(AiAgentKnowledgeBasesDep::class)->getActiveKnowledgeBasesByAgentId((int)$agent->id);
+        if ($knowledgeBases->isEmpty()) {
+            return [];
+        }
+
+        $knowledgeBaseIds = $knowledgeBases->pluck('id')->map(fn($id) => (int)$id)->toArray();
+        $topK = (int)max($knowledgeBases->pluck('top_k')->map(fn($value) => (int)$value)->toArray() ?: [5]);
+        $threshold = (float)min($knowledgeBases->pluck('score_threshold')->map(fn($value) => (float)$value)->toArray() ?: [0]);
+
+        return AiRagService::retrieveFromKnowledgeBases($knowledgeBaseIds, $content, $topK, $threshold);
+    }
+
+    private function agentHasCapability(object $agent, string $capability): bool
+    {
+        $capabilities = $agent->capabilities_json ?? [];
+        if (is_string($capabilities)) {
+            $decoded = json_decode($capabilities, true);
+            $capabilities = is_array($decoded) ? $decoded : [];
+        }
+        if (!is_array($capabilities)) {
+            $capabilities = [];
+        }
+
+        if (array_key_exists($capability, $capabilities)) {
+            return (bool)$capabilities[$capability];
+        }
+
+        return match ($capability) {
+            AiEnum::CAPABILITY_RAG => ($agent->mode ?? '') === AiEnum::MODE_RAG,
+            AiEnum::CAPABILITY_TOOLS => ($agent->mode ?? '') === AiEnum::MODE_TOOL,
+            AiEnum::CAPABILITY_WORKFLOW => ($agent->mode ?? '') === AiEnum::MODE_WORKFLOW,
+            default => false,
+        };
     }
 
     /**

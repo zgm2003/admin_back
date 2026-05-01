@@ -69,17 +69,11 @@ class AiEnum
     const CAPABILITY_TOOLS = 'tools';
     const CAPABILITY_RAG = 'rag';
     const CAPABILITY_WORKFLOW = 'workflow';
-    const CAPABILITY_IMAGE = 'image';
-    const CAPABILITY_FILE = 'file';
-    const CAPABILITY_MEMORY = 'memory';
 
     public static $capabilityArr = [
         self::CAPABILITY_TOOLS => '工具调用',
         self::CAPABILITY_RAG => 'RAG知识库',
         self::CAPABILITY_WORKFLOW => '工作流编排',
-        self::CAPABILITY_IMAGE => '图片能力',
-        self::CAPABILITY_FILE => '文件理解',
-        self::CAPABILITY_MEMORY => '长期记忆',
     ];
 
     // AI 智能体场景（仅特殊用途，普通对话不设场景）
@@ -132,6 +126,39 @@ class AiEnum
         self::EXECUTOR_INTERNAL       => '内置函数',
         self::EXECUTOR_HTTP_WHITELIST => 'HTTP白名单',
         self::EXECUTOR_SQL_READONLY   => '只读SQL',
+    ];
+
+    // 知识库可见性（第一版只预留权限，不做复杂 ACL）
+    const KNOWLEDGE_VISIBILITY_PRIVATE = 'private';
+    const KNOWLEDGE_VISIBILITY_TEAM = 'team';
+    const KNOWLEDGE_VISIBILITY_PUBLIC = 'public';
+
+    public static $knowledgeVisibilityArr = [
+        self::KNOWLEDGE_VISIBILITY_PRIVATE => '私有',
+        self::KNOWLEDGE_VISIBILITY_TEAM => '团队',
+        self::KNOWLEDGE_VISIBILITY_PUBLIC => '公开',
+    ];
+
+    // 知识库文档索引状态
+    const KNOWLEDGE_INDEX_INDEXED = 1;
+    const KNOWLEDGE_INDEX_FAILED = 2;
+
+    public static $knowledgeIndexStatusArr = [
+        self::KNOWLEDGE_INDEX_INDEXED => '已索引',
+        self::KNOWLEDGE_INDEX_FAILED => '索引失败',
+    ];
+
+    // 知识库文档来源
+    const KNOWLEDGE_SOURCE_MANUAL = 'manual';
+    const KNOWLEDGE_SOURCE_TEXT = 'text';
+    const KNOWLEDGE_SOURCE_FILE = 'file';
+    const KNOWLEDGE_SOURCE_URL = 'url';
+
+    public static $knowledgeSourceTypeArr = [
+        self::KNOWLEDGE_SOURCE_MANUAL => '手动录入',
+        self::KNOWLEDGE_SOURCE_TEXT => '文本',
+        self::KNOWLEDGE_SOURCE_FILE => '文件',
+        self::KNOWLEDGE_SOURCE_URL => 'URL',
     ];
 
     // 步骤状态 (ai_run_steps.status)

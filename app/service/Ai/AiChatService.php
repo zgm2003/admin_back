@@ -50,7 +50,7 @@ class AiChatService
      * 组装发给 AI 的消息列表（system prompt + 历史消息）
      * @param int|null $excludeMessageId 排除指定消息ID（避免刚插入的用户消息被重复发送）
      */
-    public static function buildMessages(object $agent, int $conversationId, int $maxHistory, ?array $modalities = null, ?int $excludeMessageId = null): array
+    public static function buildMessages(object $agent, int $conversationId, int $maxHistory, ?int $excludeMessageId = null): array
     {
         $messages = [];
 
@@ -83,7 +83,7 @@ class AiChatService
                 $attachments = $metaJson['attachments'] ?? [];
             }
 
-            $content = self::buildMultimodalContent($msg['content'] ?? '', $attachments, $modalities);
+            $content = self::buildMultimodalContent($msg['content'] ?? '', $attachments);
             $messages[] = ['role' => $roleStr, 'content' => $content];
         }
 
@@ -127,11 +127,9 @@ class AiChatService
     /**
      * 构建多模态消息内容
      */
-    public static function buildMultimodalContent(string $text, array $attachments, ?array $modalities): string|array
+    public static function buildMultimodalContent(string $text, array $attachments): string|array
     {
-        $supportsImage = $modalities['image'] ?? false;
-
-        if (!$supportsImage || empty($attachments)) {
+        if (empty($attachments)) {
             return $text;
         }
 
@@ -153,7 +151,7 @@ class AiChatService
             }
         }
 
-        if (\count($content) <= 1 && !empty($text)) {
+        if (empty($content) || (\count($content) <= 1 && !empty($text))) {
             return $text;
         }
 

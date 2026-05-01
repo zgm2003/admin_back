@@ -4,7 +4,6 @@ namespace app\module\Ai;
 
 use app\dep\Ai\AiAgentsDep;
 use app\dep\Ai\AiConversationsDep;
-use app\dep\Ai\AiModelsDep;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\validate\Ai\AiConversationsValidate;
@@ -120,7 +119,7 @@ class AiConversationsModule extends BaseModule
     }
 
     /**
-     * 获取单个会话详情（含智能体名称、模型能力信息）
+     * 获取单个会话详情（含智能体名称）
      */
     public function detail($request): array
     {
@@ -129,16 +128,14 @@ class AiConversationsModule extends BaseModule
         $item = $this->dep(AiConversationsDep::class)->getByUser((int)$param['id'], $request->userId);
         self::throwNotFound($item, '会话不存在');
 
-        // 关联智能体 → 关联模型（获取 modalities 等能力信息）
+        // 关联智能体
         $agent = $this->dep(AiAgentsDep::class)->get((int)$item->agent_id);
-        $model = $agent ? $this->dep(AiModelsDep::class)->get((int)$agent->model_id) : null;
 
         return self::success([
             'id'              => $item->id,
             'user_id'         => $item->user_id,
             'agent_id'        => $item->agent_id,
             'agent_name'      => $agent?->name ?? '',
-            'modalities'      => $model?->modalities ?? null,
             'title'           => $item->title,
             'last_message_at' => $item->last_message_at?->toDateTimeString(),
             'status'          => $item->status,

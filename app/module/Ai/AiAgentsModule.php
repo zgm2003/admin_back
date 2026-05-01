@@ -4,7 +4,9 @@ namespace app\module\Ai;
 
 use app\dep\Ai\AiAgentScenesDep;
 use app\dep\Ai\AiAgentsDep;
+use app\dep\Ai\AiAgentKnowledgeBasesDep;
 use app\dep\Ai\AiAssistantToolsDep;
+use app\dep\Ai\AiKnowledgeBasesDep;
 use app\dep\Ai\AiModelsDep;
 use app\enum\AiEnum;
 use app\enum\CommonEnum;
@@ -38,6 +40,12 @@ class AiAgentsModule extends BaseModule
             'label' => "{$item->name} (" . (AiEnum::$driverArr[$item->driver] ?? $item->driver) . ')',
         ])->toArray();
 
+        $knowledgeBases = $this->dep(AiKnowledgeBasesDep::class)->getAllActiveOptions();
+        $data['dict']['knowledge_base_list'] = $knowledgeBases->map(fn($item) => [
+            'value' => $item->id,
+            'label' => $item->name,
+        ])->toArray();
+
         return self::success($data);
     }
 
@@ -51,11 +59,14 @@ class AiAgentsModule extends BaseModule
 
         // 批量预加载关联模型（只取列表需要的字段，避免拉取 api_key_enc 等大字段）
         $modelIds = $res->pluck('model_id')->unique()->toArray();
-        $modelMap = $this->dep(AiModelsDep::class)->getMap($modelIds, ['id', 'name', 'driver', 'model_code', 'modalities', 'is_del']);
+        $modelMap = $this->dep(AiModelsDep::class)->getMap($modelIds, ['id', 'name', 'driver', 'model_code', 'is_del']);
         $agentIds = $res->pluck('id')->unique()->toArray();
         $sceneCodeMap = $this->dep(AiAgentScenesDep::class)->getSceneCodesByAgentIds($agentIds);
+        $knowledgeBaseIdMap = $this->dep(AiAgentKnowledgeBasesDep::class)->getKnowledgeBaseIdsByAgentIds($agentIds);
+        $allKnowledgeBaseIds = array_values(array_unique(array_merge(...array_values($knowledgeBaseIdMap ?: [[]]))));
+        $knowledgeBaseMap = $this->dep(AiKnowledgeBasesDep::class)->getMapActive($allKnowledgeBaseIds, ['id', 'name']);
 
-        $list = $res->map(function ($item) use ($modelMap, $sceneCodeMap) {
+        $list = $res->map(function ($item) use ($modelMap, $sceneCodeMap, $knowledgeBaseIdMap, $knowledgeBaseMap) {
             $model = $modelMap->get($item->model_id);
             $modelDeleted = $model && $model->is_del == CommonEnum::YES;
             $sceneCodes = $sceneCodeMap[(int)$item->id] ?? $this->normalizeSceneCodes([], $item->scene);
@@ -64,6 +75,11 @@ class AiAgentsModule extends BaseModule
                 $sceneCodes
             );
             $capabilities = $this->normalizeCapabilities($item->capabilities_json ?? null, $item->mode ?? AiEnum::MODE_CHAT);
+            $knowledgeBaseIds = array_values(array_map('intval', $knowledgeBaseIdMap[(int)$item->id] ?? []));
+            $knowledgeBaseNames = array_values(array_filter(array_map(
+                static fn(int $id) => $knowledgeBaseMap->get($id)?->name,
+                $knowledgeBaseIds
+            )));
 
             return [
                 'id'             => $item->id,
@@ -74,7 +90,6 @@ class AiAgentsModule extends BaseModule
                 'driver'         => $model?->driver ?? '',
                 'driver_name'    => $model ? (AiEnum::$driverArr[$model->driver] ?? $model->driver) : '',
                 'model_code'     => $model?->model_code ?? '',
-                'modalities'     => $model?->modalities ?? null,
                 'avatar'         => $item->avatar,
                 'system_prompt'  => $item->system_prompt,
                 'mode'           => $item->mode,
@@ -84,6 +99,8 @@ class AiAgentsModule extends BaseModule
                 'scene_codes'    => $sceneCodes,
                 'scene_names'    => $sceneNames,
                 'capabilities'   => $capabilities,
+                'knowledge_base_ids' => $knowledgeBaseIds,
+                'knowledge_base_names' => $knowledgeBaseNames,
                 'runtime_config' => $this->normalizeArrayConfig($item->runtime_config_json ?? null),
                 'policy'         => $this->normalizeArrayConfig($item->policy_json ?? null),
                 'status'         => $item->status,
@@ -127,9 +144,9 @@ class AiAgentsModule extends BaseModule
                 'system_prompt'       => $param['system_prompt'] ?? null,
                 'mode'                => $param['mode'] ?? AiEnum::MODE_CHAT,
                 'scene'               => $legacyScene,
-                'capabilities_json'   => $capabilities,
-                'runtime_config_json' => $param['runtime_config'] ?? null,
-                'policy_json'         => $param['policy'] ?? null,
+                'capabilities_json'   => $this->encodeJson($capabilities),
+                'runtime_config_json' => $this->encodeNullableJson($param['runtime_config'] ?? null),
+                'policy_json'         => $this->encodeNullableJson($param['policy'] ?? null),
                 'status'              => $param['status'] ?? CommonEnum::YES,
                 'is_del'              => CommonEnum::NO,
             ]);
@@ -138,6 +155,9 @@ class AiAgentsModule extends BaseModule
 
             if (isset($param['tool_ids'])) {
                 $this->dep(AiAssistantToolsDep::class)->syncBindings($agentId, array_map('intval', $param['tool_ids'] ?? []));
+            }
+            if ($this->capabilityEnabled($capabilities, AiEnum::CAPABILITY_RAG)) {
+                $this->dep(AiAgentKnowledgeBasesDep::class)->syncBindings($agentId, $param['knowledge_base_ids'] ?? []);
             }
 
             return $agentId;
@@ -181,10 +201,10 @@ class AiAgentsModule extends BaseModule
             $data['capabilities_json'] = $this->normalizeCapabilities($param['capabilities'], $param['mode'] ?? $row->mode ?? AiEnum::MODE_CHAT);
         }
         if (array_key_exists('runtime_config', $param)) {
-            $data['runtime_config_json'] = $param['runtime_config'];
+            $data['runtime_config_json'] = $this->encodeNullableJson($param['runtime_config']);
         }
         if (array_key_exists('policy', $param)) {
-            $data['policy_json'] = $param['policy'];
+            $data['policy_json'] = $this->encodeNullableJson($param['policy']);
         }
         if (array_key_exists('scene_codes', $param)) {
             $sceneCodes = $this->normalizeSceneCodes($param['scene_codes'], $param['scene'] ?? null);
@@ -193,7 +213,12 @@ class AiAgentsModule extends BaseModule
             $sceneCodes = null;
         }
 
-        $this->withTransaction(function () use ($dep, $id, $data, $param, $sceneCodes): void {
+        $effectiveCapabilities = $data['capabilities_json'] ?? $this->normalizeCapabilities($row->capabilities_json ?? null, $row->mode ?? AiEnum::MODE_CHAT);
+        if (isset($data['capabilities_json'])) {
+            $data['capabilities_json'] = $this->encodeJson($effectiveCapabilities);
+        }
+
+        $this->withTransaction(function () use ($dep, $id, $data, $param, $sceneCodes, $effectiveCapabilities): void {
             $dep->update($id, $data);
 
             if (is_array($sceneCodes)) {
@@ -202,6 +227,13 @@ class AiAgentsModule extends BaseModule
 
             if (isset($param['tool_ids'])) {
                 $this->dep(AiAssistantToolsDep::class)->syncBindings($id, array_map('intval', $param['tool_ids'] ?? []));
+            }
+
+            if (array_key_exists('knowledge_base_ids', $param) || !$this->capabilityEnabled($effectiveCapabilities, AiEnum::CAPABILITY_RAG)) {
+                $knowledgeBaseIds = $this->capabilityEnabled($effectiveCapabilities, AiEnum::CAPABILITY_RAG)
+                    ? ($param['knowledge_base_ids'] ?? [])
+                    : [];
+                $this->dep(AiAgentKnowledgeBasesDep::class)->syncBindings($id, $knowledgeBaseIds);
             }
         });
 
@@ -237,9 +269,6 @@ class AiAgentsModule extends BaseModule
             AiEnum::CAPABILITY_TOOLS    => $mode === AiEnum::MODE_TOOL,
             AiEnum::CAPABILITY_RAG      => $mode === AiEnum::MODE_RAG,
             AiEnum::CAPABILITY_WORKFLOW => $mode === AiEnum::MODE_WORKFLOW,
-            AiEnum::CAPABILITY_IMAGE    => false,
-            AiEnum::CAPABILITY_FILE     => false,
-            AiEnum::CAPABILITY_MEMORY   => true,
         ];
 
         $capabilities = $this->normalizeArrayConfig($capabilities);
@@ -282,5 +311,19 @@ class AiAgentsModule extends BaseModule
         }
 
         return [];
+    }
+
+    private function encodeJson(array $value): string
+    {
+        return json_encode($value, JSON_UNESCAPED_UNICODE) ?: '[]';
+    }
+
+    private function encodeNullableJson(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return $this->encodeJson($this->normalizeArrayConfig($value));
     }
 }

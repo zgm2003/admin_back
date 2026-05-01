@@ -177,6 +177,24 @@ class DictService
         return $this;
     }
 
+    public function setAiKnowledgeVisibilityArr(): static
+    {
+        $this->dict['ai_knowledge_visibility_arr'] = self::enumToDict(AiEnum::$knowledgeVisibilityArr);
+        return $this;
+    }
+
+    public function setAiKnowledgeIndexStatusArr(): static
+    {
+        $this->dict['ai_knowledge_index_status_arr'] = self::enumToDict(AiEnum::$knowledgeIndexStatusArr);
+        return $this;
+    }
+
+    public function setAiKnowledgeSourceTypeArr(): static
+    {
+        $this->dict['ai_knowledge_source_type_arr'] = self::enumToDict(AiEnum::$knowledgeSourceTypeArr);
+        return $this;
+    }
+
     public function setRunStatusArr(): static
     {
         $this->dict['run_status_arr'] = self::enumToDict(AiEnum::$runStatusArr);

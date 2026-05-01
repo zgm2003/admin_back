@@ -46,7 +46,6 @@ class AiModelsModule extends BaseModule
             'model_code'     => $item->model_code,
             'endpoint'       => $item->endpoint,
             'api_key_hint'   => $item->api_key_hint,
-            'modalities'     => $item->modalities,
             'status'         => $item->status,
             'status_name'    => CommonEnum::$statusArr[$item->status] ?? '',
             'created_at'     => $item->created_at,
@@ -79,7 +78,6 @@ class AiModelsModule extends BaseModule
             'driver'         => $param['driver'],
             'model_code'     => $param['model_code'],
             'endpoint'       => $param['endpoint'] ?? null,
-            'modalities'     => !empty($param['modalities']) ? \json_encode($param['modalities']) : null,
             'status'         => $param['status'] ?? CommonEnum::YES,
             'is_del'         => CommonEnum::NO,
         ];
@@ -116,10 +114,6 @@ class AiModelsModule extends BaseModule
             'endpoint'   => $param['endpoint'] ?? null,
             'status'     => (int)$param['status'],
         ];
-
-        if (isset($param['modalities'])) {
-            $data['modalities'] = \json_encode($param['modalities']);
-        }
 
         // API Key 留空不改
         if (!empty($param['api_key'])) {

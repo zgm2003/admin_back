@@ -1,5 +1,5 @@
 ALTER TABLE `ai_agents`
-  ADD COLUMN `capabilities_json` json NULL COMMENT 'Agent能力配置：chat/tools/rag/workflow/image/file/memory' AFTER `scene`,
+  ADD COLUMN `capabilities_json` json NULL COMMENT 'Agent能力配置：chat/tools/rag/workflow' AFTER `scene`,
   ADD COLUMN `runtime_config_json` json NULL COMMENT '运行参数：timeout/retry/max_tokens/reasoning等' AFTER `capabilities_json`,
   ADD COLUMN `policy_json` json NULL COMMENT '权限策略：工具调用上限、失败策略、审批等' AFTER `runtime_config_json`;
 
@@ -39,9 +39,6 @@ SET `capabilities_json` = JSON_OBJECT(
   'chat', true,
   'tools', IF(`mode` = 'tool', true, false),
   'rag', IF(`mode` = 'rag', true, false),
-  'workflow', IF(`mode` = 'workflow', true, false),
-  'image', false,
-  'file', false,
-  'memory', true
+  'workflow', IF(`mode` = 'workflow', true, false)
 )
 WHERE `capabilities_json` IS NULL;

@@ -21,7 +21,7 @@ class AiModelsDep extends BaseDep
     {
         $columns = [
             'id', 'name', 'driver', 'model_code', 'endpoint',
-            'api_key_hint', 'modalities', 'status', 'created_at', 'updated_at',
+            'api_key_hint', 'status', 'created_at', 'updated_at',
         ];
 
         return $this->model

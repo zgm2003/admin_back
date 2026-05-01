@@ -3,6 +3,7 @@
 namespace tests\Ai;
 
 use app\enum\AiEnum;
+use app\service\Ai\AiChatService;
 use PHPUnit\Framework\TestCase;
 
 class Agent2ContractTest extends TestCase
@@ -26,8 +27,14 @@ class Agent2ContractTest extends TestCase
         self::assertSame('tools', AiEnum::CAPABILITY_TOOLS);
         self::assertSame('rag', AiEnum::CAPABILITY_RAG);
         self::assertSame('workflow', AiEnum::CAPABILITY_WORKFLOW);
-        self::assertSame('image', AiEnum::CAPABILITY_IMAGE);
-        self::assertArrayHasKey(AiEnum::CAPABILITY_MEMORY, AiEnum::$capabilityArr);
+        self::assertSame([
+            AiEnum::CAPABILITY_TOOLS,
+            AiEnum::CAPABILITY_RAG,
+            AiEnum::CAPABILITY_WORKFLOW,
+        ], array_keys(AiEnum::$capabilityArr));
+        self::assertNotContains('image', array_keys(AiEnum::$capabilityArr));
+        self::assertNotContains('file', array_keys(AiEnum::$capabilityArr));
+        self::assertNotContains('memory', array_keys(AiEnum::$capabilityArr));
     }
 
     public function testAgentModelCastsAgent2JsonFields(): void
@@ -70,5 +77,20 @@ class Agent2ContractTest extends TestCase
         self::assertStringContainsString('agentHasCapability', $content);
         self::assertStringContainsString('AiEnum::CAPABILITY_TOOLS', $content);
         self::assertStringNotContainsString("(\$agent->mode ?? '') === AiEnum::MODE_TOOL", $content);
+    }
+
+    public function testMultimodalImageAttachmentsAreNotGatedByModelConfig(): void
+    {
+        $content = AiChatService::buildMultimodalContent('看图', [
+            [
+                'type' => 'image',
+                'url'  => 'https://example.test/demo.png',
+            ],
+        ]);
+
+        self::assertIsArray($content);
+        self::assertSame(['type' => 'text', 'text' => '看图'], $content[0]);
+        self::assertSame('image_url', $content[1]['type']);
+        self::assertSame('https://example.test/demo.png', $content[1]['image_url']['url']);
     }
 }
