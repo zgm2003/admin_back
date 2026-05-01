@@ -64,6 +64,24 @@ class AiEnum
         self::MODE_WORKFLOW => '工作流',
     ];
 
+    // AI 智能体能力（chat 默认启用，不作为前端开关）
+    const CAPABILITY_CHAT = 'chat';
+    const CAPABILITY_TOOLS = 'tools';
+    const CAPABILITY_RAG = 'rag';
+    const CAPABILITY_WORKFLOW = 'workflow';
+    const CAPABILITY_IMAGE = 'image';
+    const CAPABILITY_FILE = 'file';
+    const CAPABILITY_MEMORY = 'memory';
+
+    public static $capabilityArr = [
+        self::CAPABILITY_TOOLS => '工具调用',
+        self::CAPABILITY_RAG => 'RAG知识库',
+        self::CAPABILITY_WORKFLOW => '工作流编排',
+        self::CAPABILITY_IMAGE => '图片能力',
+        self::CAPABILITY_FILE => '文件理解',
+        self::CAPABILITY_MEMORY => '长期记忆',
+    ];
+
     // AI 智能体场景（仅特殊用途，普通对话不设场景）
     const SCENE_GOODS_SCRIPT = 'goods_script';
     const SCENE_CINE_PROJECT = 'cine_project';
