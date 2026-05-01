@@ -70,6 +70,46 @@ class AiRagServiceTest extends TestCase
         self::assertGreaterThan(2, $score);
     }
 
+    public function testKeywordScoreHandlesChineseQuestionWithoutExactPhraseMatch(): void
+    {
+        $score = AiRagService::keywordScore(
+            '知识库未来如果接入部门资料或客户资料，还需要权限控制，智能体读取范围必须受用户、角色、部门或租户控制。',
+            '知识库为什么要做权限控制？'
+        );
+
+        self::assertGreaterThan(2, $score);
+    }
+
+    public function testKeywordScoreHandlesChineseConceptQuestionWithSharedTerms(): void
+    {
+        $score = AiRagService::keywordScore(
+            '智能体不是单一模式，而是统一编排工具调用、知识召回、场景模板和任务执行。',
+            '智能体为什么不应该只有单一模式？'
+        );
+
+        self::assertGreaterThan(1, $score);
+    }
+
+    public function testKeywordScoreDoesNotMatchOnlyChineseQuestionGlue(): void
+    {
+        $score = AiRagService::keywordScore(
+            '短剧生成为什么要先草稿后视觉包？',
+            '知识库为什么要做权限控制？'
+        );
+
+        self::assertSame(0.0, $score);
+    }
+
+    public function testKeywordScoreDoesNotMatchOnlyGenericQuestionWord(): void
+    {
+        $score = AiRagService::keywordScore(
+            '短剧业务最怕两类问题。',
+            'cURL error 28 是什么问题？'
+        );
+
+        self::assertSame(0.0, $score);
+    }
+
     public function testBuildContextPromptIncludesSourcesAndChunks(): void
     {
         $prompt = AiRagService::buildContextPrompt([

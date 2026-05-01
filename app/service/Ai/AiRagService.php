@@ -6,6 +6,14 @@ use app\dep\Ai\AiKnowledgeChunksDep;
 
 class AiRagService
 {
+    private const CHINESE_STOP_WORDS = [
+        '为什么', '是什么', '是不是', '怎么样', '怎么办', '如何', '哪些', '哪个', '什么',
+        '问题', '原因', '情况',
+        '不应该', '应该', '需要', '可以', '不能', '只有', '一个', '一种',
+        '这个', '那个', '以及', '还是', '或者', '并且', '如果', '那么',
+        '要做', '怎么', '多少', '的是', '要', '做', '的', '了', '吗', '呢', '啊', '吧',
+    ];
+
     public static function chunkText(string $text, int $chunkSize = 800, int $overlap = 120): array
     {
         $text = trim($text);
@@ -145,13 +153,78 @@ class AiRagService
      */
     public static function queryTerms(string $query): array
     {
-        preg_match_all('/[\p{Han}]+|[A-Za-z0-9_]+/u', mb_strtolower($query), $matches);
-        $terms = $matches[0] ?? [];
+        $query = mb_strtolower(trim($query));
+        $terms = [];
+
+        preg_match_all('/[A-Za-z0-9_]+/u', $query, $latinMatches);
+        foreach ($latinMatches[0] ?? [] as $term) {
+            if (self::isUsefulQueryTerm($term)) {
+                $terms[] = $term;
+            }
+        }
+
+        preg_match_all('/[\p{Han}]+/u', $query, $chineseMatches);
+        foreach ($chineseMatches[0] ?? [] as $term) {
+            array_push($terms, ...self::chineseQueryTerms($term));
+        }
 
         return array_values(array_unique(array_filter(
             array_map('trim', $terms),
-            static fn(string $term) => $term !== ''
+            static fn(string $term) => self::isUsefulQueryTerm($term)
         )));
+    }
+
+    /**
+     * MySQL keyword fallback has no real Chinese segmenter. Keep this deliberately
+     * simple: remove common question glue, then emit longer n-grams before shorter
+     * ones so candidate filtering still finds business terms like "知识库" and "权限控制".
+     *
+     * @return array<int, string>
+     */
+    private static function chineseQueryTerms(string $text): array
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return [];
+        }
+
+        $terms = [];
+
+        if (mb_strlen($text) <= 12) {
+            $terms[] = $text;
+        }
+
+        $cleaned = str_replace(self::CHINESE_STOP_WORDS, '', $text);
+        if ($cleaned === '') {
+            return $terms;
+        }
+
+        if ($cleaned !== $text) {
+            $terms[] = $cleaned;
+        }
+
+        $length = mb_strlen($cleaned);
+        foreach ([4, 3, 2] as $size) {
+            if ($length < $size) {
+                continue;
+            }
+
+            for ($offset = 0; $offset <= $length - $size; $offset++) {
+                $terms[] = mb_substr($cleaned, $offset, $size);
+            }
+        }
+
+        return $terms;
+    }
+
+    private static function isUsefulQueryTerm(string $term): bool
+    {
+        $term = trim($term);
+        if (mb_strlen($term) < 2) {
+            return false;
+        }
+
+        return !in_array($term, self::CHINESE_STOP_WORDS, true);
     }
 
     private static function substrCountInsensitive(string $haystack, string $needle): int
