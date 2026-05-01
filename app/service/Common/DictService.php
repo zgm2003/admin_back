@@ -135,6 +135,12 @@ class DictService
         return $this;
     }
 
+    public function setAiCapabilityArr(): static
+    {
+        $this->dict['ai_capability_arr'] = self::enumToDict(AiEnum::$capabilityArr);
+        return $this;
+    }
+
     public function setAiSceneArr(): static
     {
         $this->dict['ai_scene_arr'] = self::enumToDict(AiEnum::$sceneArr);

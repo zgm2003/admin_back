@@ -21,7 +21,8 @@ class AiAgentsDep extends BaseDep
     {
         $columns = [
             'id', 'name', 'model_id', 'avatar', 'system_prompt',
-            'mode', 'scene', 'status', 'created_at', 'updated_at',
+            'mode', 'scene', 'capabilities_json', 'runtime_config_json', 'policy_json',
+            'status', 'created_at', 'updated_at',
         ];
 
         return $this->model
@@ -53,11 +54,14 @@ class AiAgentsDep extends BaseDep
      */
     public function getByScene(string $scene)
     {
-        return $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->where('status', CommonEnum::YES)
-            ->where('scene', $scene)
-            ->first();
+        $agentIds = (new AiAgentScenesDep())->getAgentIdsBySceneCode($scene);
+        $query = $this->activeQuery();
+
+        if (!empty($agentIds)) {
+            return $query->whereIn('id', $agentIds)->orderBy('id', 'desc')->first();
+        }
+
+        return $query->where('scene', $scene)->orderBy('id', 'desc')->first();
     }
 
     /**
@@ -65,12 +69,14 @@ class AiAgentsDep extends BaseDep
      */
     public function getActiveByScene(string $scene)
     {
-        return $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->where('status', CommonEnum::YES)
-            ->where('scene', $scene)
-            ->orderBy('id', 'desc')
-            ->get();
+        $agentIds = (new AiAgentScenesDep())->getAgentIdsBySceneCode($scene);
+        $query = $this->activeQuery();
+
+        if (!empty($agentIds)) {
+            return $query->whereIn('id', $agentIds)->orderBy('id', 'desc')->get();
+        }
+
+        return $query->where('scene', $scene)->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -78,13 +84,14 @@ class AiAgentsDep extends BaseDep
      */
     public function getBySceneAndMode(string $scene, string $mode)
     {
-        return $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->where('status', CommonEnum::YES)
-            ->where('scene', $scene)
-            ->where('mode', $mode)
-            ->orderBy('id', 'desc')
-            ->first();
+        $agentIds = (new AiAgentScenesDep())->getAgentIdsBySceneCode($scene);
+        $query = $this->activeQuery()->where('mode', $mode);
+
+        if (!empty($agentIds)) {
+            return $query->whereIn('id', $agentIds)->orderBy('id', 'desc')->first();
+        }
+
+        return $query->where('scene', $scene)->orderBy('id', 'desc')->first();
     }
 
     /**
@@ -92,13 +99,14 @@ class AiAgentsDep extends BaseDep
      */
     public function getActiveBySceneAndMode(string $scene, string $mode)
     {
-        return $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->where('status', CommonEnum::YES)
-            ->where('scene', $scene)
-            ->where('mode', $mode)
-            ->orderBy('id', 'desc')
-            ->get();
+        $agentIds = (new AiAgentScenesDep())->getAgentIdsBySceneCode($scene);
+        $query = $this->activeQuery()->where('mode', $mode);
+
+        if (!empty($agentIds)) {
+            return $query->whereIn('id', $agentIds)->orderBy('id', 'desc')->get();
+        }
+
+        return $query->where('scene', $scene)->orderBy('id', 'desc')->get();
     }
 
     /**
@@ -106,12 +114,32 @@ class AiAgentsDep extends BaseDep
      */
     public function getActiveByScenes(array $scenes)
     {
-        return $this->model
-            ->where('is_del', CommonEnum::NO)
-            ->where('status', CommonEnum::YES)
+        $scenes = array_values(array_unique(array_filter(array_map('strval', $scenes))));
+        if (empty($scenes)) {
+            return collect();
+        }
+
+        $agentIds = [];
+        $sceneDep = new AiAgentScenesDep();
+        foreach ($scenes as $scene) {
+            $agentIds = array_merge($agentIds, $sceneDep->getAgentIdsBySceneCode($scene));
+        }
+        $agentIds = array_values(array_unique(array_map('intval', $agentIds)));
+
+        if (!empty($agentIds)) {
+            return $this->activeQuery()->whereIn('id', $agentIds)->orderBy('id', 'desc')->get();
+        }
+
+        return $this->activeQuery()
             ->whereIn('scene', $scenes)
             ->orderBy('id', 'desc')
             ->get();
     }
 
+    private function activeQuery()
+    {
+        return $this->model
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES);
+    }
 }

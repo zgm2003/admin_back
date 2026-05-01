@@ -39,4 +39,26 @@ class Agent2ContractTest extends TestCase
         self::assertStringContainsString("'runtime_config_json' => 'json'", $content);
         self::assertStringContainsString("'policy_json' => 'json'", $content);
     }
+
+    public function testAgentModuleSyncsToolsAndScenesWithoutModeToolGate(): void
+    {
+        $path = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/module/Ai/AiAgentsModule.php';
+        $content = file_get_contents($path);
+
+        self::assertStringContainsString('setAiCapabilityArr', $content);
+        self::assertStringContainsString('syncScenes', $content);
+        self::assertStringContainsString("isset(\$param['tool_ids'])", $content);
+        self::assertStringNotContainsString("=== AiEnum::MODE_TOOL && !empty(\$param['tool_ids'])", $content);
+    }
+
+    public function testAgentSceneDepExposesSceneSyncAndBatchMap(): void
+    {
+        $path = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'app/dep/Ai/AiAgentScenesDep.php';
+        $content = file_get_contents($path);
+
+        self::assertNotFalse($content);
+        self::assertStringContainsString('function syncScenes(int $agentId, array $sceneCodes', $content);
+        self::assertStringContainsString('function getSceneCodesByAgentIds(array $agentIds)', $content);
+        self::assertStringContainsString('function getAgentIdsBySceneCode(string $sceneCode)', $content);
+    }
 }

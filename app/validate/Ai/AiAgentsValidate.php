@@ -17,6 +17,10 @@ class AiAgentsValidate
             'system_prompt'=> v::optional(v::stringType())->setName('系统提示词'),
             'mode'         => v::optional(v::stringType()->in(array_keys(AiEnum::$modeArr)))->setName('模式'),
             'scene'        => v::optional(v::stringType()->in(array_keys(AiEnum::$sceneArr)))->setName('场景'),
+            'capabilities' => v::optional(v::arrayType())->setName('能力配置'),
+            'scene_codes'  => v::optional(v::arrayType()->each(v::stringType()->in(array_keys(AiEnum::$sceneArr))))->setName('场景列表'),
+            'runtime_config' => v::optional(v::arrayType())->setName('运行配置'),
+            'policy'       => v::optional(v::arrayType())->setName('策略配置'),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
             'tool_ids'     => v::optional(v::arrayType()->each(v::intVal()->positive()))->setName('工具ID列表'),
         ];
@@ -32,6 +36,10 @@ class AiAgentsValidate
             'system_prompt'=> v::optional(v::stringType())->setName('系统提示词'),
             'mode'         => v::optional(v::stringType()->in(array_keys(AiEnum::$modeArr)))->setName('模式'),
             'scene'        => v::optional(v::stringType()->in(array_keys(AiEnum::$sceneArr)))->setName('场景'),
+            'capabilities' => v::optional(v::arrayType())->setName('能力配置'),
+            'scene_codes'  => v::optional(v::arrayType()->each(v::stringType()->in(array_keys(AiEnum::$sceneArr))))->setName('场景列表'),
+            'runtime_config' => v::optional(v::arrayType())->setName('运行配置'),
+            'policy'       => v::optional(v::arrayType())->setName('策略配置'),
             'status'       => v::optional(v::intVal()->in(array_keys(CommonEnum::$statusArr)))->setName('状态'),
             'tool_ids'     => v::optional(v::arrayType()->each(v::intVal()->positive()))->setName('工具ID列表'),
         ];
