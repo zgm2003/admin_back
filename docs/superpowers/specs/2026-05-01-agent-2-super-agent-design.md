@@ -93,6 +93,50 @@ Agent.capabilities = {
 
 ## 4. 开源组件调研与取舍
 
+### 4.0 开源优先硬约束
+
+本项目的 Agent 2.0 组件路线按 **OSS-first** 执行：
+
+```text
+优先级 1：已在项目内使用、许可证宽松、能直接融入 PHP/Vue 栈的开源组件
+优先级 2：可自托管、协议开放、能通过适配层接入的开源组件
+优先级 3：只作为产品/交互参考，不内嵌、不绑定运行时的平台级项目
+拒绝项：云端黑盒、闭源 SDK 锁死核心链路、许可证不清、为了“看起来高级”强行引入第二套主运行时
+```
+
+第一版允许引入开源组件，但必须满足三条：
+
+1. **不能替代现有 Webman + Vue 主架构**。否则就是另起炉灶，不是升级。
+2. **不能让短剧、电商口播、对话现有场景断掉**。先兼容，后增强。
+3. **必须能回滚**。新增依赖必须集中在能力层或 UI 增强层，不能散进业务流程里。
+
+开源候选表：
+
+| 组件 | 许可证/开放性 | 定位 | 第一版动作 |
+| --- | --- | --- | --- |
+| Neuron AI | MIT | PHP Agent Runtime，覆盖 Agent/Tools/RAG/MCP/Workflow | 保留为核心 |
+| MCP | 开放协议/SDK | 工具生态入口 | 预留表和适配层 |
+| Vue Flow | MIT | Vue 3 节点画布 | Phase 3 引入 |
+| Monaco Editor | MIT | Prompt/JSON/Policy 编辑器 | 可提前引入 |
+| Qdrant | Apache-2.0 | RAG 向量库 | RAG 成熟后引入 |
+| Langfuse | 核心 MIT，部分 EE 目录另有许可 | LLM trace/评估/Prompt 管理 | 本地 trace 不够时再接 |
+| Flowise | Apache-2.0 | 可视化 AI Agent 产品参考 | 参考，不嵌入 |
+| Node-RED | Apache-2.0 | 流程编排产品参考 | 参考，不嵌入 |
+| Rete.js | MIT | 通用节点编辑器 | 作为 Vue Flow 备选 |
+
+结论：**开源不是把一整套 Dify/Flowise 塞进来。开源也要有品味。** 第一刀仍然是把现有 Agent 抽象改对；组件只在该出现的层出现。
+
+来源：
+
+- Neuron AI GitHub / MIT: https://github.com/neuron-core/neuron-ai
+- Vue Flow GitHub / MIT: https://github.com/bcakmakoglu/vue-flow
+- Monaco Editor GitHub / MIT: https://github.com/microsoft/monaco-editor
+- Qdrant GitHub / Apache-2.0: https://github.com/qdrant/qdrant
+- Langfuse GitHub / License: https://github.com/langfuse/langfuse
+- Flowise GitHub / Apache-2.0: https://github.com/FlowiseAI/Flowise
+- Node-RED GitHub / Apache-2.0: https://github.com/node-red/node-red
+- Rete.js GitHub / MIT: https://github.com/retejs/rete
+
 ### 4.1 保留 Neuron AI 作为核心 Agent Runtime
 
 当前后端已安装 `neuron-core/neuron-ai:^3.0`：`E:/admin/admin_back/composer.json:50`。本地 vendor 已有 `Agent / Tools / RAG / MCP / Workflow` 目录。
