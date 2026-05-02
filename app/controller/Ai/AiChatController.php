@@ -16,6 +16,8 @@ class AiChatController extends Controller
 {
     public function send(Request $request) { return $this->run([AiChatModule::class, 'send'], $request); }
     public function cancel(Request $request) { return $this->run([AiChatModule::class, 'cancel'], $request); }
+    public function start(Request $request) { return $this->run([AiChatModule::class, 'startStream'], $request); }
+    public function events(Request $request) { return $this->run([AiChatModule::class, 'events'], $request); }
 
     /**
      * 获取 SSE CORS 响应头
@@ -63,6 +65,7 @@ class AiChatController extends Controller
             ]));
         }
 
+        $connection->close();
         return null;
     }
 
@@ -77,6 +80,7 @@ class AiChatController extends Controller
             'event' => 'error',
             'data' => json_encode(['msg' => $msg], JSON_UNESCAPED_UNICODE),
         ]));
+        $connection->close();
         return null;
     }
 }

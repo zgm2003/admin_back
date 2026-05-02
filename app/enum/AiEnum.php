@@ -107,6 +107,7 @@ class AiEnum
     const STEP_TYPE_TOOL_CALL = 4;
     const STEP_TYPE_TOOL_RESULT = 5;
     const STEP_TYPE_FINALIZE = 6;
+    const STEP_TYPE_IMAGE = 7;
 
     public static $stepTypeArr = [
         self::STEP_TYPE_PROMPT => '提示词构建',
@@ -115,6 +116,7 @@ class AiEnum
         self::STEP_TYPE_TOOL_CALL => '工具调用',
         self::STEP_TYPE_TOOL_RESULT => '工具返回',
         self::STEP_TYPE_FINALIZE => '最终化',
+        self::STEP_TYPE_IMAGE => '图片生成',
     ];
 
     // 工具执行器类型

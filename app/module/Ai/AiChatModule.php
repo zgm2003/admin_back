@@ -8,15 +8,15 @@ use app\dep\Ai\AiConversationsDep;
 use app\dep\Ai\AiMessagesDep;
 use app\dep\Ai\AiModelsDep;
 use app\dep\Ai\AiRunsDep;
-use app\dep\Ai\AiRunStepsDep;
 use app\enum\AiEnum;
 use app\enum\CommonEnum;
 use app\module\BaseModule;
 use app\service\Ai\AiChatService;
 use app\service\Ai\AiRagService;
+use app\service\Ai\AiRunEventPublisher;
 use app\validate\Ai\AiChatValidate;
 use Webman\Event\Event;
-use Webman\RedisQueue\Client as RedisQueue;
+use Webman\RedisQueue\Redis as RedisQueue;
 
 /**
  * AI 对话模块
@@ -121,191 +121,140 @@ class AiChatModule extends BaseModule
 
     /**
      * 发送消息并获取 AI 回复（流式 SSE）
-     * 通过 onChunk 回调逐步推送：conversation → run → content → done/error/canceled
+     * HTTP 连接只负责提交 run 并转发 run events，模型执行交给队列 worker。
      */
     public function sendStream(array $param, int $userId, callable $onChunk): array
     {
-        $startTime = microtime(true);
-        $stepNo    = 0;
-
-        $ctx = $this->prepareChat($param, $userId, $onChunk);
-
+        $ctx = $this->prepareChat($param, $userId, $onChunk, false);
         $requestId = AiChatService::generateRequestId();
-        $runId     = $this->createRun($requestId, $userId, $ctx, true);
+        $runId = $this->createRun($requestId, $userId, $ctx, true, [
+            'runtime_overrides' => $this->runtimeOverrides($param),
+        ]);
 
         $onChunk('run', ['run_id' => $runId, 'request_id' => $requestId]);
 
-        $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_PROMPT, [
-            'messages_count' => \count($ctx['historyMessages']),
-            'model'          => $ctx['modelCode'],
+        try {
+            $this->enqueueRun($runId, $userId);
+        } catch (\Throwable $e) {
+            $errorMsg = 'AI 运行投递失败: ' . $e->getMessage();
+            $this->dep(AiRunsDep::class)->markFailed($runId, $errorMsg);
+            Event::emit('ai.run.failed', [
+                'run_id' => $runId,
+                'user_id' => $userId,
+                'conversation_id' => $ctx['conversationId'],
+                'error_msg' => $errorMsg,
+                'latency_ms' => 0,
+            ]);
+            $onChunk('error', ['msg' => $errorMsg]);
+
+            return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'error' => true]);
+        }
+
+        $this->relayRunEvents($runId, $onChunk);
+
+        if ($ctx['isNew']) {
+            $this->autoGenerateTitle($ctx, $param['content'], $userId);
+        }
+
+        return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId]);
+    }
+
+    /**
+     * 启动 streamable run：短请求只负责创建 run 和投递队列，不占用 SSE 长连接。
+     */
+    public function startStream($request): array
+    {
+        $userId = (int)$request->userId;
+        $param = $this->validate($request, AiChatValidate::send());
+
+        $ctx = $this->prepareChat($param, $userId, null, false);
+        $requestId = AiChatService::generateRequestId();
+        $runId = $this->createRun($requestId, $userId, $ctx, true, [
+            'runtime_overrides' => $this->runtimeOverrides($param),
+            'transport' => 'streamable',
         ]);
 
-        if (!empty($ctx['ragChunks'])) {
-            $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_RAG, [
-                'chunks_count' => \count($ctx['ragChunks']),
-                'documents'    => array_values(array_unique(array_map(
-                    static fn(array $chunk) => $chunk['document_title'] ?? '',
-                    $ctx['ragChunks']
-                ))),
-            ]);
-        }
-
-        $errorMsg           = null;
-        $llmStepId          = null;
-        $llmStart           = microtime(true);
-        $assistantMessageId = null;
-
         try {
-            $llmStepId = $this->dep(AiRunStepsDep::class)->add([
-                'run_id'       => $runId,
-                'step_no'      => ++$stepNo,
-                'step_type'    => AiEnum::STEP_TYPE_LLM,
-                'status'       => AiEnum::STEP_STATUS_SUCCESS,
-                'payload_json' => json_encode(['model' => $ctx['modelCode'], 'stream' => true], JSON_UNESCAPED_UNICODE),
-                'is_del'       => CommonEnum::NO,
-            ]);
-
-            $toolCallCount = 0;
-            $maxToolCalls  = 10;
-
-            $result = AiChatService::chatStream(
-                $ctx['agent'], $ctx['userContent'], $ctx['historyMessages'],
-                fn($delta) => $onChunk('content', ['delta' => $delta]),
-                // onToolCall
-                function ($callId, $toolName, $toolInputs) use (&$stepNo, $runId, $onChunk, &$toolCallCount, $maxToolCalls) {
-                    $toolCallCount++;
-                    if ($toolCallCount > $maxToolCalls) {
-                        throw new \RuntimeException('工具调用次数超限');
-                    }
-                    $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_TOOL_CALL, [
-                        'call_id'     => $callId,
-                        'tool_name'   => $toolName,
-                        'tool_inputs' => $toolInputs,
-                    ]);
-                    $onChunk('tool_call', [
-                        'call_id'     => $callId,
-                        'tool_name'   => $toolName,
-                        'tool_inputs' => $toolInputs,
-                    ]);
-                },
-                // onToolResult
-                function ($callId, $toolName, $toolResult) use (&$stepNo, $runId, $onChunk) {
-                    $truncated = mb_strlen($toolResult) > 2000
-                        ? mb_substr($toolResult, 0, 2000) . '...[截断]'
-                        : $toolResult;
-                    $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_TOOL_RESULT, [
-                        'call_id'     => $callId,
-                        'tool_name'   => $toolName,
-                        'tool_result' => $truncated,
-                    ]);
-                    $onChunk('tool_result', [
-                        'call_id'     => $callId,
-                        'tool_name'   => $toolName,
-                        'tool_result' => $truncated,
-                    ]);
-                },
-                function () use ($runId) {
-                    $run = $this->dep(AiRunsDep::class)->find($runId);
-                    return $run && $run->run_status === AiEnum::RUN_STATUS_CANCELED;
-                }
-            );
-
-            // 用户取消
-            if (!empty($result['canceled'])) {
-                $this->dep(AiRunStepsDep::class)->updateStepStatus(
-                    $llmStepId, AiEnum::STEP_STATUS_FAIL, '用户取消',
-                    (int)((microtime(true) - $llmStart) * 1000)
-                );
-
-                $canceledAssistantId = null;
-                if (!empty($result['content'])) {
-                    $canceledAssistantId = $this->saveAssistantMessage(
-                        $ctx['conversationId'], $result['content'],
-                        $requestId, $result['request_id'] ?? null
-                    );
-                }
-
-                $onChunk('canceled', [
-                    'conversation_id'      => $ctx['conversationId'],
-                    'run_id'               => $runId,
-                    'user_message_id'      => $ctx['userMessageId'],
-                    'assistant_message_id' => $canceledAssistantId,
-                ]);
-
-                return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'canceled' => true]);
-            }
-
-            $this->dep(AiRunStepsDep::class)->updateStepStatus(
-                $llmStepId, AiEnum::STEP_STATUS_SUCCESS, null,
-                (int)((microtime(true) - $llmStart) * 1000)
-            );
-
-            $assistantMessageId = $this->saveAssistantMessage(
-                $ctx['conversationId'], $result['content'],
-                $requestId, $result['request_id'] ?? null
-            );
-
-            $this->addStep($runId, ++$stepNo, AiEnum::STEP_TYPE_FINALIZE, [
-                'assistant_message_id' => $assistantMessageId,
-                'prompt_tokens'        => $result['usage']['prompt_tokens'] ?? null,
-                'completion_tokens'    => $result['usage']['completion_tokens'] ?? null,
-                'total_tokens'         => $result['usage']['total_tokens'] ?? null,
-            ]);
-
-            $latencyMs = (int)((microtime(true) - $startTime) * 1000);
-            $this->dep(AiRunsDep::class)->markSuccess($runId, [
-                'assistant_message_id' => $assistantMessageId,
-                'prompt_tokens'        => $result['usage']['prompt_tokens'] ?? null,
-                'completion_tokens'    => $result['usage']['completion_tokens'] ?? null,
-                'total_tokens'         => $result['usage']['total_tokens'] ?? null,
-                'latency_ms'           => $latencyMs,
-            ]);
-
-            Event::emit('ai.run.completed', [
-                'run_id'               => $runId,
-                'user_id'              => $userId,
-                'conversation_id'      => $ctx['conversationId'],
-                'assistant_message_id' => $assistantMessageId,
-                'total_tokens'         => $result['usage']['total_tokens'] ?? null,
-                'latency_ms'           => $latencyMs,
-            ]);
+            $this->enqueueRun($runId, $userId);
         } catch (\Throwable $e) {
-            $errorMsg = $e->getMessage();
-            if ($llmStepId) {
-                $this->dep(AiRunStepsDep::class)->updateStepStatus(
-                    $llmStepId, AiEnum::STEP_STATUS_FAIL, $errorMsg,
-                    (int)((microtime(true) - $llmStart) * 1000)
-                );
-            }
-            $latencyMs = (int)((microtime(true) - $startTime) * 1000);
+            $errorMsg = 'AI 运行投递失败: ' . $e->getMessage();
             $this->dep(AiRunsDep::class)->markFailed($runId, $errorMsg);
+            (new AiRunEventPublisher())->publishError($runId, $errorMsg);
 
             Event::emit('ai.run.failed', [
-                'run_id'          => $runId,
-                'user_id'         => $userId,
+                'run_id' => $runId,
+                'user_id' => $userId,
                 'conversation_id' => $ctx['conversationId'],
-                'error_msg'       => $errorMsg,
-                'latency_ms'      => $latencyMs,
+                'error_msg' => $errorMsg,
+                'latency_ms' => 0,
             ]);
-        }
 
-        if ($errorMsg !== null) {
-            $onChunk('error', ['msg' => "AI 调用失败: {$errorMsg}"]);
-            return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId, 'error' => true]);
+            self::throw($errorMsg);
         }
 
         if ($ctx['isNew']) {
             $this->autoGenerateTitle($ctx, $param['content'], $userId);
         }
 
-        $onChunk('done', [
-            'conversation_id'      => $ctx['conversationId'],
-            'run_id'               => $runId,
-            'user_message_id'      => $ctx['userMessageId'],
-            'assistant_message_id' => $assistantMessageId,
+        return self::success([
+            'conversation_id' => $ctx['conversationId'],
+            'run_id' => $runId,
+            'request_id' => $requestId,
+            'user_message_id' => $ctx['userMessageId'],
+            'agent_id' => $ctx['agentId'],
+            'is_new' => $ctx['isNew'],
         ]);
+    }
 
-        return self::success(['conversation_id' => $ctx['conversationId'], 'run_id' => $runId]);
+    /**
+     * 拉取 streamable run events。这个接口必须是短请求，不能像 SSE 一样长时间占住 Windows 单 worker。
+     */
+    public function events($request): array
+    {
+        $userId = (int)$request->userId;
+        $param = $this->validate($request, AiChatValidate::events());
+        $runId = (int)$param['run_id'];
+        $lastId = (string)($param['last_id'] ?? '0-0');
+
+        $run = $this->dep(AiRunsDep::class)->find($runId);
+        self::throwIf(!$run || (int)$run->user_id !== $userId || (int)$run->is_del !== CommonEnum::NO, 'Run 不存在或无权访问');
+
+        $publisher = new AiRunEventPublisher();
+        $this->failStalledRunIfNeeded($publisher, $run);
+
+        $events = $publisher->read($runId, $lastId, null);
+        if (empty($events) && !empty($param['timeout_ms'])) {
+            usleep(min((int)$param['timeout_ms'], 50) * 1000);
+            $events = $publisher->read($runId, $lastId, null);
+        }
+
+        if (!empty($events)) {
+            $last = end($events);
+            $lastId = (string)($last['id'] ?? $lastId);
+        }
+
+        $freshRun = $this->dep(AiRunsDep::class)->find($runId) ?: $run;
+        $runStatus = (int)$freshRun->run_status;
+        $terminalByStatus = in_array($runStatus, [
+            AiEnum::RUN_STATUS_SUCCESS,
+            AiEnum::RUN_STATUS_FAIL,
+            AiEnum::RUN_STATUS_CANCELED,
+        ], true);
+        $terminalByEvent = false;
+        foreach ($events as $event) {
+            if (in_array($event['event'], ['done', 'error', 'canceled'], true)) {
+                $terminalByEvent = true;
+                break;
+            }
+        }
+
+        return self::success([
+            'events' => $events,
+            'last_id' => $lastId,
+            'run_status' => $runStatus,
+            'terminal' => $terminalByStatus || $terminalByEvent,
+            'error_msg' => (string)($freshRun->error_msg ?? ''),
+        ]);
     }
 
 
@@ -317,7 +266,7 @@ class AiChatModule extends BaseModule
      *
      * @throws \app\exception\BusinessException
      */
-    private function prepareChat(array $param, int $userId, ?callable $onChunk = null): array
+    private function prepareChat(array $param, int $userId, ?callable $onChunk = null, bool $buildRuntime = true): array
     {
         $conversationId = $param['conversation_id'] ?? null;
         $agentId        = $param['agent_id'] ?? null;
@@ -354,19 +303,26 @@ class AiChatModule extends BaseModule
         self::throwIf(!$model, '模型不存在');
         self::throwIf($model->status !== CommonEnum::YES, '模型已禁用');
 
-        $ragChunks = $this->retrieveRagChunks($agent, $content);
-        if (!empty($ragChunks)) {
-            $agent->system_prompt = AiRagService::buildAugmentedSystemPrompt((string)($agent->system_prompt ?? ''), $ragChunks);
+        $ragChunks = [];
+        $neuronAgent = null;
+        $historyMessages = [];
+        $userContent = $content;
+
+        if ($buildRuntime) {
+            $ragChunks = $this->retrieveRagChunks($agent, $content);
+            if (!empty($ragChunks)) {
+                $agent->system_prompt = AiRagService::buildAugmentedSystemPrompt((string)($agent->system_prompt ?? ''), $ragChunks);
+            }
+
+            // 运行时参数（用户在聊天界面调整的 temperature/max_tokens 等）
+            $runtimeParams = array_filter([
+                'temperature' => $param['temperature'] ?? null,
+                'max_tokens'  => $param['max_tokens'] ?? null,
+            ], fn($v) => $v !== null);
+
+            [$neuronAgent, $error] = AiChatService::createAgent($model, $agent, $runtimeParams ?: null);
+            self::throwIf($error, $error ?? '创建 Agent 失败');
         }
-
-        // 运行时参数（用户在聊天界面调整的 temperature/max_tokens 等）
-        $runtimeParams = array_filter([
-            'temperature' => $param['temperature'] ?? null,
-            'max_tokens'  => $param['max_tokens'] ?? null,
-        ], fn($v) => $v !== null);
-
-        [$neuronAgent, $error] = AiChatService::createAgent($model, $agent, $runtimeParams ?: null);
-        self::throwIf($error, $error ?? '创建 Agent 失败');
 
         $metaJson = !empty($attachments)
             ? json_encode(['attachments' => $attachments], JSON_UNESCAPED_UNICODE)
@@ -380,11 +336,13 @@ class AiChatModule extends BaseModule
             'is_del'          => CommonEnum::NO,
         ]);
 
-        // 排除刚插入的用户消息，避免与 userContent 重复发送给 AI
-        $historyMessages = AiChatService::buildMessages($agent, $conversationId, $maxHistory, $userMessageId);
+        if ($buildRuntime) {
+            // 排除刚插入的用户消息，避免与 userContent 重复发送给 AI
+            $historyMessages = AiChatService::buildMessages($agent, $conversationId, $maxHistory, $userMessageId);
 
-        // 当前消息也需要构建多模态内容（与历史消息一致的格式）
-        $userContent = AiChatService::buildMultimodalContent($content, $attachments);
+            // 当前消息也需要构建多模态内容（与历史消息一致的格式）
+            $userContent = AiChatService::buildMultimodalContent($content, $attachments);
+        }
 
         return [
             'conversationId'  => $conversationId,
@@ -440,10 +398,128 @@ class AiChatModule extends BaseModule
         };
     }
 
+    private function runtimeOverrides(array $param): array
+    {
+        return array_filter([
+            'temperature' => $param['temperature'] ?? null,
+            'max_tokens' => $param['max_tokens'] ?? null,
+            'max_history' => $param['max_history'] ?? null,
+        ], static fn($value) => $value !== null);
+    }
+
+    private function enqueueRun(int $runId, int $userId): void
+    {
+        RedisQueue::send('ai_run_execute', [
+            'run_id' => $runId,
+            'user_id' => $userId,
+        ]);
+    }
+
+    private function failStalledRunIfNeeded(AiRunEventPublisher $publisher, object $run): void
+    {
+        if ((int)$run->run_status !== AiEnum::RUN_STATUS_RUNNING) {
+            return;
+        }
+        if ($publisher->hasAnyEvent((int)$run->id)) {
+            return;
+        }
+
+        $createdAt = strtotime((string)$run->created_at);
+        if ($createdAt === false || time() - $createdAt < 20) {
+            return;
+        }
+
+        $errorMsg = 'AI 队列未开始执行，请检查 redis-queue consumer_slow 是否运行';
+        $this->dep(AiRunsDep::class)->markFailed((int)$run->id, $errorMsg);
+        $publisher->publishError((int)$run->id, $errorMsg);
+    }
+
+    private function relayRunEvents(int $runId, callable $onChunk): void
+    {
+        $publisher = new AiRunEventPublisher();
+        $lastId = '0-0';
+        $deadline = time() + 3600;
+        $startAt = time();
+        $hasEvent = false;
+
+        while (time() < $deadline) {
+            if ($this->forwardRunEvents($publisher, $runId, $lastId, $onChunk, 1000, $hasEvent)) {
+                return;
+            }
+
+            $run = $this->dep(AiRunsDep::class)->find($runId);
+            if (!$run || (int)$run->run_status !== AiEnum::RUN_STATUS_RUNNING) {
+                if ($this->waitForTerminalRunEvent($publisher, $runId, $lastId, $onChunk)) {
+                    return;
+                }
+
+                if ($run && (int)$run->run_status === AiEnum::RUN_STATUS_CANCELED) {
+                    $onChunk('canceled', [
+                        'conversation_id' => (int)$run->conversation_id,
+                        'run_id' => $runId,
+                        'user_message_id' => (int)$run->user_message_id,
+                        'assistant_message_id' => null,
+                    ]);
+                    return;
+                }
+
+                $onChunk('error', ['msg' => 'AI 运行已结束但未收到终止事件']);
+                return;
+            }
+
+            if (!$hasEvent && time() - $startAt >= 20) {
+                $errorMsg = 'AI 队列未开始执行，请检查 redis-queue consumer_slow 是否运行';
+                $this->dep(AiRunsDep::class)->markFailed($runId, $errorMsg);
+                $onChunk('error', ['msg' => $errorMsg]);
+                return;
+            }
+        }
+
+        $this->dep(AiRunsDep::class)->markFailed($runId, 'AI 运行事件等待超时');
+        $onChunk('error', ['msg' => 'AI 运行事件等待超时']);
+    }
+
+    private function waitForTerminalRunEvent(
+        AiRunEventPublisher $publisher,
+        int $runId,
+        string &$lastId,
+        callable $onChunk
+    ): bool {
+        for ($i = 0; $i < 3; $i++) {
+            $hasEvent = false;
+            if ($this->forwardRunEvents($publisher, $runId, $lastId, $onChunk, 200, $hasEvent)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function forwardRunEvents(
+        AiRunEventPublisher $publisher,
+        int $runId,
+        string &$lastId,
+        callable $onChunk,
+        int $blockMs,
+        bool &$hasEvent
+    ): bool {
+        foreach ($publisher->read($runId, $lastId, $blockMs) as $event) {
+            $lastId = $event['id'];
+            $hasEvent = true;
+            $onChunk($event['event'], $event['data']);
+
+            if (in_array($event['event'], ['done', 'error', 'canceled'], true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * 创建 Run 记录并触发 ai.run.started 事件
      */
-    private function createRun(string $requestId, int $userId, array $ctx, bool $isStream = false): int
+    private function createRun(string $requestId, int $userId, array $ctx, bool $isStream = false, array $meta = []): int
     {
         $runId = $this->dep(AiRunsDep::class)->add([
             'request_id'      => $requestId,
@@ -453,6 +529,7 @@ class AiChatModule extends BaseModule
             'user_message_id' => $ctx['userMessageId'],
             'run_status'      => AiEnum::RUN_STATUS_RUNNING,
             'model_snapshot'  => $ctx['modelCode'],
+            'meta_json'       => $meta ? json_encode($meta, JSON_UNESCAPED_UNICODE) : null,
             'is_del'          => CommonEnum::NO,
         ]);
 
@@ -466,22 +543,6 @@ class AiChatModule extends BaseModule
         ]);
 
         return $runId;
-    }
-
-    /**
-     * 添加 Step 记录（通用快捷方法）
-     */
-    private function addStep(int $runId, int $stepNo, int $stepType, array $payload, int $latencyMs = 0): int
-    {
-        return $this->dep(AiRunStepsDep::class)->add([
-            'run_id'       => $runId,
-            'step_no'      => $stepNo,
-            'step_type'    => $stepType,
-            'status'       => AiEnum::STEP_STATUS_SUCCESS,
-            'latency_ms'   => $latencyMs,
-            'payload_json' => json_encode($payload, JSON_UNESCAPED_UNICODE),
-            'is_del'       => CommonEnum::NO,
-        ]);
     }
 
     /**

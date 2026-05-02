@@ -47,6 +47,16 @@ class AiModelsDep extends BaseDep
             ->get();
     }
 
+    public function getLatestActiveByModelCode(string $modelCode)
+    {
+        return $this->model
+            ->where('model_code', $modelCode)
+            ->where('is_del', CommonEnum::NO)
+            ->where('status', CommonEnum::YES)
+            ->orderBy('id', 'desc')
+            ->first();
+    }
+
     /**
      * 检查 driver + name 唯一性
      */

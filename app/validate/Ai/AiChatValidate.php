@@ -46,4 +46,16 @@ class AiChatValidate
             'run_id' => v::intVal()->positive()->setName('运行ID'),
         ];
     }
+
+    /**
+     * 拉取流式事件校验（streamable 模式）
+     */
+    public static function events(): array
+    {
+        return [
+            'run_id'     => v::intVal()->positive()->setName('运行ID'),
+            'last_id'    => v::optional(v::stringType()->regex('/^\d+-\d+$/'))->setName('事件游标'),
+            'timeout_ms' => v::optional(v::intVal()->between(1, 500))->setName('等待毫秒数'),
+        ];
+    }
 }
