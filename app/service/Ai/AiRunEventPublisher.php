@@ -11,17 +11,28 @@ class AiRunEventPublisher
     private const TTL_SECONDS = 86400;
     private const BLOCK_MS = 1000;
 
+    private AiRunRealtimePushService $realtimePush;
+
+    public function __construct(?AiRunRealtimePushService $realtimePush = null)
+    {
+        $this->realtimePush = $realtimePush ?? new AiRunRealtimePushService();
+    }
+
     public function publish(int $runId, string $event, array $data = []): string
     {
         $key = $this->key($runId);
-        $id = Redis::xAdd($key, '*', [
+        $id = (string)Redis::xAdd($key, '*', [
             'event' => $event,
             'data' => json_encode($data, JSON_UNESCAPED_UNICODE),
             'created_at' => (string)time(),
         ]);
         Redis::expire($key, self::TTL_SECONDS);
 
-        return (string)$id;
+        if ($id !== '') {
+            $this->realtimePush->pushRunEvent($runId, $id, $event, $data);
+        }
+
+        return $id;
     }
 
     public function publishError(int $runId, string $message, array $extra = []): string

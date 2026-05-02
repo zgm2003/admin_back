@@ -23,6 +23,29 @@ class AiChatRuntime2ContractTest extends TestCase
         self::assertSame('ai:run:{123}:events', (new AiRunEventPublisher())->key(123));
     }
 
+    public function testRunEventPublisherPushesSameEventToWebSocketAfterRedisStreamWrite(): void
+    {
+        $publisherPath = dirname(__DIR__, 2) . '/app/service/Ai/AiRunEventPublisher.php';
+        $pushPath = dirname(__DIR__, 2) . '/app/service/Ai/AiRunRealtimePushService.php';
+
+        $publisher = is_file($publisherPath) ? file_get_contents($publisherPath) : '';
+        $push = is_file($pushPath) ? file_get_contents($pushPath) : '';
+
+        self::assertStringContainsString('AiRunRealtimePushService', $publisher);
+        self::assertStringContainsString('pushRunEvent($runId, $id, $event, $data)', $publisher);
+
+        self::assertStringContainsString('class AiRunRealtimePushService', $push);
+        self::assertStringContainsString('Gateway::sendToUid', $push);
+        self::assertStringContainsString('(string)$userId', $push);
+        self::assertStringContainsString("'type' => 'ai_run_event'", $push);
+        self::assertStringContainsString("'run_id' => \$runId", $push);
+        self::assertStringContainsString("'event_id' => \$eventId", $push);
+        self::assertStringContainsString("'event' => \$event", $push);
+        self::assertStringContainsString("'payload' => \$payload", $push);
+        self::assertStringContainsString('private static array $runUserIdCache', $push);
+        self::assertStringContainsString('AiRunsDep', $push);
+    }
+
     public function testImageIntentDetectorRecognizesCommandAndChineseNaturalLanguage(): void
     {
         $detector = new AiImageIntentDetector();
@@ -77,7 +100,8 @@ class AiChatRuntime2ContractTest extends TestCase
         $api = file_get_contents($apiPath);
         self::assertStringContainsString('/api/admin/AiChat/start', $api);
         self::assertStringContainsString('/api/admin/AiChat/events', $api);
-        self::assertStringContainsString('streamByPolling', $api);
+        self::assertStringContainsString('streamByRunEvents', $api);
+        self::assertStringContainsString('onWsMessage', $api);
         self::assertStringNotContainsString("streamPost('/api/admin/AiChat/stream'", $api);
     }
 
